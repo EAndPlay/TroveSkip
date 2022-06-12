@@ -15,8 +15,8 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
-using TroveSkip.Annotations;
 using TroveSkip.Models;
+using TroveSkip.Properties;
 
 namespace TroveSkip.ViewModels
 {
