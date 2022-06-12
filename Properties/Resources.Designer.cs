@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace TroveSkipFramework.Properties {
+namespace TroveSkip.Properties {
     using System;
     
     

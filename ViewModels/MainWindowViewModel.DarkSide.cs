@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
-using System.Security;
 using System.Text;
 using System.Windows;
 
-namespace TroveSkipFramework.ViewModels
+namespace TroveSkip.ViewModels
 {
     public sealed partial class MainWindowViewModel
     {

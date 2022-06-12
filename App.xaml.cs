@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 
-namespace TroveSkipFramework
+namespace TroveSkip
 {
     /// <summary>
     /// Логика взаимодействия для App.xaml

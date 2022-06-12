@@ -2,12 +2,11 @@ using System;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 
-namespace TroveSkipFramework
+namespace TroveSkip
 {
     /// <summary>
     /// This class allows you to tap keyboard and mouse and / or to detect their activity even when an 

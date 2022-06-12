@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Windows.Input;
 
-namespace TroveSkipFramework
+namespace TroveSkip
 {
     public sealed class DelegateCommand<T> : DelegateCommandBase, ICommand
     {

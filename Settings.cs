@@ -6,7 +6,7 @@ using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json;
 
-namespace TroveSkipFramework
+namespace TroveSkip
 {
     [Serializable]
     public class Settings

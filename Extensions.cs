@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace TroveSkipFramework
+namespace TroveSkip
 {
     public static class Extensions
     {

@@ -15,10 +15,10 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
-using TroveSkipFramework.Annotations;
-using TroveSkipFramework.Models;
+using TroveSkip.Annotations;
+using TroveSkip.Models;
 
-namespace TroveSkipFramework.ViewModels
+namespace TroveSkip.ViewModels
 {
     public partial class MainWindowViewModel : INotifyPropertyChanged, INotifyCollectionChanged
     {

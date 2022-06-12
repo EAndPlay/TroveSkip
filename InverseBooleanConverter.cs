@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Data;
 
-namespace TroveSkipFramework
+namespace TroveSkip
 {
     [ValueConversion(typeof(bool), typeof(bool))]
     public class InverseBooleanConverter : IValueConverter

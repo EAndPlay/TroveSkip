@@ -2,7 +2,7 @@
 using System.Windows;
 using System.Windows.Input;
 
-namespace TroveSkipFramework.Views
+namespace TroveSkip.Views
 {
     public partial class MainWindow
     {

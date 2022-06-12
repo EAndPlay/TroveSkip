@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 
-namespace TroveSkipFramework.Models
+namespace TroveSkip.Models
 {
     public class HookModel
     {

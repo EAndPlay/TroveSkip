@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Windows.Input;
 
-namespace TroveSkipFramework
+namespace TroveSkip
 {
   public class DelegateCommandBase
   {
