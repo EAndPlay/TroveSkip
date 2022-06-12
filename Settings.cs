@@ -51,75 +51,72 @@ namespace TroveSkipFramework
 
         public static Settings Load()
         {
-            if (File.Exists(Path) && File.ReadAllText(Path) != string.Empty)
+            if (!File.Exists(Path) || File.ReadAllText(Path) == string.Empty) return new Settings();
+            try
             {
-                try
-                {
-                    return JsonConvert.DeserializeObject<Settings>(File.ReadAllText(Path));
-                }
-                catch
-                {
-                    var settings = new Settings();
-                    MessageBox.Show("Loaded settings file are broken. Some settings could switch to default");
-                    foreach (var line in File.ReadLines(Path))
-                    {
-                        if (Regex.IsMatch(line, "\"BaseAddress\":.*\".{8}\""))
-                        {
-                            settings.BaseAddress = Regex.Match(line, "\"BaseAddress\":.*\"(.{8})\"").Groups[1].Value;
-                        }
-                        else if (Regex.IsMatch(line, "\"ChatBaseAddress\":.*\".{8}\""))
-                        {
-                            settings.ChatBaseAddress = Regex.Match(line, "\"ChatBaseAddress\":.*\"(.{8})\"").Groups[1].Value;
-                        }
-                        else if (Regex.IsMatch(line, "\"SkipButton\":.*\".+\""))
-                        {
-                            settings.SkipButton = Regex.Match(line, "\"SkipButton\":.*\"(.+)\"").Groups[1].Value;
-                        }
-                        else if (Regex.IsMatch(line, "\"SprintButton\":.*\".+\""))
-                        {
-                            settings.SprintButton = Regex.Match(line, "\"SprintButton\":.*\"(.+)\"").Groups[1].Value;
-                        }
-                        else if (Regex.IsMatch(line, "\"SprintToggleButton\":.*\".+\""))
-                        {
-                            settings.SprintToggleButton = Regex.Match(line, "\"SprintToggleButton\":.*\"(.+)\"").Groups[1].Value;
-                        }
-                        else if (Regex.IsMatch(line, "\"JumpButton\":.*\".+\""))
-                        {
-                            settings.JumpButton = Regex.Match(line, "\"JumpButton\":.*\"(.+)\"").Groups[1].Value;
-                        }
-                        else if (Regex.IsMatch(line, "\"JumpToggleButton\":.*\".+\""))
-                        {
-                            settings.JumpToggleButton = Regex.Match(line, "\"JumpToggleButton\":.*\"(.+)\"").Groups[1].Value;
-                        }
-                        else if (Regex.IsMatch(line, "\"SpeedHackToggle\":.*\".+\""))
-                        {
-                            settings.SpeedHackToggle = Regex.Match(line, "\"SpeedHackToggle\":.*\"(.+)\"").Groups[1].Value;
-                        }
-                        else if (Regex.IsMatch(line, "\"SprintValue\":.*[0-9]*[.][0-9]+"))
-                        {
-                            settings.SprintValue = float.Parse(Regex.Match(line, "\"SprintValue\":.*([0-9]*[.][0-9]+)").Groups[1].Value.Replace(".", ","));
-                        }
-                        else if (Regex.IsMatch(line, "\"SkipValue\":.*[0-9]*[.][0-9]+"))
-                        {
-                            settings.SkipValue = float.Parse(Regex.Match(line, "\"SkipValue\":.*([0-9]*[.][0-9]+)").Groups[1].Value.Replace(".", ","));
-                        }
-                        else if (Regex.IsMatch(line, "\"JumpForceValue\":.*[0-9]*[.][0-9]+"))
-                        {
-                            settings.JumpForceValue = float.Parse(Regex.Match(line, "\"JumpForceValue\":.*([0-9]*[.][0-9]+)").Groups[1].Value.Replace(".", ","));
-                        }
-                        else if (Regex.IsMatch(line, "\"SpeedHackValue\":.*\\d+"))
-                        {
-                            settings.SpeedHackValue = int.Parse(Regex.Match(line, "\"SpeedHackValue\":.*(\\d+)").Groups[1].Value.Replace(".", ","));
-                        }
-                        else if (Regex.IsMatch(line, "\"FollowApp\":\\s*false") || Regex.IsMatch(line, "\"FollowApp\":\\s*true"))
-                        {
-                            settings.FollowApp = bool.Parse(Regex.Match(line, "\"FollowApp\":\\s*([a-z]+)").Groups[1].Value);
-                        }
-                    }
-                    return settings;
-                }
+                return JsonConvert.DeserializeObject<Settings>(File.ReadAllText(Path));
             }
-            return new Settings();
+            catch
+            {
+                var settings = new Settings();
+                MessageBox.Show("Loaded settings file are broken. Some settings could switch to default");
+                foreach (var line in File.ReadLines(Path))
+                {
+                    if (Regex.IsMatch(line, "\"BaseAddress\":.*\".{8}\""))
+                    {
+                        settings.BaseAddress = Regex.Match(line, "\"BaseAddress\":.*\"(.{8})\"").Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"ChatBaseAddress\":.*\".{8}\""))
+                    {
+                        settings.ChatBaseAddress = Regex.Match(line, "\"ChatBaseAddress\":.*\"(.{8})\"").Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"SkipButton\":.*\".+\""))
+                    {
+                        settings.SkipButton = Regex.Match(line, "\"SkipButton\":.*\"(.+)\"").Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"SprintButton\":.*\".+\""))
+                    {
+                        settings.SprintButton = Regex.Match(line, "\"SprintButton\":.*\"(.+)\"").Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"SprintToggleButton\":.*\".+\""))
+                    {
+                        settings.SprintToggleButton = Regex.Match(line, "\"SprintToggleButton\":.*\"(.+)\"").Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"JumpButton\":.*\".+\""))
+                    {
+                        settings.JumpButton = Regex.Match(line, "\"JumpButton\":.*\"(.+)\"").Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"JumpToggleButton\":.*\".+\""))
+                    {
+                        settings.JumpToggleButton = Regex.Match(line, "\"JumpToggleButton\":.*\"(.+)\"").Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"SpeedHackToggle\":.*\".+\""))
+                    {
+                        settings.SpeedHackToggle = Regex.Match(line, "\"SpeedHackToggle\":.*\"(.+)\"").Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"SprintValue\":.*[0-9]*[.][0-9]+"))
+                    {
+                        settings.SprintValue = float.Parse(Regex.Match(line, "\"SprintValue\":.*([0-9]*[.][0-9]+)").Groups[1].Value.Replace(".", ","));
+                    }
+                    else if (Regex.IsMatch(line, "\"SkipValue\":.*[0-9]*[.][0-9]+"))
+                    {
+                        settings.SkipValue = float.Parse(Regex.Match(line, "\"SkipValue\":.*([0-9]*[.][0-9]+)").Groups[1].Value.Replace(".", ","));
+                    }
+                    else if (Regex.IsMatch(line, "\"JumpForceValue\":.*[0-9]*[.][0-9]+"))
+                    {
+                        settings.JumpForceValue = float.Parse(Regex.Match(line, "\"JumpForceValue\":.*([0-9]*[.][0-9]+)").Groups[1].Value.Replace(".", ","));
+                    }
+                    else if (Regex.IsMatch(line, "\"SpeedHackValue\":.*\\d+"))
+                    {
+                        settings.SpeedHackValue = int.Parse(Regex.Match(line, "\"SpeedHackValue\":.*(\\d+)").Groups[1].Value.Replace(".", ","));
+                    }
+                    else if (Regex.IsMatch(line, "\"FollowApp\":\\s*false") || Regex.IsMatch(line, "\"FollowApp\":\\s*true"))
+                    {
+                        settings.FollowApp = bool.Parse(Regex.Match(line, "\"FollowApp\":\\s*([a-z]+)").Groups[1].Value);
+                    }
+                }
+                return settings;
+            }
         }
     }
 }
