@@ -1,0 +1,1515 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Microsoft.ServiceHub.Client</name>
+    </assembly>
+    <members>
+        <member name="T:Microsoft.ServiceHub.Client.ControllerConnectionConfigurationErrorException">
+            <summary>
+            This exception is to be used when the Client is unable to connect to the Controller when the Controller exits prematurely
+            because of an invalid servicehub.config.json file.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Client.ControllerConnectionException">
+            <summary>
+            Base class for all exceptions that are thrown when a Client fails to connect to a Controller process.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Client.ControllerConnectionInvalidArgumentException">
+            <summary>
+            This exception is to be used when the Client is unable to connect to the Controller when the Controller exits prematurely
+            because of an invalid command line.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Client.ControllerConnectionRefusedException">
+            <summary>
+            This exception is to be used when the Client is unable to connect to the Controller, not because the  Controller exited unexpectedly,
+            but because the connection was refused by the Controller process.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Client.ControllerConnectionTimeoutException">
+            <summary>
+            This exception is to be used when the Client is unable to connect to the Controller because the Controller shutdown gracefully before
+            the connection could be established.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Client.ControllerConnectionWindowsShutdownException">
+            <summary>
+            This exception is to be used when the Client is unable to connect to the Controller when the Controller exits prematurely
+            because Windows is in the process of shutting down.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Client.ControllerConnectionWindowsShutdownException.ExitCode">
+            <summary>
+            This maps to the error code STATUS_DLL_INIT_FAILED_LOGOFF (0xC000026B).
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Client.DevHubConfig.ConfigFileDir">
+            <summary>
+            Gets the directory that contains the servicehub.config.json file.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.DevHubConfigResolver.ResolveAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Find the config file starting with the given directory and going up.
+            Return the default config if the file is not found.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Client.HostGroup">
+            <summary>
+            Host group.
+            </summary>
+            <remarks>
+            Host groups in Service Hub allow clients to:
+            * Simultaneously run the same service on multiple hosts.
+            * Ensure that each client process can run services on a dedicated host.
+            </remarks>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HostGroup.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Client.HostGroup" /> class
+            with a random id.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HostGroup.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Client.HostGroup" /> class.
+            </summary>
+            <param name="id">Host group id. Not null or whitespace.</param>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Client.HostGroup.Id">
+            <summary>
+            Gets or sets the host group id.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HostGroup.Equals(Microsoft.ServiceHub.Client.HostGroup)">
+            <summary>
+            Indicates whether the current object is equal to another object of the same type.
+            </summary>
+            <param name="other">An object to compare with this object.</param>
+            <returns>true if the current object is equal to the other parameter; otherwise, false.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HostGroup.Equals(System.Object)">
+            <summary>
+            Determines whether the specified object is equal to the current object.
+            </summary>
+            <param name="obj">The object to compare with the current object.</param>
+            <returns>true if the specified object is equal to the current object; otherwise, false.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HostGroup.GetHashCode">
+            <summary>
+            Get object's hash code.
+            </summary>
+            <returns>The hash code.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HostGroup.ToString">
+            <summary>
+            Returns a string that represents the current object.
+            </summary>
+            <returns>A string that represents the current object.</returns>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Client.HubClient">
+            <summary>
+            This class allows Service Hub clients to find the location and start Service hub services.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Client.HubClient.config">
+            <summary>
+            The Function that returns a configuration. May be null if we have never tried to get this before.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Client.HubClient.clientConfiguration">
+            <summary>
+            Configuration information sent to the Client from the Controller when the CLient connects.
+            </summary>
+        </member>
+        <member name="E:Microsoft.ServiceHub.Client.HubClient.Microsoft#ServiceHub#Framework#IServiceBroker#AvailabilityChanged">
+            <inheritdoc />
+            <remarks>
+            This event is not raised in the current version.
+            </remarks>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Client.HubClient.ClientName">
+            <summary>
+            Gets the name of the client as it was provided to the <see cref="T:Microsoft.ServiceHub.Client.HubClient" /> constructor.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Client.HubClient.Logger">
+            <summary>
+            Gets the logger associated with this client.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Client.HubClient.DisposeToken">
+            <summary>
+            Gets a cancellation token that signals when this object has been disposed.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.RequestServiceAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Locate and start a service module on Service Hub.
+            </summary>
+            <param name="serviceName">Service name.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <returns>
+            A stream to the service, not null. The client must dispose of it when done communicating with the service module.
+            </returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.RequestServiceAsync(Microsoft.ServiceHub.Client.ServiceDescriptor,System.Threading.CancellationToken)">
+            <summary>
+            Locate and start a service module on Service Hub.
+            </summary>
+            <param name="serviceDescriptor">Service descriptor, not null.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <returns>
+            A stream to the service, not null. The client must dispose of it when done communicating with the service module.
+            </returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.GetSessionIdAsync(System.Threading.CancellationToken)">
+            <summary>
+            Get session id.
+            Session ID is a unique string that stays the same during dev hub session (life time of hub controller)
+            and is different for different sessions.
+            </summary>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.GetProxyAsync``1(Microsoft.ServiceHub.Framework.ServiceRpcDescriptor,Microsoft.ServiceHub.Framework.ServiceActivationOptions,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.GetPipeAsync(Microsoft.ServiceHub.Framework.ServiceMoniker,Microsoft.ServiceHub.Framework.ServiceActivationOptions,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.GetHostProcessIdsAsync(System.Threading.CancellationToken)">
+            <summary>
+            Gets the set of process ids that the Controller process has spawned.
+            </summary>
+            <param name="cancellationToken">A token to signal cancellation.</param>
+            <returns>The set of ids for the processes that the Controller has spawned.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.RegisterService(Microsoft.ServiceHub.Framework.ServiceMoniker,Microsoft.ServiceHub.Utility.ServiceModuleInfo)">
+            <summary>
+            Register a service with an in memory <see cref="T:Microsoft.ServiceHub.Utility.ServiceModuleInfo" /> so that it can be requested via this <see cref="T:Microsoft.ServiceHub.Client.HubClient" /> object later.
+            </summary>
+            <param name="moniker">The moniker of the service to register.</param>
+            <param name="serviceModuleInfo">The information related to the service being registered.</param>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.UnregisterService(Microsoft.ServiceHub.Framework.ServiceMoniker)">
+            <summary>
+            Unregister a service so that future requests for this service will not use the previously registered <see cref="T:Microsoft.ServiceHub.Utility.ServiceModuleInfo" />.
+            Attempting to unregister a service that had not previously been registered will result in a no-op.
+            </summary>
+            <param name="moniker">The moniker of the service to unregister.</param>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.ExitAsync(System.Threading.CancellationToken)">
+            <summary>
+            Stop the location service and terminate all service module host processes it has spawned.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.GetHubControllerPidAsync">
+            <summary>
+            Instrumentation API: get hub controller process id.
+            </summary>
+            <remarks>
+            It is used by the ShutdownTestClient and shutdown test.
+            </remarks>
+            <returns>Hub controller process id.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.GetRemoteServiceBrokerForServiceAsync(Microsoft.ServiceHub.Framework.ServiceMoniker,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.Threading.CancellationToken)">
+            <summary>
+            Gets an <see cref="T:Microsoft.ServiceHub.Framework.IRemoteServiceBroker" /> relevant to the service that is asking for it.
+            </summary>
+            <param name="consumingService">The <see cref="T:Microsoft.ServiceHub.Framework.ServiceMoniker" /> of the service that is requesting the <see cref="T:Microsoft.ServiceHub.Framework.IRemoteServiceBroker" />.</param>
+            <param name="userCredentials">The credentials of the user to be used to filter the ServiceBroker that is returned.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>An <see cref="T:Microsoft.ServiceHub.Framework.IRemoteServiceBroker" /> relevant to the service that is asking for it.</returns>
+            <remarks>
+            The returned object is disposed (if it implements IDisposable) when the service disposes of its connection to it.
+            The default implementation returns a new object every time, but the new object is just a wrapper for the same IRemoteServiceBroker proxy.
+            The returned object should also not be a JsonRpc proxy since it will be attached to a <see cref="T:System.IO.Stream" /> via JsonRpc.
+            </remarks>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Client.HubClient.RemoteServiceBrokerWrapper">
+            <summary>
+            This class is a wrapper for the proxy by which a client communicates with the Microsoft.ServiceHub.Controller process.
+            HandshakeAsync needs to be intercepted in order to avoid modifying the state of client information of the RemoteServiceBroker
+            by multiple clients since this will be the target object for potentially multiple different service's RemoteServiceBrokers.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubClient.RemoteServiceBrokerWrapper.HandshakeAsync(Microsoft.ServiceHub.Framework.ServiceBrokerClientMetadata,System.Threading.CancellationToken)">
+            <summary>
+            HandshakeAsync needs to be intercepted in order to avoid modifying the state of client information of the RemoteServiceBroker
+            by multiple clients since this will be the target object for potentially multiple different service's RemoteServiceBrokers.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Client.HubControllerClient.sem">
+            <summary>
+            This semaphore is to prevent multiple clients from trying to start the controller at the same time,
+            which can cause multiple ServiceHub.Node.Host.exe processes to start and causes VS to take a perf hit.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubControllerClient.StartAsync(Microsoft.ServiceHub.Client.DevHubConfig,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Start Node.js hub controller and wait for it to start listening on the pipe server.
+            </summary>
+            <returns>Controller process if it was started by us. Null if is already running.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubControllerClient.IsControllerRunningAsync(Microsoft.ServiceHub.Client.DevHubConfig,System.Threading.CancellationToken)">
+            <summary>
+            Detects whether a controller is already running by trying to open a pipe to it.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubControllerClient.IsControllerRunningAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Detects whether a controller is already running by trying to open a pipe to it.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.HubControllerClient.SetProcessStartInfoEnvironment(System.Diagnostics.ProcessStartInfo,System.Collections.Generic.IReadOnlyDictionary{System.String,System.String},System.Diagnostics.TraceSource)">
+            <summary>
+            Adds  environment variables to the <see cref="T:System.Diagnostics.ProcessStartInfo" />.
+            </summary>
+            <param name="processStartInfo">The process start info to add the controller environment variables to.</param>
+            <param name="controllerEnvironment">The controller environment variables.</param>
+            <param name="logger">A logger to log the variabels and their values to.</param>
+            <remarks>
+            The process start info's environment variables already contains the process' environment variables.
+            </remarks>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Client.ServiceDescriptor">
+            <summary>
+            Service Hub service descriptor.
+            This class identifies a service hub service to run.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.ServiceDescriptor.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Client.ServiceDescriptor" /> class
+            with the given service name.
+            </summary>
+            <param name="name">Service name. Not null or empty.</param>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Client.ServiceDescriptor.Name">
+            <summary>
+            Gets the service name.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Client.ServiceDescriptor.HostGroup">
+            <summary>
+            Gets or sets a host group for the service.
+            Same service with different host groups will be hosted on different hosts.
+            Same service with the same host group (or no host group at all) will be hosted on the same host.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Client.ServiceDescriptor.ServiceLocation">
+            <summary>
+            Gets or sets the location of the service config. This includes the path to the config file as well as the name of the file itself.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Client.ServiceDescriptor.Version">
+            <summary>
+            Gets or sets the version of the service or the version expected by the client.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Client.ServiceDescriptor.IsServiceNameOnly">
+            <summary>
+            Gets a value indicating whether service name only is enougth to request the service.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.ServiceDescriptor.ToString">
+            <summary>
+            Gets the string representation of the service descriptor.
+            </summary>
+            <returns>String representation of the service descriptor.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.ServiceDescriptor.Equals(Microsoft.ServiceHub.Client.ServiceDescriptor)">
+            <summary>
+            Indicates whether the current object is equal to another object of the same type.
+            </summary>
+            <param name="other">An object to compare with this object.</param>
+            <returns>true if the current object is equal to the other parameter; otherwise, false.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.ServiceDescriptor.Equals(System.Object)">
+            <summary>
+            Determines whether the specified object is equal to the current object.
+            </summary>
+            <param name="obj">The object to compare with the current object.</param>
+            <returns>true if the specified object is equal to the current object; otherwise, false.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Client.ServiceDescriptor.GetHashCode">
+            <summary>
+            Get object's hash code.
+            </summary>
+            <returns>The hash code.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.ChannelFactory.CreateClientAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Creates a full-duplex, asynchronous <see cref="T:System.IO.Stream" /> to communicate over some IPC channel.
+            </summary>
+            <param name="channelName">The name of the pipe or unix domain socket to connect to.</param>
+            <param name="locationServiceChannelName">The name of the pipe or unix domain socket of location service.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <returns>A task whose result is the established stream.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.ChannelFactory.CheckForResponsiveChannelAsync(System.String,System.String,Microsoft.ServiceHub.Utility.ChannelConnectionFlags,System.Threading.CancellationToken)">
+            <summary>
+            Checks whether the specified IPC channel is responding to incoming connections.
+            </summary>
+            <param name="channelName">The name of the pipe or unix domain socket.</param>
+            <param name="locationServiceChannelName">The name of the pipe or unix domain socket of location service.</param>
+            <param name="flags">Modifiers in the connection process.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <returns><c>true</c> if the channel exists; <c>false</c> otherwise.</returns>
+            <exception cref="T:System.OperationCanceledException">Thrown when the attempt is aborted due to <paramref name="cancellationToken" /> being cancelled.</exception>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.Shared.ServiceHubRetryConfiguration`1.RetryCount">
+            <summary>
+            Gets or sets a value indicating how many times it should retry action.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.Shared.ServiceHubRetryConfiguration`1.DelayBetweenRetries">
+            <summary>
+            Gets or sets a value indicating how much delay should be added between two executions in ms.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.Shared.ServiceHubRetryConfiguration`1.DefaultResponse">
+            <summary>
+            Gets or sets a value indicating the default response that should be returned if HandleException is set to true.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.Shared.ServiceHubRetryConfiguration`1.LogExceptionForEachRetry">
+            <summary>
+            Gets or sets a value indicating whether exceptions should be logged for each retry or not.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.Shared.ServiceHubRetryConfiguration`1.RetryCondition">
+            <summary>
+            Gets or sets a value indicating whether the retry method should be executed.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.Shared.ServiceHubRetryConfiguration`1.HandleException">
+            <summary>
+            Gets or sets a value indicating whether to return the DefaultResponse even if retry fails.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.Shared.ServiceHubRetryConfiguration`1.RetriedCount">
+            <summary>
+            Gets or sets a value indicating how many times the retry method has been executed.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.Shared.SharedUtilities">
+            <summary>
+            Utility methods for Microsoft.ServiceHub.Framework.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.Shared.SharedUtilities.DeserializeServiceActivationOptions(System.String)">
+            <summary>
+            Deserializes a string representing a serialized <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> object.
+            </summary>
+            <param name="serializedServiceActivationOptions">Serialized <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" />.</param>
+            <returns>The deserialized <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" />.</returns>
+            <remarks>
+            This method is invoked through reflection from Microsoft.ServiceHub.HostStub.ServiceManager.StartService.
+            Having a method specifically for this avoids us having to load Newtonsoft.Json explicitly through reflection.
+            </remarks>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.Shared.SharedUtilities.RemoveServiceBrokerPipeNameFromServiceActivationOptions(Microsoft.ServiceHub.Framework.ServiceActivationOptions)">
+            <summary>
+            Removes the <see cref="F:Microsoft.ServiceHub.Utility.Constants.ServiceHubRemoteServiceBrokerPipeNameActivationArgument" /> from the ActivationArguments of
+            a <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" />.
+            </summary>
+            <param name="options">The <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> to remove the service broker pipe name from.</param>
+            <returns>The updated <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" />.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.Shared.SharedUtilities.GetServiceBrokerServerPipeName(Microsoft.ServiceHub.Framework.ServiceActivationOptions)">
+            <summary>
+            Gets the pipe name that the <see cref="T:Microsoft.ServiceHub.Framework.IRemoteServiceBroker" /> is available over from the <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" />.
+            </summary>
+            <param name="options">The <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> to get the pipe name from.</param>
+            <returns>The pipe name or an empty string if there isn't one.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.Shared.SharedUtilities.AddEntryToActivationArguments(System.String,System.String,Microsoft.ServiceHub.Framework.ServiceActivationOptions)">
+            <summary>
+            Adds the key and value to the ActivationArguments of a <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> provided the key does not already exist within the ActivationArguments.
+            </summary>
+            <param name="key">The key of the argument being added to the dictionary.</param>
+            <param name="value">The value of the argument being added to the dictionary.</param>
+            <param name="options">The <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> object that the key and value are being added to.</param>
+            <returns>The updated <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" />.</returns>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.Constants">
+            <summary>
+            Contains various utility constants.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.Constants.ServiceHubServiceLocationActivationArgument">
+            <summary>
+            String used to access the ServiceHubServiceLocation <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> activation argument.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.Constants.ServiceHubHostGroupActivationArgument">
+            <summary>
+            String used to access the ServiceHubHostGroup <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> activation argument.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.Constants.ServiceHubServiceModuleInfoActivationArgument">
+            <summary>
+            String used to access the ServiceModuleInfo <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> activation argument.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.Constants.ServiceHubRemoteServiceBrokerPipeNameActivationArgument">
+            <summary>
+            String used to access the ServiceHubRemoteServiceBrokerPipeName <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> activation argument.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.Constants.ServiceHubVersionActivationArgument">
+            <summary>
+            String used to access the requested <see cref="T:System.Version" /> information from <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> activation argument.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.Constants.ServiceHubFriendServiceModuleInfoFormatter">
+            <summary>
+            String used to access the ServiceModuleInfo files of Friend services from <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> activation argument.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.Constants.ServiceHubHostProcessId">
+            <summary>
+            String used to access the ServiceHubHostProcessId <see cref="T:Microsoft.ServiceHub.Framework.ServiceActivationOptions" /> activation argument. The constant is used by the VS repo indirectly
+            in src\Platform\Utilities\Impl\ServiceBroker\RemoteServiceBrokerWrapper.cs.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.Constants.ServiceHubHostVariableActivationArgumentPrefix">
+            <summary>
+            String used to get variables to replace in host arguments. These are provided in ServiceActivationOptions as a hint to host that
+            would host the service. Their use is optional by the host.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.ExitCode">
+            <summary>
+            Exit code from a Node ServiceHub process.
+            Range 1-19 and 128+ is used by Node itself.
+            Range 20 - 127 is used by ServiceHub.
+            Non-node ServiceHub hosts are supposed to use the same ServiceHub exit codes in ServiceHub range 20-127.
+            </summary>
+            <remarks>
+            Keep in sync with ..\..\Node\exitCode.ts.
+            </remarks>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.ExitCode.InvalidArgument">
+            <summary> Invalid command line argument for ServiceHub process </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.ExitCode.ErrorStartingServerPipeInUse">
+            <summary>
+            Cannot start a new pipe server because the supplied pipe address is already in use.
+            This may happen when starting a controller where there is already a controller running
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.ExitCode.ErrorStartingServer">
+            <summary>
+            Cannot start a new pipe server due to some error
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.ExitCode.ShutdownError">
+            <summary> Error shutting down. </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.ExitCode.ConfigurationError">
+            <summary> Configuration error in servicehub.config.json. </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.ExitCode.ControllerAlreadyRunning">
+            <summary>
+            Cannot start a new controller process because one is already running.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.NamedPipeClientStreamExtensions">
+            <summary>
+            Extension methods for the <see cref="T:System.IO.Pipes.NamedPipeClientStream" /> class.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.NamedPipeClientStreamExtensions.NMPWAIT_NOWAIT">
+            <summary>
+            Does not wait for the named pipe. If the named pipe is not available, the function returns an error.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.NamedPipeClientStreamExtensions.ERROR_SEM_TIMEOUT_HRESULT">
+            <summary>
+            An HRESULT indicating a timeout after which we might retry.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.NamedPipeClientStreamExtensions.ConnectWithRetryAsync(System.IO.Pipes.NamedPipeClientStream,System.Threading.CancellationToken,System.Int32,System.Boolean)">
+            <summary>
+            Connects to a named pipe without spinning the CPU as <see cref="M:System.IO.Pipes.NamedPipeClientStream.Connect(System.Int32)" /> or <see cref="M:System.IO.Pipes.NamedPipeClientStream.ConnectAsync(System.Threading.CancellationToken)" /> would do.
+            </summary>
+            <param name="npcs">The named pipe client stream to connect.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+            <param name="maxRetries">The maximum number of retries to attempt.</param>
+            <param name="withSpinningWait">Whether or not the connect should be attempted with a spinning wait.
+            If the pipe being connected to is known to exist, it is safe to use a spinning wait to avoid potentially throwing exceptions for retries.</param>
+            <returns>A <see cref="T:System.Threading.Tasks.Task" /> that tracks the asynchronous connection attempt.</returns>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.NamedPipeClientStreamExtensions2">
+            <summary>
+            Extension methods for the <see cref="T:System.IO.Pipes.NamedPipeClientStream" /> class.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.StringFormatter.CurrentCulture(System.FormattableString)">
+            <summary>
+            Format the given object in the current culture. This static method may be
+            imported in C# by.
+            <code>
+            using static Microsoft.ServiceHub.Utility.StringFormatter
+            </code>.
+            Within the scope
+            of that import directive an interpolated string may be formatted in the
+            current culture by writing, for example.
+            <code>
+            CurrentCulture($"{{ lat = {latitude}; lon = {longitude} }}")
+            </code>
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.TelemetryLogger.DisposeCurrentTelemetrySession">
+            <summary>
+            Dispose only when current telemetry session is available.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.VersionRange">
+            <summary>
+            Represents a version range with inclusive or exclusive minimum or maximum bounds.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.VersionRange.#ctor(System.Version,System.Boolean,System.Version,System.Boolean)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Utility.VersionRange" /> class.
+            </summary>
+            <param name="min">minimum version.</param>
+            <param name="isMinInclusive">true, if minimum is inclusive bound, false if exclusive.</param>
+            <param name="max">maximum version.</param>
+            <param name="isMaxInclusive">true, if maximum is inclusive bound, false if exclusive.</param>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.VersionRange.#ctor(System.Version)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Utility.VersionRange" /> class containing only a
+            single version.
+            </summary>
+            <param name="value">the version.</param>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.VersionRange.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Utility.VersionRange" /> class.
+            Creates a version range containing all versions.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.VersionRange.TryParse(System.Version,Microsoft.ServiceHub.Utility.VersionRange@)">
+            <summary>
+            Parses the Version into a VersionRange object.
+            </summary>
+            <param name="version">string representing version range.</param>
+            <param name="versionRange">representing version range.</param>
+            <returns>True if the version was parsed successfully, false otherwise.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.VersionRange.TryParse(System.String,Microsoft.ServiceHub.Utility.VersionRange@)">
+            <summary>
+            Parses the string into a VersionRange object.
+            </summary>
+            <param name="version">string representing version range.</param>
+            <param name="versionRange">representing version range.</param>
+            <returns>True if the version was parsed successfully, false otherwise.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.VersionRange.Contains(System.String)">
+            <summary>
+            Determines if the given version is contained in this version range.
+            </summary>
+            <param name="value">the version to check for inclusion.</param>
+            <returns>true, if this version range contains the version, false otherwise.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.VersionRange.Contains(System.Version)">
+            <summary>
+            Determines if the given version is contained in this version range.
+            </summary>
+            <param name="value">the version to check for inclusion.</param>
+            <returns>true, if this version range contains the version, false otherwise.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.VersionRange.IsSupportedVersion(System.String,System.Version)">
+            <summary>
+            Determines if the given version is supported in this version range.
+            </summary>
+            <param name="supportedVersion">the version that is supported..</param>
+            <param name="requestedVersion">the version to check for inclusion.</param>
+            <returns>true, if this version range is supported the version, false otherwise.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.VersionRange.Parse(System.String)">
+            <summary>
+            Parses the string into a VersionRange object.
+            </summary>
+            <param name="version">string representing version range.</param>
+            <returns>A vrsionRange object.</returns>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.ChannelConnectionFlags">
+            <summary>
+            Flags that can modify how an IPC channel connection is made.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.ChannelConnectionFlags.None">
+            <summary>
+            No modifier flags.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.ChannelConnectionFlags.WaitForServerToConnect">
+            <summary>
+            Continuously retry or wait for the server to listen for and respond to connection requests
+            until it is canceled.
+            Without this flag, the connection will be attempted only once and immediately fail if the
+            server is not online and responsive.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.DeterministicLifetimeMarshalByRefObject">
+            <summary>
+            MarshalByRefObject wrapper that ensures lifetime is managed by owner of object.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.EnvUtils.LocationServicePipeNameEnvVar">
+            <summary>
+            The name of the environment variable that may be present to override the name
+            of the pipe used to discover the controller.
+            </summary>
+            <devremarks>
+            This must be in sync with locationService.ts.
+            </devremarks>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.EnvUtils.ServiceHubControllerDebugEnvVar">
+            <summary>
+            The name of the environment variable that may be present to disable the ServiceHub Controller from shutting down due to inactivity.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.EnvUtils.SessionLogKeyEnvVarName">
+            <summary>
+            A unique hash that is shared among all ServiceHub processes sharing the same root client process.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.EnvUtils.ValidateNamedPipeClientConnection(System.IntPtr,System.Diagnostics.TraceSource,System.Int32@,System.String[])">
+            <summary>
+            Validates whether or not the client who connected to a named pipe is exists in the child directory of a given directory.
+            </summary>
+            <param name="pipeHandle">The handle of the PipeStream to validate.</param>
+            <param name="traceSource">TraceSource to log errors to.</param>
+            <param name="clientProcessId">The PID of the process connecitng to the pipe.</param>
+            <param name="allowedParentPaths">The paths that the process who connected to the pipe must be a child of.</param>
+            <returns>True if the process who connected to the pipe is a child of the provided directory.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.EnvUtils.ValidateNamedPipeServerConnection(System.IntPtr,System.Diagnostics.TraceSource,System.String[])">
+            <summary>
+            Validates whether or not the named pipe that was connected to exists in the child directory of a given directory.
+            </summary>
+            <param name="pipeHandle">The handle of the PipeStream to validate.</param>
+            <param name="traceSource">TraceSource to log errors to.</param>
+            <param name="allowedParentPaths">The paths that the process who connected to the pipe must be a child of.</param>
+            <returns>True if the process who created the pipe that was connected to is a child of the provided directory.</returns>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.HostConfiguration.AllowedServiceClients">
+            <summary>
+            Gets the list of paths where client processes connecting to services in a Host process are allowed to live in. If a process from outside of any
+            of these directories connects to a named pipe hosted in a Host process, an exception will be thrown.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.IsolatedUtilities">
+            <summary>
+            Contains various utility methods without any non-framework dependencies.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.IsolatedUtilities.RequiresNotNull(System.Object,System.String)">
+            <summary>
+            Throws an exception if the specified parameter's value is null.
+            </summary>
+            <param name="obj">The value of the argument.</param>
+            <param name="name">The name of the parameter to include in any thrown exception.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="obj" /> is <c>null</c>.</exception>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.IsolatedUtilities.RequiresNotNullOrEmpty(System.String,System.String)">
+            <summary>
+            Throws an exception if the specified parameter's value is null,
+            has no elements or has an element with a null value.
+            </summary>
+            <param name="obj">The value of the argument.</param>
+            <param name="name">The name of the parameter to include in any thrown exception.</param>
+            <exception cref="T:System.ArgumentException">Thrown if the tested condition is false.</exception>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.IsolatedUtilities.RequiresNotNullOrWhiteSpace(System.String,System.String)">
+            <summary>
+            Throws an exception if the specified parameter's value is null, empty, or whitespace.
+            </summary>
+            <param name="obj">The value of the argument.</param>
+            <param name="name">The name of the parameter to include in any thrown exception.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="obj" /> is <c>null</c>.</exception>
+            <exception cref="T:System.ArgumentException">Thrown if <paramref name="obj" /> is empty.</exception>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.IsolatedUtilities.RequiresRange(System.Boolean,System.String,System.String)">
+            <summary>
+            Throws an <see cref="T:System.ArgumentOutOfRangeException" /> if a condition does not evaluate to true.
+            </summary>
+            <param name="range">A conditional statement indicating whether a range is valid.</param>
+            <param name="name">The name of the parameter to include in any thrown exception.</param>
+            <param name="errorMessage">The error message to us if the condition is false.</param>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.IsolatedUtilities.GetSHA256Hash(System.String)">
+            <summary>
+            Given an input calculates the SHA256 hash of it.
+            </summary>
+            <param name="input">The string to hash.</param>
+            <returns>A hash of the input string.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.Linux.NativeMethods.getuid">
+            <summary>
+            Get the real user ID of the calling process.
+            </summary>
+            <returns>the real user ID of the calling process.</returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.DevHubTraceSource.TraceStreamIfEnabled(System.IO.Stream,System.String)">
+            <summary>
+            Start logging all reads and writes to the <paramref name="stream" /> as debug info
+            if tracing is enabled for <paramref name="source" />.
+            assuming these are text in UTF8 encoding.
+            </summary>
+            <param name="stream">Stream to trace. Not null or empty.</param>
+            <param name="source">Tracing source of the stream. Not null or empty.</param>
+            <returns>
+            A wrapper stream if tracing is enabled, or the original <paramref name="stream" /> if not.
+            If the wrapper is returned, it'll propogate dispose to the <paramref name="stream" />.
+            </returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.DevHubTraceSource.TraceStreamIfEnabled(System.IO.Stream,System.String,System.Text.Encoding)">
+            <summary>
+            Start logging all reads and writes to the <paramref name="stream" /> as debug info
+            if tracing is enabled for <paramref name="source" />.
+            assuming these are text in the specified <paramref name="encoding" />.
+            </summary>
+            <param name="stream">Stream to trace. Not null or empty.</param>
+            <param name="source">Tracing source of the stream. Not null or empty.</param>
+            <param name="encoding">Stream encoding.</param>
+            <returns>
+            A wrapper stream if tracing is enabled, or the original <paramref name="stream" /> if not.
+            If the wrapper is returned, it'll propogate dispose to the <paramref name="stream" />.
+            </returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.DevHubTraceSource.TraceStream(System.IO.Stream,System.Text.Encoding,System.String,System.String)">
+            <summary>
+            Start logging all reads and writes to the <paramref name="stream" /> as debug info
+            assuming these are all text in the specified <paramref name="encoding" />.
+            </summary>
+            <param name="stream">Stream to trace. Not null or empty.</param>
+            <param name="encoding">Stream encoding.</param>
+            <param name="readPrefix">Prefix to add before eash read entry in the log.</param>
+            <param name="writePrefix">Prefix to add before each write entry in the log.</param>
+            <returns>
+            Stream tracer inteface. Disposing of it will stop tracing but won't dispose the <paramref name="stream" />.
+            </returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.DevHubTraceSource.TraceStreamIfEnabled(Microsoft.ServiceHub.Utility.WrappedStream,System.String)">
+            <summary>
+            Start logging all reads and writes to the <paramref name="stream" /> as debug info
+            if tracing is enabled for <paramref name="source" />.
+            assuming these are text in UTF8 encoding.
+            </summary>
+            <param name="stream">Stream to trace. Not null or empty.</param>
+            <param name="source">Tracing source of the stream. Not null or empty.</param>
+            <returns>
+            A wrapper stream if tracing is enabled, or the original <paramref name="stream" /> if not.
+            If the wrapper is returned, it'll propogate dispose to the <paramref name="stream" />.
+            </returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.DevHubTraceSource.TraceStreamIfEnabled(Microsoft.ServiceHub.Utility.WrappedStream,System.String,System.Text.Encoding)">
+            <summary>
+            Start logging all reads and writes to the <paramref name="stream" /> as debug info
+            if tracing is enabled for <paramref name="source" />.
+            assuming these are text in the specified <paramref name="encoding" />.
+            </summary>
+            <param name="stream">Stream to trace. Not null or empty.</param>
+            <param name="source">Tracing source of the stream. Not null or empty.</param>
+            <param name="encoding">Stream encoding.</param>
+            <returns>
+            A wrapper stream if tracing is enabled, or the original <paramref name="stream" /> if not.
+            If the wrapper is returned, it'll propogate dispose to the <paramref name="stream" />.
+            </returns>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.DevHubTraceSource.TraceStream(Microsoft.ServiceHub.Utility.WrappedStream,System.Text.Encoding,System.String,System.String)">
+            <summary>
+            Start logging all reads and writes to the <paramref name="stream" /> as debug info
+            assuming these are all text in the specified <paramref name="encoding" />.
+            </summary>
+            <param name="stream">Stream to trace. Not null or empty.</param>
+            <param name="encoding">Stream encoding.</param>
+            <param name="readPrefix">Prefix to add before eash read entry in the log.</param>
+            <param name="writePrefix">Prefix to add before each write entry in the log.</param>
+            <returns>
+            Stream tracer inteface. Disposing of it will stop tracing but won't dispose the <paramref name="stream" />.
+            </returns>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.TraceEventId">
+            <summary>
+            Class containing trace event ID constants.
+            We use a class with int members instead of an enum
+            because then we don't have to typecast the enum to
+            an int everytime we want to trace an event.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.MarshalledTask`1">
+            <summary>
+            Marshalled async task.
+            </summary>
+            <typeparam name="T">Return type of async work.</typeparam>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.CreateProcessFlags">
+            <summary>
+            Flags that may be passed to the <see cref="M:Microsoft.ServiceHub.Utility.NativeMethods.CreateProcess(System.String,System.String,System.IntPtr,System.IntPtr,System.Boolean,Microsoft.ServiceHub.Utility.CreateProcessFlags,System.IntPtr,System.String,Microsoft.ServiceHub.Utility.STARTUPINFO@,Microsoft.ServiceHub.Utility.PROCESS_INFORMATION@)" /> function.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.None">
+            <summary>
+            No flags.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_BREAKAWAY_FROM_JOB">
+            <summary>
+            The child processes of a process associated with a job are not associated with the job.
+            If the calling process is not associated with a job, this constant has no effect. If the calling process is associated with a job, the job must set the JOB_OBJECT_LIMIT_BREAKAWAY_OK limit.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_DEFAULT_ERROR_MODE">
+            <summary>
+            The new process does not inherit the error mode of the calling process. Instead, the new process gets the default error mode.
+            This feature is particularly useful for multithreaded shell applications that run with hard errors disabled.
+            The default behavior is for the new process to inherit the error mode of the caller. Setting this flag changes that default behavior.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_NEW_CONSOLE">
+            <summary>
+            The new process has a new console, instead of inheriting its parent's console (the default). For more information, see Creation of a Console.
+            This flag cannot be used with DETACHED_PROCESS.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_NEW_PROCESS_GROUP">
+            <summary>
+            The new process is the root process of a new process group. The process group includes all processes that are descendants of this root process. The process identifier of the new process group is the same as the process identifier, which is returned in the lpProcessInformation parameter. Process groups are used by the GenerateConsoleCtrlEvent function to enable sending a CTRL+BREAK signal to a group of console processes.
+            If this flag is specified, CTRL+C signals will be disabled for all processes within the new process group.
+            This flag is ignored if specified with <see cref="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_NEW_CONSOLE" />.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_NO_WINDOW">
+            <summary>
+            The process is a console application that is being run without a console window. Therefore, the console handle for the application is not set.
+            This flag is ignored if the application is not a console application, or if it is used with either <see cref="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_NEW_CONSOLE" /> or <see cref="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.DETACHED_PROCESS" />.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_PROTECTED_PROCESS">
+            <summary>
+            The process is to be run as a protected process. The system restricts access to protected processes and the threads of protected processes. For more information on how processes can interact with protected processes, see Process Security and Access Rights.
+            To activate a protected process, the binary must have a special signature. This signature is provided by Microsoft but not currently available for non-Microsoft binaries. There are currently four protected processes: media foundation, audio engine, Windows error reporting, and system. Components that load into these binaries must also be signed. Multimedia companies can leverage the first two protected processes. For more information, see Overview of the Protected Media Path.
+            Windows Server 2003 and Windows XP:  This value is not supported.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_PRESERVE_CODE_AUTHZ_LEVEL">
+            <summary>
+            Allows the caller to execute a child process that bypasses the process restrictions that would normally be applied automatically to the process.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_SEPARATE_WOW_VDM">
+            <summary>
+            This flag is valid only when starting a 16-bit Windows-based application. If set, the new process runs in a private Virtual DOS Machine (VDM). By default, all 16-bit Windows-based applications run as threads in a single, shared VDM. The advantage of running separately is that a crash only terminates the single VDM; any other programs running in distinct VDMs continue to function normally. Also, 16-bit Windows-based applications that are run in separate VDMs have separate input queues. That means that if one application stops responding momentarily, applications in separate VDMs continue to receive input. The disadvantage of running separately is that it takes significantly more memory to do so. You should use this flag only if the user requests that 16-bit applications should run in their own VDM.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_SHARED_WOW_VDM">
+            <summary>
+            The flag is valid only when starting a 16-bit Windows-based application. If the DefaultSeparateVDM switch in the Windows section of WIN.INI is TRUE, this flag overrides the switch. The new process is run in the shared Virtual DOS Machine.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_SUSPENDED">
+            <summary>
+            The primary thread of the new process is created in a suspended state, and does not run until the <see cref="!:ResumeThread" /> function is called.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_UNICODE_ENVIRONMENT">
+            <summary>
+            If this flag is set, the environment block pointed to by lpEnvironment uses Unicode characters. Otherwise, the environment block uses ANSI characters.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.DEBUG_ONLY_THIS_PROCESS">
+            <summary>
+            The calling thread starts and debugs the new process. It can receive all related debug events using the WaitForDebugEvent function.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.DEBUG_PROCESS">
+            <summary>
+            The calling thread starts and debugs the new process and all child processes created by the new process. It can receive all related debug events using the WaitForDebugEvent function.
+            A process that uses <see cref="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.DEBUG_PROCESS" /> becomes the root of a debugging chain. This continues until another process in the chain is created with <see cref="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.DEBUG_PROCESS" />.
+            If this flag is combined with <see cref="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.DEBUG_ONLY_THIS_PROCESS" />, the caller debugs only the new process, not any child processes.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.DETACHED_PROCESS">
+            <summary>
+            For console processes, the new process does not inherit its parent's console (the default). The new process can call the <see cref="!:AllocConsole" /> function at a later time to create a console. For more information, see Creation of a Console.
+            This value cannot be used with <see cref="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.CREATE_NEW_CONSOLE" />.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.EXTENDED_STARTUPINFO_PRESENT">
+            <summary>
+            The process is created with extended startup information; the lpStartupInfo parameter specifies a <see cref="!:STARTUPINFOEX" /> structure.
+            Windows Server 2003 and Windows XP:  This value is not supported.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.CreateProcessFlags.INHERIT_PARENT_AFFINITY">
+            <summary>
+            The process inherits its parent's affinity. If the parent process has threads in more than one processor group, the new process inherits the group-relative affinity of an arbitrary group in use by the parent.
+            Windows Server 2008, Windows Vista, Windows Server 2003, and Windows XP:  This value is not supported.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.PROCESS_INFORMATION">
+            <summary>
+            Contains information about a newly created process and its primary thread. It is used with the <see cref="!:CreateProcess(string, string, SECURITY_ATTRIBUTES*, SECURITY_ATTRIBUTES*, bool, CreateProcessFlags, void*, string, ref STARTUPINFO, out PROCESS_INFORMATION)" />,
+            <see cref="!:CreateProcessAsUser(IntPtr, string, string, SECURITY_ATTRIBUTES*, SECURITY_ATTRIBUTES*, bool, CreateProcessFlags, void*, string, ref STARTUPINFO, out PROCESS_INFORMATION)" />, CreateProcessWithLogonW, or CreateProcessWithTokenW function.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.PROCESS_INFORMATION.hProcess">
+            <summary>
+            A handle to the newly created process. The handle is used to specify the process in all functions that perform operations on the process object.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.PROCESS_INFORMATION.hThread">
+            <summary>
+            A handle to the primary thread of the newly created process. The handle is used to specify the thread in all functions that perform operations on the thread object.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.PROCESS_INFORMATION.dwProcessId">
+            <summary>
+            A value that can be used to identify a process. The value is valid from the time the process is created until all handles to the process are closed and the process object is freed; at this point, the identifier may be reused.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.PROCESS_INFORMATION.dwThreadId">
+            <summary>
+            A value that can be used to identify a thread. The value is valid from the time the thread is created until all handles to the thread are closed and the thread object is freed; at this point, the identifier may be reused.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.SafeObjectHandle">
+            <summary>
+            Represents a Win32 handle that can be closed with <see cref="M:Microsoft.ServiceHub.Utility.NativeMethods.CloseHandle(System.IntPtr)" />.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.SafeObjectHandle.Invalid">
+            <summary>
+            An invalid handle that may be used in place of <see cref="F:Microsoft.ServiceHub.Utility.NativeMethods.INVALID_HANDLE_VALUE" />.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.SafeObjectHandle.Null">
+            <summary>
+            A handle that may be used in place of <see cref="F:System.IntPtr.Zero" />.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.SafeObjectHandle.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Utility.SafeObjectHandle" /> class.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.SafeObjectHandle.#ctor(System.IntPtr,System.Boolean)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Utility.SafeObjectHandle" /> class.
+            </summary>
+            <param name="preexistingHandle">An object that represents the pre-existing handle to use.</param>
+            <param name="ownsHandle">
+                <see langword="true" /> to have the native handle released when this safe handle is disposed or finalized;
+                <see langword="false" /> otherwise.
+            </param>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.SafeObjectHandle.IsInvalid">
+            <inheritdoc />
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.SafeObjectHandle.ReleaseHandle">
+            <inheritdoc />
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.STARTUPINFO">
+            <summary>
+            Specifies the window station, desktop, standard handles, and appearance of the main window for a process at creation time.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.cb">
+            <summary>
+            The size of this data structure.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.lpReserved">
+            <summary>
+            Reserved; must be NULL.
+            Actual type: char*.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.lpDesktop">
+            <summary>
+            The name of the desktop, or the name of both the desktop and window station for this process. A backslash in the string indicates that the string includes both the desktop and window station names. For more information, see Thread Connection to a Desktop.
+            Actual type: char*.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.lpTitle">
+            <summary>
+            For console processes, this is the title displayed in the title bar if a new console window is created. If NULL, the name of the executable file is used as the window title instead. This parameter must be NULL for GUI or console processes that do not create a new console window.
+            Actual type: char*.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwX">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies STARTF_USEPOSITION, this member is the x offset of the upper left corner of a window if a new window is created, in pixels. Otherwise, this member is ignored.
+            The offset is from the upper left corner of the screen. For GUI processes, the specified position is used the first time the new process calls CreateWindow to create an overlapped window if the x parameter of CreateWindow is CW_USEDEFAULT.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwY">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies STARTF_USEPOSITION, this member is the y offset of the upper left corner of a window if a new window is created, in pixels. Otherwise, this member is ignored.
+            The offset is from the upper left corner of the screen. For GUI processes, the specified position is used the first time the new process calls CreateWindow to create an overlapped window if the y parameter of CreateWindow is CW_USEDEFAULT.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwXSize">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies STARTF_USESIZE, this member is the width of the window if a new window is created, in pixels. Otherwise, this member is ignored.
+            For GUI processes, this is used only the first time the new process calls CreateWindow to create an overlapped window if the nWidth parameter of CreateWindow is CW_USEDEFAULT.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwYSize">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies STARTF_USESIZE, this member is the height of the window if a new window is created, in pixels. Otherwise, this member is ignored.
+            For GUI processes, this is used only the first time the new process calls CreateWindow to create an overlapped window if the nHeight parameter of CreateWindow is CW_USEDEFAULT.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwXCountChars">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies STARTF_USECOUNTCHARS, if a new console window is created in a console process, this member specifies the screen buffer width, in character columns. Otherwise, this member is ignored.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwYCountChars">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies STARTF_USECOUNTCHARS, if a new console window is created in a console process, this member specifies the screen buffer height, in character rows. Otherwise, this member is ignored.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFillAttribute">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies STARTF_USEFILLATTRIBUTE, this member is the initial text and background colors if a new console window is created in a console application. Otherwise, this member is ignored.
+            This value can be any combination of the following values: FOREGROUND_BLUE, FOREGROUND_GREEN, FOREGROUND_RED, FOREGROUND_INTENSITY, BACKGROUND_BLUE, BACKGROUND_GREEN, BACKGROUND_RED, and BACKGROUND_INTENSITY. For example, the following combination of values produces red text on a white background:
+            FOREGROUND_RED| BACKGROUND_RED| BACKGROUND_GREEN| BACKGROUND_BLUE.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags">
+            <summary>
+            A bitfield that determines whether certain STARTUPINFO members are used when the process creates a window.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.wShowWindow">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USESHOWWINDOW" />, this member can be any of the values that can be specified in the nCmdShow parameter for the ShowWindow function, except for SW_SHOWDEFAULT. Otherwise, this member is ignored.
+            For GUI processes, the first time ShowWindow is called, its nCmdShow parameter is ignored wShowWindow specifies the default value. In subsequent calls to ShowWindow, the wShowWindow member is used if the nCmdShow parameter of ShowWindow is set to SW_SHOWDEFAULT.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.cbReserved2">
+            <summary>
+            Reserved for use by the C Run-time; must be zero.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.lpReserved2">
+            <summary>
+            Reserved for use by the C Run-time; must be NULL.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.hStdInput">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USESTDHANDLES" />, this member is the standard input handle for the process. If <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USESTDHANDLES" /> is not specified, the default for standard input is the keyboard buffer.
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USEHOTKEY" />, this member specifies a hotkey value that is sent as the wParam parameter of a WM_SETHOTKEY message to the first eligible top-level window created by the application that owns the process. If the window is created with the WS_POPUP window style, it is not eligible unless the WS_EX_APPWINDOW extended window style is also set. For more information, see CreateWindowEx.
+            Otherwise, this member is ignored.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.hStdOutput">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USESTDHANDLES" />, this member is the standard output handle for the process. Otherwise, this member is ignored and the default for standard output is the console window's buffer.
+            If a process is launched from the taskbar or jump list, the system sets <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.hStdOutput" /> to a handle to the monitor that contains the taskbar or jump list used to launch the process. For more information, see Remarks.
+            Windows 7, Windows Server 2008 R2, Windows Vista, Windows Server 2008, Windows XP, and Windows Server 2003:  This behavior was introduced in Windows 8 and Windows Server 2012.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.STARTUPINFO.hStdError">
+            <summary>
+            If <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFlags" /> specifies <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USESTDHANDLES" />, this member is the standard error handle for the process. Otherwise, this member is ignored and the default for standard error is the console window's buffer.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.STARTUPINFO.Desktop">
+            <summary>
+            Gets the value of <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.lpDesktop" /> as a string.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.STARTUPINFO.Title">
+            <summary>
+            Gets the value of <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.lpDesktop" /> as a string.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.STARTUPINFO.Create">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Utility.STARTUPINFO" /> struct.
+            </summary>
+            <returns>An initialized instance of the struct.</returns>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.StartupInfoFlags">
+            <summary>
+            A bitfield that determines whether certain <see cref="T:Microsoft.ServiceHub.Utility.STARTUPINFO" /> members are used when the process creates a window.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.None">
+            <summary>
+            No flags.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_FORCEONFEEDBACK">
+            <summary>
+            Indicates that the cursor is in feedback mode for two seconds after <see cref="!:CreateProcessAsUser(IntPtr, string, string, SECURITY_ATTRIBUTES*, SECURITY_ATTRIBUTES*, bool, CreateProcessFlags, void*, string, ref STARTUPINFO, out PROCESS_INFORMATION)" /> is called. The Working in Background cursor is displayed (see the Pointers tab in the Mouse control panel utility).
+            If during those two seconds the process makes the first GUI call, the system gives five more seconds to the process. If during those five seconds the process shows a window, the system gives five more seconds to the process to finish drawing the window.
+            The system turns the feedback cursor off after the first call to GetMessage, regardless of whether the process is drawing.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_FORCEOFFFEEDBACK">
+            <summary>
+            Indicates that the feedback cursor is forced off while the process is starting. The Normal Select cursor is displayed.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_PREVENTPINNING">
+            <summary>
+            Indicates that any windows created by the process cannot be pinned on the taskbar.
+            This flag must be combined with <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_TITLEISAPPID" />.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_RUNFULLSCREEN">
+            <summary>
+            Indicates that the process should be run in full-screen mode, rather than in windowed mode.
+            This flag is only valid for console applications running on an x86 computer.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_TITLEISAPPID">
+            <summary>
+            The lpTitle member contains an AppUserModelID. This identifier controls how the taskbar and Start menu present the application, and enables it to be associated with the correct shortcuts and Jump Lists. Generally, applications will use the SetCurrentProcessExplicitAppUserModelID and GetCurrentProcessExplicitAppUserModelID functions instead of setting this flag. For more information, see Application User Model IDs.
+            If <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_PREVENTPINNING" /> is used, application windows cannot be pinned on the taskbar. The use of any AppUserModelID-related window properties by the application overrides this setting for that window only.
+            This flag cannot be used with <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_TITLEISLINKNAME" />.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_TITLEISLINKNAME">
+            <summary>
+            The lpTitle member contains the path of the shortcut file (.lnk) that the user invoked to start this process. This is typically set by the shell when a .lnk file pointing to the launched application is invoked. Most applications will not need to set this value.
+            This flag cannot be used with <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_TITLEISAPPID" />.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_UNTRUSTEDSOURCE">
+            <summary>
+            The command line came from an untrusted source. For more information, see Remarks.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USECOUNTCHARS">
+            <summary>
+            The <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwXCountChars" /> and <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwYCountChars" /> members contain additional information.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USEFILLATTRIBUTE">
+            <summary>
+            The <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwFillAttribute" /> member contains additional information.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USEHOTKEY">
+            <summary>
+            The <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.hStdInput" /> member contains additional information.
+            This flag cannot be used with <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USESTDHANDLES" />.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USEPOSITION">
+            <summary>
+            The <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwX" /> and <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwY" /> members contain additional information.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USESHOWWINDOW">
+            <summary>
+            The <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.wShowWindow" /> member contains additional information.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USESIZE">
+            <summary>
+            The <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwXSize" /> and <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.dwYSize" /> members contain additional information.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USESTDHANDLES">
+            <summary>
+            The <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.hStdInput" />, <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.hStdOutput" />, and <see cref="F:Microsoft.ServiceHub.Utility.STARTUPINFO.hStdError" /> members contain additional information.
+            If this flag is specified when calling one of the process creation functions, the handles must be inheritable and the function's bInheritHandles parameter must be set to TRUE. For more information, see Handle Inheritance.
+            If this flag is specified when calling the <see cref="!:GetStartupInfo(STARTUPINFO*)" /> function, these members are either the handle value specified during process creation or <see cref="!:INVALID_HANDLE_VALUE" />.
+            Handles must be closed with <see cref="!:CloseHandle" /> when they are no longer needed.
+            This flag cannot be used with <see cref="F:Microsoft.ServiceHub.Utility.StartupInfoFlags.STARTF_USEHOTKEY" />.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.StdHandle">
+            <summary>
+            Standard handles for the <see cref="M:Microsoft.ServiceHub.Utility.NativeMethods.GetStdHandle(Microsoft.ServiceHub.Utility.StdHandle)" /> method.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StdHandle.STD_INPUT_HANDLE">
+            <summary>
+            The standard input device. Initially, this is the console input buffer, CONIN$.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StdHandle.STD_OUTPUT_HANDLE">
+            <summary>
+            The standard output device. Initially, this is the active console screen buffer, CONOUT$.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.StdHandle.STD_ERROR_HANDLE">
+            <summary>
+            The standard error device. Initially, this is the active console screen buffer, CONOUT$.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.OSX.NativeMethods.getuid">
+            <summary>
+            Get the real user ID of the calling process.
+            </summary>
+            <returns>the real user ID of the calling process.</returns>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.NamedPipeServer.TransmissionMode">
+            <summary>
+            The transmission mode used for the named pipes.
+            </summary>
+            <remarks>
+            We use <see cref="F:System.IO.Pipes.PipeTransmissionMode.Byte" /> rather than <see cref="F:System.IO.Pipes.PipeTransmissionMode.Message" />
+            because our goal is to hide the transport from the clients and services, and <see cref="F:System.IO.Pipes.PipeTransmissionMode.Message" />
+            behavior is a named pipe specific behavior. Unix domain sockets cannot emulate it, so if any service or client were to
+            depend on the message boundaries that named pipes offered, they might malfunction on *nix platforms.
+            So instead, we simply don't offer that unique behavior.
+            </remarks>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.Server.Disposed">
+            <summary>
+            Used for Unit Testing.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.ServerFactory.Create(System.String,System.Diagnostics.TraceSource,System.Func{System.IO.Stream,System.Threading.Tasks.Task},System.Boolean)">
+            <summary>
+            Creates a named pipe server.
+            </summary>
+            <param name="pipeName">The name of the server.</param>
+            <param name="logger">The logger for the server.</param>
+            <param name="createAndConfigureService">Callback function to be run whenever a client connects to the server.</param>
+            <param name="setLowIntegrity">This property no longer does anything and will be removed in future versions of the API.</param>
+            <returns>
+            A disposable server that should be disposed of when it is no longer needed.
+            This object is also castable to <see cref="T:System.IAsyncDisposable" /> except if this method is referenced from Microsoft.ServiceHub.HostStub.dll.
+            </returns>
+            <remarks>This method should only ever be used on Windows platforms.</remarks>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceEntryPoint.AssemblyPath">
+            <summary>
+            Gets or sets the path of the assembly in which the service end point class is located.
+            If this path is not an absolute path then if <see cref="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.ServiceBaseDirectory" /> is set, it'll be combined with file name.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceEntryPoint.FullClassName">
+            <summary>
+            Gets or sets the name of the service end point class that will be instantiated for each new client connection.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceEntryPoint.IsNodeService">
+            <summary>
+            Gets a value indicating whether or not this service will run on a Node host.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceEntryPoint.ConfigPath">
+            <summary>
+            Gets or sets the path of the config file. If specified, this config file will be used to initialize the service AppDomain.
+            May be omitted if the config file has the same name (+.config) as the assembly, and resides in the same directory.
+            It is also possible to have the service without the config file. Not applicable for services running inside CoreClr Host processes.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceEntryPoint.AppBasePath">
+            <summary>
+            Gets or sets the path of the app base directory. If specified, the app domain created for the service will use this as the app base.
+            If not specified, the assembly's directory will be the app base. Not applicable for services running inside CoreClr Host processes.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceEntryPoint.AssemblySearchPathsConfig">
+            <summary>
+            Gets or sets the path to a config JSON file used for adding additonal assembly search paths.
+            </summary>
+            <remarks>
+            This file should contain an array of paths that are to be used to resolve assemblies if neither this service's AssemblyLoadContext,
+            or one of its friends can resolve the assembly. The paths can either be relative to the location of this file, or absolute. This property is only applicable for services
+            running inside CoreClr Host processes.
+            </remarks>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.Name">
+            <summary>
+            Gets or sets the service module name; e.g., 'Organization.ModuleName'.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.Host">
+            <summary>
+            Gets or sets the service module host type.
+            </summary>
+            <remarks>
+            The Host tells dev hub where to find the hub host info.
+            To find the hub host info, ServiceHub will look for case-sensitive {host}.servicehub.host.json in the following places:
+            1. hosts folder as specified in servicehub.config.json.
+            2. host folder in devhub module.
+            </remarks>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.HostId">
+            <summary>
+            Gets or sets the service module host id.
+            </summary>
+            <remarks>
+            If defined, dev hub will load the service module into the host with that id.
+            All service modules with the same host type and host id will share that host.
+            If not defined or empty, dev hub will load the service module into its own exclusive host process.
+            </remarks>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.ServiceBaseDirectory">
+            <summary>
+            Gets or sets the path of the directory containing the service module.
+            If set, it may be the base directory for <see cref="P:Microsoft.ServiceHub.Utility.ServiceEntryPoint.AssemblyPath" />.
+            If not set, it's up to the host how the service file is resolved.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.EntryPoint">
+            <summary>
+            Gets or sets the service entry point containing name of the assembly along with the class name representing this service module.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.HostGroupAllowed">
+            <summary>
+            Gets or sets a value indicating whether this service module is allowed to have a host group.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.HostGroupId">
+            <summary>
+            Gets or sets the host group that should be used for this service, use of this property requires
+            <see cref="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.HostGroupAllowed" /> to be set to true.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.SingleDomainLoaderOptimization">
+            <summary>
+            Gets or sets a value indicating whether this service module should load in an AppDomain with its LoaderOptimization set to SingleDomain.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.VersionRange">
+            <summary>
+            Gets or sets the versions of the service or the version expected by the client.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.ServiceModuleInfo.FriendServices">
+            <summary>
+            Gets or sets a collection of services, that if running inside of the same host as this service, whose AssemblyLoadContext will be used for resolving dependencies.
+            These AssemblyLoadContexts will be queried in the order that appear, stopping when/if the assembly is successfully loaded. The additional AssemblyLoadContexts
+            will only be searched if the assembly fails to resolve first by searching the directory that the service assembly is in.
+            This property is only applicable to services running inside of CoreClr Host processes.
+            </summary>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.SocketClient">
+            <summary>
+            Provides socket client services at a higher level
+            of abstraction than the <see cref="T:System.Net.Sockets.Socket" /> class.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.SocketClient.ConnectionRetryInterval">
+            <summary>
+            The time to wait between repeat attempts at connecting to the server.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.SocketClient.ConnectAsync(System.String,Microsoft.ServiceHub.Utility.ChannelConnectionFlags,System.Threading.CancellationToken)">
+            <summary>
+            Opens a connection to a socket.
+            </summary>
+            <param name="path">The endpoint of the socket to connect to.</param>
+            <param name="flags">The <see cref="T:Microsoft.ServiceHub.Utility.ChannelConnectionFlags" /> used for the connection.</param>
+            <param name="cancellationToken">A token whose cancellation will terminate a connection request.</param>
+            <returns>A task whose result is a duplex pipe created to access the <see cref="T:System.Net.Sockets.Socket" />.</returns>
+            <exception cref="T:System.Net.Sockets.SocketException">Thrown when the connection attempt fails.</exception>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.SocketClient.ConnectAsync(System.Net.EndPoint,System.Net.Sockets.SocketType,System.Net.Sockets.ProtocolType,Microsoft.ServiceHub.Utility.ChannelConnectionFlags,System.TimeSpan,System.Threading.CancellationToken)">
+            <summary>
+            Opens a connection to a socket.
+            </summary>
+            <param name="endPoint">The endpoint of the socket to connect to.</param>
+            <param name="socketType">The type of socket to connect to.</param>
+            <param name="protocolType">The type of protocol that will be used.</param>
+            <param name="flags">Modifiers in the connection process.</param>
+            <param name="connectionRetryInterval">The time to wait between repeat attempts at connecting to the socket.</param>
+            <param name="cancellationToken">A token whose cancellation will terminate a connection request.</param>
+            <returns>A task whose result is the created <see cref="T:System.Net.Sockets.Socket" />.</returns>
+            <exception cref="T:System.Net.Sockets.SocketException">Thrown when the connection attempt fails.</exception>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.SocketServer">
+            <summary>
+            Implements the connection logic for the socket server.
+            After accepting a connection, clientConnected event is fired.
+            Code taken from <see href="https://msdn.microsoft.com/en-us/library/system.net.sockets.socketasynceventargs.aspx" />.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.SocketServer.StartAcceptAsync(System.Net.Sockets.SocketAsyncEventArgs)">
+            <summary>
+            Begin an operation to accept a connection request from the client.
+            </summary>
+            <param name="acceptEventArg">
+            The context object to use when issuing the accept operation on the server's listening socket.
+            </param>
+        </member>
+        <member name="T:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint">
+            <summary>
+            An <see cref="T:System.Net.EndPoint" /> used to represent a Unix domain socket (i.e. a OSX/Linux equivalent of named pipes in Windows).
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.MaxPathLength">
+            <summary>
+            The maximum path allowed for an endpoint.
+            </summary>
+            <seealso href="http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/sys_un.h.html">sockaddr_un.sun_path</seealso>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.Stream">
+            <summary>
+            The <see cref="T:System.Net.Sockets.SocketType" /> to use for this endpoint.
+            </summary>
+        </member>
+        <member name="F:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.Protocol">
+            <summary>
+            The <see cref="T:System.Net.Sockets.ProtocolType" /> to use for this endpoint.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint" /> class.
+            </summary>
+            <param name="path">The path to the file that represents the socket.</param>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.#ctor(System.Net.SocketAddress)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint" /> class.
+            </summary>
+            <param name="socketAddress">The address of the socket.</param>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.AddressFamily">
+            <inheritdoc />
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.IsSupported">
+            <summary>
+            Gets a value indicating whether unix domain sockets are supported on the current operating system.
+            </summary>
+        </member>
+        <member name="P:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.Path">
+            <summary>
+            Gets the path to this socket.
+            </summary>
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.Serialize">
+            <inheritdoc />
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.Create(System.Net.SocketAddress)">
+            <inheritdoc />
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.UnixDomainSocketEndPoint.ToString">
+            <inheritdoc />
+        </member>
+        <member name="M:Microsoft.ServiceHub.Utility.StreamExtensions.TryGetHandle(System.IO.Stream,Microsoft.Win32.SafeHandles.SafePipeHandle@)">
+            <summary>
+            Attempts to get the handle of ServiceHub stream.
+            </summary>
+            <param name="stream">The stream to get the handle of.</param>
+            <param name="handle">The handle of the stream if it exists, null otherweise.</param>
+            <returns>True if the stream has a <see cref="T:Microsoft.Win32.SafeHandles.SafePipeHandle" />, false otherwise.</returns>
+        </member>
+    </members>
+<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" /><SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" /><Reference URI=""><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" /><Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315" /></Transforms><DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" /><DigestValue>kQd3010N1i1Z2jshevv/owvemAlnxCdtOvZAVjOHWHU=</DigestValue></Reference></SignedInfo><SignatureValue>EpkYcIOl2JJFRkGCYzoZ2ehHPYYpFp/uyuBbysG/4ztZCfx5Vm65UoYfbRyA3wvjdnXlgC9BMoGYWBhfEC2UmHpoiRAoK2gvsUChbENAilTtjF6lEMa/hpLAn/2YpZm0V0zrwuR4/3F5IG4zhp6o1gEs0rfCDXgL4fE043FynoczyFkpeOJJfhrmqxX631SoT8j5N1pfBYW0HYIBIC2uPvMuwmwCFe3gzV2mCik+bnqQHkjL7uvpQfucrmf5/d8MOcBu6+HoE8YqfkBlkjOY2iVE8MDhCykjxx5R+XVnlOWnCzlMt5vr3vGuApPLtNZc87Dow0Jx5579yxp0EZfaog==</SignatureValue><KeyInfo><KeyValue><RSAKeyValue><Modulus>0OTPj7P1+wTbr+Qf9COrqA8I9DSTqNSq1UKju4IEV3HJJck61i+MTEoYyKLtiLG2Jxeu8F81QKuTpuKHvi380gzs43G+prNNIAaNDkGqsENQYo8iezbw3/NCNX1vTi++irdFqXNs6xoc3B3W+7qT678b0jTVL8St7IMO2E7d9eNdL6RKfMnwRJf4XfGcwL+OwwoCeY9c5tvebNUVWRzaejKIkBVThApuAMCtpdvIvmBEdSTuCKZUx+OLr81/aEZyR2jL1s2RKaMz8uIzTtgw6m3DbOM4ewFjIRNT1hVQPghyPxJ+ZwErwry5rkf7fKuG3PF0fECGSUEqftlOptpXTQ==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue></KeyValue><X509Data><X509Certificate>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</X509Certificate><X509Certificate>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</X509Certificate><X509Certificate>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</X509Certificate></X509Data></KeyInfo><Object Id="ts-countersig"><X509Data><X509Certificate>MIIHEDCCBPigAwIBAgITMwAAAaUA3gjEQAdxTgABAAABpTANBgkqhkiG9w0BAQsFADB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDAeFw0yMjAzMDIxODUxMTlaFw0yMzA1MTExODUxMTlaMIHOMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSkwJwYDVQQLEyBNaWNyb3NvZnQgT3BlcmF0aW9ucyBQdWVydG8gUmljbzEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046RjdBNi1FMjUxLTE1MEExJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNlcnZpY2UwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQC6sYboIGpIvMLqDjDHe67BEJ5gIbVfIlNWNIrbB6t9E3QlyQ5r2Y2mfMrzh2BVYU8g9W+SRibcGY1s9X4JQqrMeagcT9VsdQmZ7ENbYkbEVkHNdlZBE5pGPMeOjIB7BsgJoTz6bIEZ5JRmoux6kBQd9cf0I5Me62wJa+j25QeLTpmkdZysZeFSILLQ8H53imqBBMOIjf8U3c7WY8MhomOYTaem3nrZHIs4CRTt/8kR2IdILZPm0RIa5iIG2q664G8+zLJwO7ZSrxnDvYh3OvtrMpqwFctws0OCDDTxXE08fME2fpKb+pRbNXhvMZX7LtjQ1irIazJSh9iaWM1gFtXwjg+Yq17BOCzr4sWUL253kBOvohnyEMGm4/n0XaLgFNgIhPomjbCA2qXSmm/Fi8c+lT0WxC/jOjBZHLKIrihx6LIQqeyYZmfYjNMqxMdl3mzoWv10N+NirERrNodNoKV+sAcsk/Hg9zCVSMUkZuDCyIpb1nKXfTd66KGsGy1OoHZO4KClkuvfsNo7aLlwhGLeiD32avJXYtC/wsGG7b+5mx5iGfTnNCRCXOm/YHFQ36D4npjCnM9eQS3qcse56UNjIgyiLHDqioV7mSPj2XqzTh4Yv77MtvxY/ZQepCazGEn1dBdn67wUgVzAe8Y7/KYKl+UF1HvJ08W+FHydHAwLwQIDAQABo4IBNjCCATIwHQYDVR0OBBYEFF+mjwMAl66urXDu+9xZF0toqRrfMB8GA1UdIwQYMBaAFJ+nFV0AXmJdg/Tl0mWnG1M1GelyMF8GA1UdHwRYMFYwVKBSoFCGTmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMvY3JsL01pY3Jvc29mdCUyMFRpbWUtU3RhbXAlMjBQQ0ElMjAyMDEwKDEpLmNybDBsBggrBgEFBQcBAQRgMF4wXAYIKwYBBQUHMAKGUGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2lvcHMvY2VydHMvTWljcm9zb2Z0JTIwVGltZS1TdGFtcCUyMFBDQSUyMDIwMTAoMSkuY3J0MAwGA1UdEwEB/wQCMAAwEwYDVR0lBAwwCgYIKwYBBQUHAwgwDQYJKoZIhvcNAQELBQADggIBAJabCxflMDCihEdqdFiZ6OBuhhhp34N6ow3Wh3Obr12LRuiph66gH/2Kh5JjaLUq+mRBJ5RgiWEe1t7ifuW6b49N8Bahnn70LCiEdvquk686M7z+DbKHVk0+UlafwukxAxriwvZjkCgOLci+NB01u7cW9HAHX4J8hxaCPwbGaPxWl3s0PITuMVI4Q6cjTXielmL1+TQvh7/Z5k8s46shIPy9nFwDpsRFr3zwENZX8b67VMBu+YxnlGnsJIcLc2pwpz95emI8CRSgep+/017a34pNcWNZIHr9ScEOWlHT8cEnQ5hhOF0zdrOqTzovCDtffTn+gBL4eNXg8Uc/tdVVHKbhp+7SVHkk1Eh7L80PBAjo+cO+zL+efxfIVrtO3oJxvEq1o+fkxcTTwqcfwBTb88/qHU0U2XeC1rqJnDB1JixYlBjgHXrRekqHxxuRHBZ9A0w9WqQWcwj/MbBkHGYMFaqO6L9t/7iCZTAiwMk2GVfSEwj9PXIlCWygVQkDaxhJ0P1yxTvZsrMsg0a7x4VObhj3V8+Cbdv2TeyUGEblTUrgqTcKCtCa9bOnIg7xxHi8onM8aCHvRh90sn2x8er/6YSPohNw1qNUwiu+RC+qbepOYt+v5J9rklV3Ux+OGVZId/4oVd7xMLO/Lhpb7IjHKygYKaNx3XIwx4h6FrFH+BiM</X509Certificate><X509Certificate>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</X509Certificate></X509Data><CounterSignature ts-format="cms-timestamp-message" xmlns="http://schemas.microsoft.com/xmldsig/timestamp/2003">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</CounterSignature></Object></Signature></doc>
