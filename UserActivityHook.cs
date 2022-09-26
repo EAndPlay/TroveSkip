@@ -24,7 +24,7 @@ namespace TroveSkip
         /// http://msdn.microsoft.com/library/default.asp?url=/library/en-us/gdi/rectangl_0tiq.asp
         /// </remarks>
         [StructLayout(LayoutKind.Sequential)]
-        private class POINT
+        private struct Point
         {
             /// <summary>
             /// Specifies the x-coordinate of the point. 
@@ -44,12 +44,12 @@ namespace TroveSkip
         /// http://msdn.microsoft.com/library/default.asp?url=/library/en-us/winui/winui/windowsuserinterface/windowing/hooks/hookreference/hookstructures/cwpstruct.asp
         /// </remarks>
         [StructLayout(LayoutKind.Sequential)]
-        private class MouseHookStruct
+        private struct MouseHookStruct
         {
             /// <summary>
             /// Specifies a POINT structure that contains the x- and y-coordinates of the cursor, in screen coordinates. 
             /// </summary>
-            public POINT pt;
+            public Point Point;
 
             /// <summary>
             /// Handle to the window that will receive the mouse message corresponding to the mouse event. 
@@ -71,12 +71,12 @@ namespace TroveSkip
         /// The MSLLHOOKSTRUCT structure contains information about a low-level keyboard input event. 
         /// </summary>
         [StructLayout(LayoutKind.Sequential)]
-        private class MouseLLHookStruct
+        private struct MouseLLHookStruct
         {
             /// <summary>
             /// Specifies a POINT structure that contains the x- and y-coordinates of the cursor, in screen coordinates. 
             /// </summary>
-            public POINT pt;
+            public Point Point;
 
             /// <summary>
             /// If the message is WM_MOUSEWHEEL, the high-order word of this member is the wheel delta. 
@@ -122,7 +122,7 @@ namespace TroveSkip
         /// http://msdn.microsoft.com/library/default.asp?url=/library/en-us/winui/winui/windowsuserinterface/windowing/hooks/hookreference/hookstructures/cwpstruct.asp
         /// </remarks>
         [StructLayout(LayoutKind.Sequential)]
-        private class KeyboardHookStruct
+        private struct KeyboardHookStruct
         {
             /// <summary>
             /// Specifies a virtual-key code. The code must be a value in the range 1 to 254. 
@@ -142,12 +142,12 @@ namespace TroveSkip
             /// <summary>
             /// Specifies the time stamp for this message.
             /// </summary>
-            public int time;
+            private int time;
 
             /// <summary>
             /// Specifies extra information associated with the message. 
             /// </summary>
-            public int dwExtraInfo;
+            private int dwExtraInfo;
         }
 
         #endregion
@@ -462,10 +462,7 @@ namespace TroveSkip
         /// Creates an instance of UserActivityHook object and sets mouse and keyboard hooks.
         /// </summary>
         /// <exception cref="Win32Exception">Any windows problem.</exception>
-        public UserActivityHook()
-        {
-            Start();
-        }
+        public UserActivityHook() => Start();
 
         /// <summary>
         /// Creates an instance of UserActivityHook object and installs both or one of mouse and/or keyboard hooks and starts rasing events
@@ -541,10 +538,7 @@ namespace TroveSkip
         /// Installs both mouse and keyboard hooks and starts rasing events
         /// </summary>
         /// <exception cref="Win32Exception">Any windows problem.</exception>
-        public void Start()
-        {
-            this.Start(true, true);
-        }
+        public void Start() => Start(true, true);
 
         /// <summary>
         /// Installs both or one of mouse and/or keyboard hooks and starts rasing events
@@ -558,7 +552,7 @@ namespace TroveSkip
             if (_hMouseHook == 0 && InstallMouseHook)
             {
                 // Create an instance of HookProc.
-                _mouseHookProcedure = new HookProc(MouseHookProc);
+                _mouseHookProcedure = MouseHookProc;
                 //install hook
                 _hMouseHook = SetWindowsHookEx(
                     WH_MOUSE_LL,
@@ -582,7 +576,7 @@ namespace TroveSkip
             if (_hKeyboardHook == 0 && InstallKeyboardHook)
             {
                 // Create an instance of HookProc.
-                _keyboardHookProcedure = new HookProc(KeyboardHookProc);
+                _keyboardHookProcedure = KeyboardHookProc;
                 //install hook
                 _hKeyboardHook = SetWindowsHookEx(
                     WH_KEYBOARD_LL,
@@ -607,10 +601,7 @@ namespace TroveSkip
         /// Stops monitoring both mouse and keyboard events and rasing events.
         /// </summary>
         /// <exception cref="Win32Exception">Any windows problem.</exception>
-        public void Stop()
-        {
-            this.Stop(true, true, true);
-        }
+        public void Stop() => Stop(true, true, true);
 
         /// <summary>
         /// Stops monitoring both or one of mouse and/or keyboard events and rasing events.
@@ -625,14 +616,14 @@ namespace TroveSkip
             if (_hMouseHook != 0 && UninstallMouseHook)
             {
                 //uninstall hook
-                int retMouse = UnhookWindowsHookEx(_hMouseHook);
+                var retMouse = UnhookWindowsHookEx(_hMouseHook);
                 //reset invalid handle
                 _hMouseHook = 0;
                 //if failed and exception must be thrown
                 if (retMouse == 0 && ThrowExceptions)
                 {
                     //Returns the error code returned by the last unmanaged function called using platform invoke that has the DllImportAttribute.SetLastError flag set. 
-                    int errorCode = Marshal.GetLastWin32Error();
+                    var errorCode = Marshal.GetLastWin32Error();
                     //Initializes and throws a new instance of the Win32Exception class with the specified error. 
                     throw new Win32Exception(errorCode);
                 }
@@ -642,14 +633,14 @@ namespace TroveSkip
             if (_hKeyboardHook != 0 && UninstallKeyboardHook)
             {
                 //uninstall hook
-                int retKeyboard = UnhookWindowsHookEx(_hKeyboardHook);
+                var retKeyboard = UnhookWindowsHookEx(_hKeyboardHook);
                 //reset invalid handle
                 _hKeyboardHook = 0;
                 //if failed and exception must be thrown
                 if (retKeyboard == 0 && ThrowExceptions)
                 {
                     //Returns the error code returned by the last unmanaged function called using platform invoke that has the DllImportAttribute.SetLastError flag set. 
-                    int errorCode = Marshal.GetLastWin32Error();
+                    var errorCode = Marshal.GetLastWin32Error();
                     //Initializes and throws a new instance of the Win32Exception class with the specified error. 
                     throw new Win32Exception(errorCode);
                 }
@@ -754,50 +745,53 @@ namespace TroveSkip
         private int KeyboardHookProc(int nCode, int wParam, IntPtr lParam)
         {
             var handled = false;
-            if (nCode >= 0 && (KeyDown != null || KeyUp != null || KeyPress != null))
+            if (nCode < 0 || KeyDown == null && KeyUp == null && KeyPress == null)
+                return CallNextHookEx(_hKeyboardHook, nCode, wParam, lParam);
+            
+            var myKeyboardHookStruct =
+                (KeyboardHookStruct) Marshal.PtrToStructure(lParam, typeof(KeyboardHookStruct));
+            
+            if (KeyDown != null && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN))
             {
-                var myKeyboardHookStruct =
-                    (KeyboardHookStruct) Marshal.PtrToStructure(lParam, typeof(KeyboardHookStruct));
-                if (KeyDown != null && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN))
-                {
-                    var keyData = KeyInterop.KeyFromVirtualKey(myKeyboardHookStruct.vkCode);
-                    var e = new KeyEventArgs(Keyboard.PrimaryDevice,
-                        Source, 0, keyData);
-                    KeyDown(this, e);
-                    handled = e.Handled;
-                }
+                var keyData = KeyInterop.KeyFromVirtualKey(myKeyboardHookStruct.vkCode);
+                var args = new KeyEventArgs(Keyboard.PrimaryDevice,
+                    Source, 0, keyData);
+                KeyDown(this, args);
+                handled = args.Handled;
+            }
 
-                if (KeyPress != null && wParam == WM_KEYDOWN)
-                {
-                    var isDownShift = (GetKeyState(VK_SHIFT) & 0x80) == 0x80;
-                    var isDownCapslock = GetKeyState(VK_CAPITAL) != 0;
+            if (KeyPress != null && wParam == WM_KEYDOWN)
+            {
+                var isDownShift = (GetKeyState(VK_SHIFT) & 0x80) == 0x80;
+                var isDownCapslock = GetKeyState(VK_CAPITAL) != 0;
 
-                    var keyState = new byte[256];
-                    GetKeyboardState(keyState);
-                    var inBuffer = new byte[2];
-                    if (ToAscii(myKeyboardHookStruct.vkCode,
-                        myKeyboardHookStruct.scanCode,
-                        keyState,
-                        inBuffer,
-                        myKeyboardHookStruct.flags) == 1)
-                    {
-                        var key = (char) inBuffer[0];
-                        if (isDownCapslock ^ isDownShift && char.IsLetter(key)) key = char.ToUpper(key);
-                        var e = new KeyEventArgs(Keyboard.PrimaryDevice,
-                            Source, 0, KeyInterop.KeyFromVirtualKey(key));
-                        KeyPress(this, e);
-                        handled = handled || e.Handled;
-                    }
-                }
-
-                if (KeyUp != null && (wParam == WM_KEYUP || wParam == WM_SYSKEYUP))
+                var keyState = new byte[256];
+                GetKeyboardState(keyState);
+                var inBuffer = new byte[2];
+                if (ToAscii(myKeyboardHookStruct.vkCode,
+                    myKeyboardHookStruct.scanCode,
+                    keyState,
+                    inBuffer,
+                    myKeyboardHookStruct.flags) == 1)
                 {
-                    var keyData = KeyInterop.KeyFromVirtualKey(myKeyboardHookStruct.vkCode);
-                    var e = new KeyEventArgs(Keyboard.PrimaryDevice,
-                        Source, 0, keyData);
-                    KeyUp(this, e);
-                    handled = handled || e.Handled;
+                    Array.Clear(keyState, 0, keyState.Length);
+                    var key = (char) inBuffer[0];
+                    if (isDownCapslock ^ isDownShift && char.IsLetter(key)) 
+                        key = char.ToUpper(key);
+                    var args = new KeyEventArgs(Keyboard.PrimaryDevice,
+                        Source, 0, KeyInterop.KeyFromVirtualKey(key));
+                    KeyPress(this, args);
+                    handled = handled || args.Handled;
                 }
+            }
+
+            if (KeyUp != null && (wParam == WM_KEYUP || wParam == WM_SYSKEYUP))
+            {
+                var keyData = KeyInterop.KeyFromVirtualKey(myKeyboardHookStruct.vkCode);
+                var args = new KeyEventArgs(Keyboard.PrimaryDevice,
+                    Source, 0, keyData);
+                KeyUp(this, args);
+                handled = handled || args.Handled;
             }
 
             return handled ? 1 : CallNextHookEx(_hKeyboardHook, nCode, wParam, lParam);

@@ -3,6 +3,16 @@ using System.Diagnostics;
 
 namespace TroveSkip.Models
 {
+    public struct dddd
+    {
+        public byte x;
+        public byte y;
+
+        public override string ToString()
+        {
+            return x + " " + y;
+        }
+    }
     public class HookModel
     {
         public Process Process { get; private set; } //was readonly @field

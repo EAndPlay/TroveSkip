@@ -7,8 +7,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -58,7 +60,6 @@ namespace TroveSkip.ViewModels
                     {
                         _hookModel = null;
                     }
-
                 }
                 else
                 {
@@ -75,8 +76,8 @@ namespace TroveSkip.ViewModels
 
         private readonly Regex _avaibleName = new(@"^[1-9-a-zA-Z-_]+$");
 
-        public Settings Settings;
-        private readonly UserActivityHook _activityHook = new();
+        private Settings _settings;
+        private readonly UserActivityHook _activityHook = new(false, true);
 
         private string _currentButton;
         private Button _currentButtonElement;
@@ -415,10 +416,22 @@ namespace TroveSkip.ViewModels
             _activityHook.KeyUp += (_, eve) => _pressedKeys[eve.Key] = false;
 
             _dispatcher.InvokeAsync(UpdateCurrent);
-            _dispatcher.InvokeAsync(ForceSprint);
-            _dispatcher.InvokeAsync(ForceSpeed);
-            _dispatcher.InvokeAsync(FocusUpdate);
-            _dispatcher.InvokeAsync(HooksUpdate);
+            CreateWorker(ForceSprint);
+            CreateWorker(ForceSpeed);
+            CreateWorker(FocusUpdate);
+            CreateWorker(HooksUpdate);
+            // _dispatcher.InvokeAsync(UpdateCurrent);
+            // _dispatcher.InvokeAsync(ForceSprint);
+            // _dispatcher.InvokeAsync(ForceSpeed);
+            // _dispatcher.InvokeAsync(FocusUpdate);
+            // _dispatcher.InvokeAsync(HooksUpdate);
+        }
+
+        private static void CreateWorker(Action work)
+        {
+            var worker = new BackgroundWorker();
+            worker.DoWork += (_, _) => work();
+            worker.RunWorkerAsync();
         }
 
         private void HideWindow()
@@ -430,7 +443,7 @@ namespace TroveSkip.ViewModels
         private void CloseWindow()
         {
             SaveCurrent();
-            Settings.Save();
+            _settings.Save();
             //Application.Current.Shutdown();
             Environment.Exit(0);
         }
@@ -450,17 +463,14 @@ namespace TroveSkip.ViewModels
             if (_antiAfkList.Contains(process.Id)) return;
             _antiAfkList.Add(process.Id);
             var address = IntPtr.Zero;
-            Task.Run(() => address = (IntPtr) FindSignature(_antiAfk, process)).GetAwaiter().GetResult();
+            Task.Run(() => address = (IntPtr) FindSignature(_antiAfk, process)).GetAwaiter();
             if (address == IntPtr.Zero) return;
             
             var handle = process.Handle;
             var hAlloc = VirtualAllocEx(handle, IntPtr.Zero, (uint) _antiAfkCave.Length + 5, AllocationType.Commit, MemoryProtection);
-            var cave = AsmJump((ulong) address + 6, (ulong) hAlloc, _antiAfkCave);
             
-            WriteMemory(handle, hAlloc, cave);
-
-            var jumpToAllocation = AsmJump((ulong) hAlloc, (ulong) address);
-            WriteMemory(handle, address, jumpToAllocation);
+            WriteMemory(handle, hAlloc, AsmJump((ulong)address + 6, (ulong)hAlloc, _antiAfkCave));
+            WriteMemory(handle, address, AsmJump((ulong)hAlloc, (ulong)address));
         }
 
         private void InjectCheckChanged(ToggleButton checkBox, int[] find, int[] change)
@@ -507,7 +517,9 @@ namespace TroveSkip.ViewModels
                 XCoordinate = 0;
         }
 
-        private void FindAddress()
+        //private static BackgroundWorker _findAddressWorker;
+
+        private unsafe void FindAddress()
         {
             if (GameClosed()) return;
 
@@ -518,22 +530,92 @@ namespace TroveSkip.ViewModels
             }
 
             MessageBox.Show("Open chat and Press ok\nDONT close chat till address found");
-            
+
             var moduleAddress = HookModel.Module.BaseAddress;
             _baseAddress = _chatBaseAddress = 0;
-            for (int i = 16000000; i < 18500000; i++)
+
+            //_findAddressWorker = new BackgroundWorker();
+            // bool findadd(int i)
+            // {
+            //     var bytes = new byte[4];
+            //     var address = moduleAddress + i;
+            //     fixed (byte* p = bytes)
+            //     {
+            //         var num = (int*) p;
+            //         foreach (var offset in _xPosition)
+            //         {
+            //             ReadMemory(address, bytes);
+            //             //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + offset);
+            //             address = (IntPtr) (*num + offset);
+            //         }
+            //     }
+            //
+            //     var buffer = new byte[4];
+            //     ReadMemory(address, buffer);
+            //     var value = BitConverter.ToSingle(buffer, 0);
+            //
+            //     bytes = new byte[4];
+            //     address = moduleAddress + i;
+            //     ReadMemory(address, bytes);
+            //     fixed (byte* p = bytes)
+            //         address = (IntPtr) (*(int*) p + ChatOpenedOffsets[0]);
+            //     //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + ChatOpenedOffsets[0]);
+            //     buffer = new byte[1];
+            //     ReadMemory(address, buffer);
+            //     bool opened, valid; //*bufferPointer == 1;
+            //     //bool valid; //opened || *bufferPointer == 0;
+            //     fixed (byte* b = buffer)
+            //     {
+            //         opened = *b == 1;
+            //         valid = opened || *b == 0;
+            //     }
+            //
+            //     bytes = new byte[4];
+            //     address = moduleAddress + i;
+            //     fixed (byte* p = bytes)
+            //         foreach (var offset in new[] {ChatOpenedOffsets[1]})
+            //         {
+            //             ReadMemory(address, bytes);
+            //             //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + offset);
+            //             address = (IntPtr) (*(int*) p + offset);
+            //         }
+            //
+            //     buffer = new byte[4];
+            //     ReadMemory(address, buffer);
+            //     bool idk; // = BitConverter.ToInt32(buffer, 0) == 841;
+            //     fixed (byte* b = buffer)
+            //         idk = *(int*) b == 841;
+            //
+            //     if (valid && opened && idk)
+            //     {
+            //         _chatBaseAddress = i;
+            //         if (_baseAddress != 0)
+            //             return true;
+            //     }
+            //
+            //     if (value != 0 && value > XCoordinate - 1 && value < XCoordinate + 1)
+            //     {
+            //         BaseAddress = i.ToString("X8");
+            //         if (_chatBaseAddress != 0)
+            //             return true;
+            //     }
+            //
+            //     return false;
+            // }
+
+            for (int i = 16_000_000; i < 19_000_000; i++)
             {
                 var found = false;
-                _dispatcher.Invoke(() =>
-                {
-                    found = FindBaseAddress(moduleAddress, i);
-                });
+                _dispatcher.Invoke(() => { found = FindBaseAddress(moduleAddress, i); });
+                //_dispatcher.Invoke(() => { found = findadd(i); });
                 if (found)
                     break;
             }
+
             SearchWindowVisibility = Visibility.Hidden;
-            
-            MessageBox.Show($"Base address: {BaseAddress}\nChat address: {_chatBaseAddress:X8}\n");
+            //MessageBox.Show($"Base address: {BaseAddress}\nChat address: {_chatBaseAddress:X8}\n");
+            MessageBox.Show(new StringBuilder().Append("Base address: ").Append(BaseAddress).Append("\nChat address: ")
+                .Append(_chatBaseAddress.ToString("X8")).Append("\n").ToString());
         }
 
         private readonly Type _keyType = typeof(Key);
@@ -541,14 +623,14 @@ namespace TroveSkip.ViewModels
         
         private void LoadSettings()
         {
-            Settings = Settings.Load();
+            _settings = Settings.Load();
             
-            _binds.Add(nameof(SkipButton), ParseKey(Settings.SkipButton));
-            _binds.Add(nameof(SprintButton), ParseKey(Settings.SprintButton));
-            _binds.Add(nameof(SprintToggleButton), ParseKey(Settings.SprintToggleButton));
-            _binds.Add(nameof(JumpButton), ParseKey(Settings.JumpButton));
-            _binds.Add(nameof(JumpToggleButton), ParseKey(Settings.JumpToggleButton));
-            _binds.Add(nameof(SpeedHackToggle), ParseKey(Settings.SpeedHackToggle));
+            _binds.Add(nameof(SkipButton), ParseKey(_settings.SkipButton));
+            _binds.Add(nameof(SprintButton), ParseKey(_settings.SprintButton));
+            _binds.Add(nameof(SprintToggleButton), ParseKey(_settings.SprintToggleButton));
+            _binds.Add(nameof(JumpButton), ParseKey(_settings.JumpButton));
+            _binds.Add(nameof(JumpToggleButton), ParseKey(_settings.JumpToggleButton));
+            _binds.Add(nameof(SpeedHackToggle), ParseKey(_settings.SpeedHackToggle));
             
             SkipButton = GetKey(nameof(SkipButton)).ToString();
             SprintButton = GetKey(nameof(SprintButton)).ToString();
@@ -557,13 +639,13 @@ namespace TroveSkip.ViewModels
             JumpToggleButton = GetKey(nameof(JumpToggleButton)).ToString();
             SpeedHackToggle = GetKey(nameof(SpeedHackToggle)).ToString();
 
-            BaseAddress = Settings.BaseAddress;
-            _chatBaseAddress = Convert.ToInt32(Settings.ChatBaseAddress, 16);
-            SprintValue = Settings.SprintValue;
-            SkipValue = Settings.SkipValue;
-            JumpForceValue = Settings.JumpForceValue;
-            SpeedHackValue = Settings.SpeedHackValue;
-            FollowApp = Settings.FollowApp;
+            BaseAddress = _settings.BaseAddress;
+            _chatBaseAddress = Convert.ToInt32(_settings.ChatBaseAddress, 16);
+            SprintValue = _settings.SprintValue;
+            SkipValue = _settings.SkipValue;
+            JumpForceValue = _settings.JumpForceValue;
+            SpeedHackValue = _settings.SpeedHackValue;
+            FollowApp = _settings.FollowApp;
         }
         
         public void RefreshHooks(bool change = false)
@@ -620,27 +702,23 @@ namespace TroveSkip.ViewModels
         private void Skip()
         {
             var xposAdd = GetAddress(_xPosition);
-            var yposAdd = xposAdd + 4;
-            var zposAdd = yposAdd + 4;
             var xviewAdd = GetAddress(_xView);
-            var yviewAdd = xviewAdd + 4;
-            var zviewAdd = yviewAdd + 4;
 
-            var xPos = ReadFloat(xposAdd);
-            var yPos = ReadFloat(yposAdd);
-            var zPos = ReadFloat(zposAdd);
-            var xPer = ReadFloat(xviewAdd);
-            var yPer = ReadFloat(yviewAdd);
-            var zPer = ReadFloat(zviewAdd);
+            // var xPos = ReadFloat(xposAdd);
+            // var yPos = ReadFloat(yposAdd);
+            // var zPos = ReadFloat(zposAdd);
+            // var xPer = ReadFloat(xviewAdd);
+            // var yPer = ReadFloat(yviewAdd);
+            // var zPer = ReadFloat(zviewAdd);
             // var xPos = ReadFloat(XPosition);
             // var yPos = ReadFloat(YPosition);
             // var zPos = ReadFloat(ZPosition);
             // var xPer = ReadFloat(XView);
             // var yPer = ReadFloat(YView);
             // var zPer = ReadFloat(ZView);
-            WriteFloat(xposAdd, xPer * SkipValue + xPos);
-            WriteFloat(yposAdd, yPer * SkipValue + yPos);
-            WriteFloat(zposAdd, zPer * SkipValue + zPos);
+            WriteFloat(xposAdd, ReadFloat(xviewAdd) * SkipValue + ReadFloat(xposAdd));
+            WriteFloat(xposAdd + 4, ReadFloat(xviewAdd + 4) * SkipValue + ReadFloat(xposAdd + 4));
+            WriteFloat(xposAdd + 8, ReadFloat(xviewAdd + 8) * SkipValue + ReadFloat(xposAdd + 8));
         }
 
         private void SuperJump()
@@ -655,23 +733,14 @@ namespace TroveSkip.ViewModels
             {
                 await Task.Delay(10);
                 while (!SprintCheck || !IsPressed(_binds[nameof(SprintButton)]) || GameClosed() || NotFocused())
-                    await Task.Delay(100);
+                    await Task.Delay(10);
                 
                 var xviewAdd = GetAddress(_xView);
-                var yviewAdd = xviewAdd + 4;
-                var zviewAdd = yviewAdd + 4;
-                var xView = ReadFloat(xviewAdd);
-                var yView = ReadFloat(yviewAdd);
-                var zView = ReadFloat(zviewAdd);
-                
-                var velocityX = xView * SprintValue;
-                var velocityY = yView * SprintValue;
-                var velocityZ = zView * SprintValue;
-                
                 var velocityAdd = GetAddress(_xVelocity);
-                WriteFloat(velocityAdd, velocityX);
-                WriteFloat(velocityAdd + 4, velocityY);
-                WriteFloat(velocityAdd + 8, velocityZ);
+                
+                WriteFloat(velocityAdd, ReadFloat(xviewAdd) * SprintValue);
+                WriteFloat(velocityAdd + 4, ReadFloat(xviewAdd + 4) * SprintValue);
+                WriteFloat(velocityAdd + 8, ReadFloat(xviewAdd + 8) * SprintValue);
             }
         }
 
@@ -680,7 +749,7 @@ namespace TroveSkip.ViewModels
             while (true)
             {
                 await Task.Delay(10);
-                while (!SpeedCheck || GameClosed() || (FollowApp && NotFocused()))
+                while (!SpeedCheck || GameClosed() || FollowApp && NotFocused())
                     await Task.Delay(100);
                 WriteUInt(_speedOffsets, _encryptedSpeed);
             }
@@ -762,26 +831,26 @@ namespace TroveSkip.ViewModels
             if (handle == IntPtr.Zero) return true;
 
             GetWindowThreadProcessId(handle, out var procId);
-            var id = HookModel?.Id ?? 0;
-            var notFocused = id != procId;
+            //var notFocused = (HookModel?.Id ?? 0) != procId;
             // if (FollowApp && notFocused)
             //     Hook = null;
-            return notFocused;
+            return (HookModel?.Id ?? 0) != procId;
         }
 
-        private bool ChatOpened()
+        private unsafe bool ChatOpened()
         {
             if (GameClosed() || _chatBaseAddress == 0) return true; // || _chatOffset == 0
             var bytes = new byte[4];
             var address = HookModel.Module.BaseAddress + _chatBaseAddress; //+ 0x98 ; 00FD9E20
             ReadMemory(address, bytes);
-            address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + ChatOpenedOffsets[0]);
+            fixed (byte* p = bytes)
+            {
+                //address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + ChatOpenedOffsets[0]);
+                address = (IntPtr)(*(int*)p + ChatOpenedOffsets[0]);
 
-            var buffer = new byte[1];
-            ReadMemory(address, buffer);
-            var value = buffer[0] != 0;
-            
-            return value;
+                ReadMemory(address, bytes);
+                return *p != 0;
+            }
         }
 
         private void KeyCheck(Key key)
@@ -864,7 +933,7 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        private string GetName(IntPtr handle)
+        private unsafe string GetName(IntPtr handle)
         {
             var buffer = new byte[16];
             if (handle != IntPtr.Zero)
@@ -873,40 +942,45 @@ namespace TroveSkip.ViewModels
                 ReadMemory(GetAddress(NameOffests), buffer);
 
             var name = Encoding.ASCII.GetString(buffer);
-            int last;
-            for (last = 0; last < name.Length; last++)
+            fixed (char* p = name)
             {
-                if (!_avaibleName.IsMatch(name[last].ToString().ToLower()))
-                    break;
-            }
+                int last;
+                for (last = 0; last < name.Length; last++)
+                {
+                    if (!_avaibleName.IsMatch(new string(char.ToLower(*(p + last)), 1)))
+                    {
+                        return name.Substring(0, last);
+                    }
+                }
 
-            return name.Substring(0, last);
+                return "null";
+            }
         }
-        
-        private string GetPowerRank()
+
+        private unsafe string GetPowerRank()
         {
-            var pr = ReadUInt(PowerRankOffsets);
-            var fl = pr ^ _encryptionKey;
-            var bytes = BitConverter.GetBytes(fl);
-            
-            return BitConverter.ToInt32(bytes, 0).ToString();
+            fixed (byte* p = BitConverter.GetBytes(ReadUInt(PowerRankOffsets) ^ _encryptionKey))
+            {
+                return (*(int*)p).ToString();
+            }
+            //return BitConverter.ToInt32(bytes, 0).ToString();
         }
         
         public void SaveCurrent()
         {
-            Settings.BaseAddress = BaseAddress;
-            Settings.ChatBaseAddress = _chatBaseAddress.ToString("X8");
-            Settings.SkipValue = SkipValue;
-            Settings.SprintValue = SprintValue;
-            Settings.JumpForceValue = JumpForceValue;
-            Settings.SpeedHackValue = SpeedHackValue;
-            Settings.SkipButton = _binds[nameof(SkipButton)].ToString();
-            Settings.SprintButton = _binds[nameof(SprintButton)].ToString();
-            Settings.SprintToggleButton = _binds[nameof(SprintToggleButton)].ToString();
-            Settings.JumpButton = _binds[nameof(JumpButton)].ToString();
-            Settings.JumpToggleButton = _binds[nameof(JumpToggleButton)].ToString();
-            Settings.SpeedHackToggle = _binds[nameof(SpeedHackToggle)].ToString();
-            Settings.FollowApp = FollowApp;
+            _settings.BaseAddress = BaseAddress;
+            _settings.ChatBaseAddress = _chatBaseAddress.ToString("X8");
+            _settings.SkipValue = SkipValue;
+            _settings.SprintValue = SprintValue;
+            _settings.JumpForceValue = JumpForceValue;
+            _settings.SpeedHackValue = SpeedHackValue;
+            _settings.SkipButton = _binds[nameof(SkipButton)].ToString();
+            _settings.SprintButton = _binds[nameof(SprintButton)].ToString();
+            _settings.SprintToggleButton = _binds[nameof(SprintToggleButton)].ToString();
+            _settings.JumpButton = _binds[nameof(JumpButton)].ToString();
+            _settings.JumpToggleButton = _binds[nameof(JumpToggleButton)].ToString();
+            _settings.SpeedHackToggle = _binds[nameof(SpeedHackToggle)].ToString();
+            _settings.FollowApp = FollowApp;
         }
 
         private bool IsPressed(Key key)
@@ -916,51 +990,65 @@ namespace TroveSkip.ViewModels
             return _pressedKeys[key];
         }
 
-        private bool FindBaseAddress(IntPtr baseAdd, int i)
+        private unsafe bool FindBaseAddress(IntPtr baseAdd, int i)
         {
             var bytes = new byte[4];
             var address = baseAdd + i;
-            foreach (var offset in _xPosition)
+            fixed (byte* bytesPointer = bytes)
             {
-                ReadMemory(address, bytes);
-                address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + offset);
-            }
-            var buffer = new byte[4];
-            ReadMemory(address, buffer);
-            var value = BitConverter.ToSingle(buffer, 0);
+                var numPointer = (int*) bytesPointer;
+                foreach (var offset in _xPosition)
+                {
+                    ReadMemory(address, bytes);
+                    //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + offset);
+                    address = (IntPtr) (*numPointer + offset);
+                }
 
-            bytes = new byte[4];
-            address = baseAdd + i;
-            ReadMemory(address, bytes);
-            address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + ChatOpenedOffsets[0]);
-            buffer = new byte[1];
-            ReadMemory(address, buffer);
-            var opened = buffer[0] == 1;
-            var valid = opened || buffer[0] == 0;
-            
-            bytes = new byte[4];
-            address = baseAdd + i;
-            foreach (var offset in new[] { ChatOpenedOffsets[1] })
-            {
-                ReadMemory(address, bytes);
-                address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + offset);
-            }
-            buffer = new byte[4];
-            ReadMemory(address, buffer);
-            var idk = BitConverter.ToInt32(buffer, 0) == 841;
-            
-            if (valid && opened && idk)
-            {
-                _chatBaseAddress = i;
-                if (_baseAddress != 0)
-                    return true;
-            }
-            
-            if (value != 0 && value > XCoordinate - 1 && value < XCoordinate + 1)
-            {
-                BaseAddress = i.ToString("X8");
-                if (_chatBaseAddress != 0)
-                    return true;
+                var buffer = new byte[4];
+                ReadMemory(address, buffer);
+                fixed (byte* bufferPointer = buffer)
+                {
+                    var value = *(float*) bufferPointer;//BitConverter.ToSingle(buffer, 0);
+
+                    //bytes = new byte[4];
+                    address = baseAdd + i;
+                    ReadMemory(address, bytes);
+                    address = (IntPtr) (*numPointer + ChatOpenedOffsets[0]);
+                    //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + ChatOpenedOffsets[0]);
+                    //buffer = new byte[1];
+                    ReadMemory(address, buffer);
+                    var opened = *bufferPointer == 1;
+                    var valid = opened || *bufferPointer == 0; //*bufferPointer == 1;
+                    //bool valid; //opened || *bufferPointer == 0;
+
+                    //bytes = new byte[4];
+                    address = baseAdd + i;
+                    foreach (var offset in new[] {ChatOpenedOffsets[1]})
+                    {
+                        ReadMemory(address, bytes);
+                        //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + offset);
+                        address = (IntPtr) (*numPointer + offset);
+                    }
+
+                    //buffer = new byte[4];
+                    ReadMemory(address, buffer);
+                    //bool idk; // = BitConverter.ToInt32(buffer, 0) == 841;
+                    var idk = *(int*) bufferPointer == 841;
+
+                    if (valid && opened && idk)
+                    {
+                        _chatBaseAddress = i;
+                        if (_baseAddress != 0)
+                            return true;
+                    }
+
+                    if (value != 0 && value > XCoordinate - 1 && value < XCoordinate + 1)
+                    {
+                        BaseAddress = i.ToString("X8");
+                        if (_chatBaseAddress != 0)
+                            return true;
+                    }
+                }
             }
 
             return false;
@@ -1012,8 +1100,7 @@ namespace TroveSkip.ViewModels
 
         private void PreviewTextBoxInput(TextBox sender, TextCompositionEventArgs e)
         {
-            Regex regex;
-            regex = sender.Text.Contains(".") ? new("^[a-zA-Z-.]+$") : new("^[a-zA-Z]+$");
+            Regex regex = sender.Text.Contains(".") ? new("^[a-zA-Z-.]+$") : new("^[a-zA-Z]+$");
             e.Handled = regex.IsMatch(e.Text);
         }
 

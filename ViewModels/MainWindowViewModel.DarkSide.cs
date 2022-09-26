@@ -26,6 +26,11 @@ namespace TroveSkip.ViewModels
 //1A8 - max energy;
 //19C - physD;
 //238 - light; 
+
+
+//from baseAddress: 
+//Players in world = 8, cfc / d1c
+//		        
         private static readonly int[] CoordsOffsets = { 0x8, 0x28, 0xC4, 0x4 };
         private static readonly int[] ViewOffsets = { 0x4, 0x24, 0x84, 0x0 };
         private static readonly int[] AccelOffsets = { 0x4, 0x11C, 0xC4, 0x4 };
@@ -44,7 +49,7 @@ namespace TroveSkip.ViewModels
         // private readonly int[] YView = ViewOffsets.Join(0x104);
         // private readonly int[] ZView = ViewOffsets.Join(0x108);
         
-        private readonly Dictionary<int[], int> _addresses = new();
+        //private readonly Dictionary<int[], int> _addresses = new();
 
         //private readonly int[] MaxCamDist = { 0x4, 0x3C };
         //private readonly int[] MinCamDist = { 0x4, 0x38 };
@@ -52,7 +57,7 @@ namespace TroveSkip.ViewModels
         #region Signatures
 
         private readonly int[] _zoomHack = { 0xF3, 0x0F, 0x11, 0x5F, 0x2C };
-        
+
         private readonly int[] _zoomHackEnabled = { 0xF3, 0x0F, 0x11, 0x57, 0x2C };
 
         private readonly int[] _fovHack =
@@ -92,37 +97,82 @@ namespace TroveSkip.ViewModels
 
         private const int MemoryProtection = 0x40;
 
-        private int ReadInt(int[] offsets) => BitConverter.ToInt32(GetBuffer(offsets), 0);
-        private uint ReadUInt(int[] offsets) => BitConverter.ToUInt32(GetBuffer(offsets), 0);
-        private float ReadFloat(int[] offsets) => BitConverter.ToSingle(GetBuffer(offsets), 0);
-        private float ReadFloat(IntPtr address) => BitConverter.ToSingle(GetBuffer(address), 0);
+        private unsafe int ReadInt(int[] offsets)
+        {
+            fixed (byte* p = GetBuffer(offsets))
+            {
+                return *(int*) p;
+                //return *p | *(p + 1) << 8 | *(p + 2) << 16 | *(p + 3) << 24;
+            }
+            //return BitConverter.ToInt32(GetBuffer(offsets), 0);
+        }
+
+        private unsafe uint ReadUInt(int[] offsets)
+        {
+            fixed (byte* p = GetBuffer(offsets))
+            {
+                return *(uint*) p;
+            }
+            //return BitConverter.ToUInt32(GetBuffer(offsets), 0);
+        }
+
+        private unsafe float ReadFloat(int[] offsets)
+        {
+            fixed (byte* p = GetBuffer(offsets))
+            {
+                return *(float*) p;
+                //return *p | *(p + 1) << 8 | *(p + 2) << 16 | *(p + 3) << 24;
+            }
+            //return BitConverter.ToSingle(GetBuffer(offsets), 0);
+        }
+
+        private unsafe float ReadFloat(IntPtr address)
+        {
+            fixed (byte* p = GetBuffer(address))
+            {
+                return *(float*) p;
+            }
+            //return BitConverter.ToSingle(GetBuffer(address), 0);
+        }
+
         private string ReadString(int[] offsets) => Encoding.ASCII.GetString(GetBuffer(offsets, 16));
 
+        // public static unsafe byte[] GetBytes(int value)
+        // {
+        //     var numArray = stackalloc byte[4];
+        //     *(int*) numArray = value;
+        //     return numArray;
+        // }
         private void WriteInt(int[] offsets, int value) => WriteMemory(GetAddress(offsets), BitConverter.GetBytes(value));
         private void WriteUInt(int[] offsets, uint value) => WriteMemory(GetAddress(offsets), BitConverter.GetBytes((int)value));
         private void WriteFloat(int[] offsets, float value) => WriteMemory(GetAddress(offsets), BitConverter.GetBytes(value));
         private void WriteFloat(IntPtr address, float value) => WriteMemory(address, BitConverter.GetBytes(value));
 
-        private void OverwriteBytes(int[] pattern, IReadOnlyList<int> bytes)
+        private unsafe void OverwriteBytes(int[] pattern, int[] bytes)
         {
             var address = (IntPtr) FindSignature(pattern);
             //_dispatcher.Invoke(() => address = Addresses.ContainsKey(pattern) ? (IntPtr) Addresses[pattern] : (IntPtr) FindSignature(pattern));
             if (address == IntPtr.Zero) return;
 
-            var val = new byte[bytes.Count];
+            var val = new byte[bytes.Length];
             var buffer = new byte[pattern.Length];
             ReadMemory(address, buffer);
 
-            for (var i = 0; i < pattern.Length; i++)
+            fixed (byte* newCode = val)
             {
-                val[i] = pattern[i] == -1 || bytes[i] == -1 ? 
-                    buffer[i] : (byte) bytes[i];
+                fixed (int* code = bytes, offset = pattern)
+                {
+                    for (var i = 0; i < pattern.Length; i++)
+                    {
+                        *(newCode + i) = *(offset + i) == -1 || *(code + i) == -1 ? buffer[i] : (byte) *(code + i);
+                    }
+                }
             }
 
             WriteMemory(address, val);
         }
 
-        private int FindSignature(IReadOnlyList<int> pattern, Process process = null)
+        private unsafe int FindSignature(int[] pattern, Process process = null)
         {
             process ??= HookModel.Process;
             var module = process.MainModule;
@@ -136,41 +186,49 @@ namespace TroveSkip.ViewModels
             var buffer = new byte[allocSize];
             ReadProcessMemory(process.Handle, startAdd, buffer, allocSize, out _);
             var compare = 0;
-            var count = pattern.Count;
-            
-            for (var i = 0; i < buffer.Length; i++)
-            {
-                if (!(buffer[i] == pattern[0] || pattern[0] == -1)) continue;
-                for (int g = 1; g < count; g++)
-                {
-                    if (buffer[i + g] != pattern[g] && pattern[g] != -1)
-                    {
-                        compare = 1;
-                        break;
-                    }
+            var count = pattern.Length;
 
-                    compare++;
-                    if (compare == count)
-                        return i + (int) startAdd;
+            fixed (byte* code = buffer)
+            {
+                fixed (int* offset = pattern)
+                {
+                    var firstCode = *offset;
+                    var isFirstEmpty = firstCode == -1;
+                    for (var i = 0; i < allocSize; i++)
+                    {
+                        if (*(code + i) != firstCode && !isFirstEmpty) continue;
+                        for (int g = 1; g < count; g++)
+                        {
+                            if (*(code + i + g) != *(offset + g) && *(offset + g) != -1)
+                            {
+                                compare = 1;
+                                break;
+                            }
+
+                            compare++;
+                            if (compare == count)
+                                return i + (int) startAdd;
+                        }
+                    }
                 }
-                // for (var k = 0; k < count; k++)
-                // {
-                //     if (buffer[i + k] == pattern[k] || pattern[k] == -1)
-                //     {
-                //         compare++;
-                //         if (compare == count)
-                //         {
-                //             return i + (int) startAdd;
-                //         }
-                //     }
-                //     else
-                //     {
-                //         compare = 0;
-                //     }
-                // }
             }
 
             return 0;
+            // for (var k = 0; k < count; k++)
+            // {
+            //     if (buffer[i + k] == pattern[k] || pattern[k] == -1)
+            //     {
+            //         compare++;
+            //         if (compare == count)
+            //         {
+            //             return i + (int) startAdd;
+            //         }
+            //     }
+            //     else
+            //     {
+            //         compare = 0;
+            //     }
+            // }
         }
         
         private void ReadMemory(IntPtr address, byte[] buffer) => ReadProcessMemory(_handle, address, buffer, buffer.Length, out _);
@@ -178,27 +236,41 @@ namespace TroveSkip.ViewModels
         private void ReadMemory(IntPtr handle, IntPtr address, byte[] buffer) => ReadProcessMemory(handle, address, buffer, buffer.Length, out _);
         private void WriteMemory(IntPtr handle, IntPtr address, byte[] buffer) => WriteProcessMemory(handle, address, buffer, buffer.Length, out _);
 
-        private IntPtr GetAddress(IEnumerable<int> offsets)
+        private unsafe IntPtr GetAddress(IEnumerable<int> offsets)
         {
             var bytes = new byte[4];
             var address = _currentBaseAddress;
-            foreach (var offset in offsets)
+            fixed (byte* p = bytes)
             {
-                ReadMemory(address, bytes);
-                address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + offset);
+                var num = (int*)p;
+                foreach (var offset in offsets)
+                {
+                    ReadMemory(address, bytes);
+                    //address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + offset);
+                    
+                    address = (IntPtr) (*num + offset);
+                    //address = IntPtr.Add(address, *(int*)p);
+                }
+                return address;
             }
-            return address;
         }
-        private IntPtr GetAddress(IntPtr handle, IEnumerable<int> offsets)
+        private unsafe IntPtr GetAddress(IntPtr handle, IEnumerable<int> offsets)
         {
             var bytes = new byte[4];
             var address = _currentBaseAddress;
-            foreach (var offset in offsets)
+            fixed (byte* p = bytes)
             {
-                ReadProcessMemory(handle, address, bytes, bytes.Length, out _);
-                address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + offset);
+                var num = (int*)p;
+                foreach (var offset in offsets)
+                {
+                    ReadProcessMemory(handle, address, bytes, 4, out _);
+                    //address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + offset);
+
+                    address = (IntPtr) (*num + offset);
+                    //address = IntPtr.Add(address, *(int*)p);
+                }
+                return address;
             }
-            return address;
         }
 
         private byte[] GetBuffer(IEnumerable<int> offsets, int size = 4)
@@ -214,20 +286,30 @@ namespace TroveSkip.ViewModels
             return bytes;
         }
         
-        private static byte[] AsmJump(ulong destination, ulong origin, byte[] cave = null)
+        private static unsafe byte[] AsmJump(ulong destination, ulong origin, byte[] cave = null)
         {
-            var jumpEnd = destination - origin;
-            var jumpStart = jumpEnd - 5;
-            var dump = jumpStart.ToString("x");
-
-            if (dump.Length == 7)
-                dump = "0" + dump;
+            var jumpStart = destination - origin - 5;
+            var str = jumpStart.ToString("x");
+            var builder = new StringBuilder();
+            if (str.Length == 7)
+                builder.Append("0");
+            // if (dump.Length == 7)
+            //     dump = "0" + dump;
+            builder.Append(str).Append("E9");
             
-            dump += "E9";
+            // dump += "E9";
 
-            var hex = new byte[dump.Length / 2];
-            for (var i = 0; i < hex.Length; i++)
-                hex[i] = Convert.ToByte(dump.Substring(i * 2, 2), 16);
+            var hex = new byte[builder.Length / 2];
+            fixed (byte* hexByte = hex)
+            {
+                var dump = builder.ToString();
+                fixed (char* code = dump)
+                {
+                    for (var i = 0; i < hex.Length; i++)
+                        *(hexByte + i) = Convert.ToByte(new string(code, i * 2, 2), 16);
+                    //*(hexByte + i) = Convert.ToByte(dump.Substring(i * 2, 2), 16);
+                }
+            }
 
             Array.Reverse(hex);
             if (cave != null)
