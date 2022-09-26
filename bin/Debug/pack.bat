@@ -1,1 +1,0 @@
-ilmerge TroveSkip.exe Newtonsoft.Json.dll /out:exe.exe
