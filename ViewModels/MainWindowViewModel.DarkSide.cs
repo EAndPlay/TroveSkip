@@ -41,13 +41,8 @@ namespace TroveSkip.ViewModels
 
         private readonly int[] _xPosition = CoordsOffsets.Join(0x60);
         private readonly int[] _yPosition = CoordsOffsets.Join(0x64);
-        // private readonly int[] ZPosition = CoordsOffsets.Join(0x68);
         private readonly int[] _xVelocity = AccelOffsets.Join(0x90);
-        // private readonly int[] YVelocity = AccelOffsets.Join(0x94);
-        // private readonly int[] ZVelocity = AccelOffsets.Join(0x98);
         private readonly int[] _xView = ViewOffsets.Join(0x100);
-        // private readonly int[] YView = ViewOffsets.Join(0x104);
-        // private readonly int[] ZView = ViewOffsets.Join(0x108);
         
         //private readonly Dictionary<int[], int> _addresses = new();
 
@@ -104,7 +99,6 @@ namespace TroveSkip.ViewModels
                 return *(int*) p;
                 //return *p | *(p + 1) << 8 | *(p + 2) << 16 | *(p + 3) << 24;
             }
-            //return BitConverter.ToInt32(GetBuffer(offsets), 0);
         }
 
         private unsafe uint ReadUInt(int[] offsets)
@@ -113,7 +107,6 @@ namespace TroveSkip.ViewModels
             {
                 return *(uint*) p;
             }
-            //return BitConverter.ToUInt32(GetBuffer(offsets), 0);
         }
 
         private unsafe float ReadFloat(int[] offsets)
@@ -121,9 +114,7 @@ namespace TroveSkip.ViewModels
             fixed (byte* p = GetBuffer(offsets))
             {
                 return *(float*) p;
-                //return *p | *(p + 1) << 8 | *(p + 2) << 16 | *(p + 3) << 24;
             }
-            //return BitConverter.ToSingle(GetBuffer(offsets), 0);
         }
 
         private unsafe float ReadFloat(IntPtr address)
@@ -132,17 +123,10 @@ namespace TroveSkip.ViewModels
             {
                 return *(float*) p;
             }
-            //return BitConverter.ToSingle(GetBuffer(address), 0);
         }
 
         private string ReadString(int[] offsets) => Encoding.ASCII.GetString(GetBuffer(offsets, 16));
 
-        // public static unsafe byte[] GetBytes(int value)
-        // {
-        //     var numArray = stackalloc byte[4];
-        //     *(int*) numArray = value;
-        //     return numArray;
-        // }
         private void WriteInt(int[] offsets, int value) => WriteMemory(GetAddress(offsets), BitConverter.GetBytes(value));
         private void WriteUInt(int[] offsets, uint value) => WriteMemory(GetAddress(offsets), BitConverter.GetBytes((int)value));
         private void WriteFloat(int[] offsets, float value) => WriteMemory(GetAddress(offsets), BitConverter.GetBytes(value));
@@ -214,24 +198,10 @@ namespace TroveSkip.ViewModels
             }
 
             return 0;
-            // for (var k = 0; k < count; k++)
-            // {
-            //     if (buffer[i + k] == pattern[k] || pattern[k] == -1)
-            //     {
-            //         compare++;
-            //         if (compare == count)
-            //         {
-            //             return i + (int) startAdd;
-            //         }
-            //     }
-            //     else
-            //     {
-            //         compare = 0;
-            //     }
-            // }
         }
         
         private void ReadMemory(IntPtr address, byte[] buffer) => ReadProcessMemory(_handle, address, buffer, buffer.Length, out _);
+        private unsafe void ReadMemory(int address, byte* buffer) => ReadProcessMemory(_handle, address, buffer, 4, out _);
         private void WriteMemory(IntPtr address, byte[] buffer) => WriteProcessMemory(_handle, address, buffer, buffer.Length, out _);
         private void ReadMemory(IntPtr handle, IntPtr address, byte[] buffer) => ReadProcessMemory(handle, address, buffer, buffer.Length, out _);
         private void WriteMemory(IntPtr handle, IntPtr address, byte[] buffer) => WriteProcessMemory(handle, address, buffer, buffer.Length, out _);
@@ -246,10 +216,7 @@ namespace TroveSkip.ViewModels
                 foreach (var offset in offsets)
                 {
                     ReadMemory(address, bytes);
-                    //address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + offset);
-                    
                     address = (IntPtr) (*num + offset);
-                    //address = IntPtr.Add(address, *(int*)p);
                 }
                 return address;
             }
@@ -264,10 +231,7 @@ namespace TroveSkip.ViewModels
                 foreach (var offset in offsets)
                 {
                     ReadProcessMemory(handle, address, bytes, 4, out _);
-                    //address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + offset);
-
                     address = (IntPtr) (*num + offset);
-                    //address = IntPtr.Add(address, *(int*)p);
                 }
                 return address;
             }
@@ -387,7 +351,19 @@ namespace TroveSkip.ViewModels
             uint dwSize, AllocationType allocationType, int flProtect);
 
         [DllImport("kernel32.dll")]
-        private static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out IntPtr lpNumberOfBytesRead);
+        private static extern bool ReadProcessMemory(
+            IntPtr hProcess, 
+            IntPtr lpBaseAddress, 
+            byte[] lpBuffer, 
+            int dwSize, 
+            out IntPtr lpNumberOfBytesRead);
+        [DllImport("kernel32.dll")]
+        private static extern unsafe bool ReadProcessMemory(
+            IntPtr hProcess, 
+            int lpBaseAddress, 
+            byte* lpBuffer, 
+            int dwSize, 
+            out IntPtr lpNumberOfBytesRead);
         
         [DllImport("kernel32.dll")]
         private static extern bool WriteProcessMemory(

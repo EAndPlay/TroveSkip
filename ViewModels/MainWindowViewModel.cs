@@ -411,19 +411,18 @@ namespace TroveSkip.ViewModels
             MainPageVisibility = Visibility.Visible;
             _dispatcher.ShutdownStarted += (_, _) => CloseWindow();
             _dispatcher.InvokeAsync(LoadSettings);
-            
+
             _activityHook.KeyDown += (_, eve) => KeyCheck(eve.Key);
             _activityHook.KeyUp += (_, eve) => _pressedKeys[eve.Key] = false;
 
             _dispatcher.InvokeAsync(UpdateCurrent);
+            _dispatcher.InvokeAsync(FocusUpdate);
             CreateWorker(ForceSprint);
             CreateWorker(ForceSpeed);
-            CreateWorker(FocusUpdate);
             CreateWorker(HooksUpdate);
             // _dispatcher.InvokeAsync(UpdateCurrent);
             // _dispatcher.InvokeAsync(ForceSprint);
             // _dispatcher.InvokeAsync(ForceSpeed);
-            // _dispatcher.InvokeAsync(FocusUpdate);
             // _dispatcher.InvokeAsync(HooksUpdate);
         }
 
@@ -763,8 +762,9 @@ namespace TroveSkip.ViewModels
                 {
                     await Task.Delay(50);
                 }
+
                 var handle = GetForegroundWindow();
-                
+
                 GetWindowThreadProcessId(handle, out var procId);
                 // if (_processesExcept.Contains(procId))
                 // {
@@ -772,7 +772,7 @@ namespace TroveSkip.ViewModels
                 //     continue;
                 // }
                 var proc = Process.GetProcessById(procId);
-                
+
                 if (proc.ProcessName == "Trove")
                 {
                     if (HookModel == null || HookModel.Id != proc.Id)
@@ -796,6 +796,7 @@ namespace TroveSkip.ViewModels
                     // _processesExcept.Add(proc.Id);
                     HookModel = null;
                 }
+
                 await Task.Delay(50);
             }
         }
@@ -937,6 +938,7 @@ namespace TroveSkip.ViewModels
         {
             var buffer = new byte[16];
             if (handle != IntPtr.Zero)
+                //ReadMemory(handle, GetAddress(handle, NameOffests), buffer);
                 ReadProcessMemory(handle, GetAddress(handle, NameOffests), buffer, buffer.Length, out _);
             else
                 ReadMemory(GetAddress(NameOffests), buffer);
@@ -947,13 +949,14 @@ namespace TroveSkip.ViewModels
                 int last;
                 for (last = 0; last < name.Length; last++)
                 {
-                    if (!_avaibleName.IsMatch(new string(char.ToLower(*(p + last)), 1)))
-                    {
-                        return name.Substring(0, last);
-                    }
+                    //if (!_avaibleName.IsMatch(new string(char.ToLower(*(p + last)), 1)))
+                    if (*(p + last) != '\0') continue;
+                    if (last == 0)
+                        break;
+                    return name.Substring(0, last);
                 }
 
-                return "null";
+                return string.Empty;
             }
         }
 
@@ -963,7 +966,6 @@ namespace TroveSkip.ViewModels
             {
                 return (*(int*)p).ToString();
             }
-            //return BitConverter.ToInt32(bytes, 0).ToString();
         }
         
         public void SaveCurrent()
@@ -992,69 +994,54 @@ namespace TroveSkip.ViewModels
 
         private unsafe bool FindBaseAddress(IntPtr baseAdd, int i)
         {
-            var bytes = new byte[4];
-            var address = baseAdd + i;
-            fixed (byte* bytesPointer = bytes)
+            var buffer = stackalloc byte[4];
+            var num = (int*) buffer;
+            var source = (int) baseAdd + i;
+            var address = source;
+            foreach (var offset in _xPosition)
             {
-                var numPointer = (int*) bytesPointer;
-                foreach (var offset in _xPosition)
-                {
-                    ReadMemory(address, bytes);
-                    //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + offset);
-                    address = (IntPtr) (*numPointer + offset);
-                }
-
-                var buffer = new byte[4];
                 ReadMemory(address, buffer);
-                fixed (byte* bufferPointer = buffer)
-                {
-                    var value = *(float*) bufferPointer;//BitConverter.ToSingle(buffer, 0);
+                address = *num + offset;
+            }
 
-                    //bytes = new byte[4];
-                    address = baseAdd + i;
-                    ReadMemory(address, bytes);
-                    address = (IntPtr) (*numPointer + ChatOpenedOffsets[0]);
-                    //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + ChatOpenedOffsets[0]);
-                    //buffer = new byte[1];
-                    ReadMemory(address, buffer);
-                    var opened = *bufferPointer == 1;
-                    var valid = opened || *bufferPointer == 0; //*bufferPointer == 1;
-                    //bool valid; //opened || *bufferPointer == 0;
+            ReadMemory(address, buffer);
+            var value = *(float*) buffer;
 
-                    //bytes = new byte[4];
-                    address = baseAdd + i;
-                    foreach (var offset in new[] {ChatOpenedOffsets[1]})
-                    {
-                        ReadMemory(address, bytes);
-                        //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + offset);
-                        address = (IntPtr) (*numPointer + offset);
-                    }
+            address = source;
+            ReadMemory(address, buffer);
+            address = *num + ChatOpenedOffsets[0];
+            ReadMemory(address, buffer);
+            var opened = *buffer == 1;
+            var valid = opened || *buffer == 0;
 
-                    //buffer = new byte[4];
-                    ReadMemory(address, buffer);
-                    //bool idk; // = BitConverter.ToInt32(buffer, 0) == 841;
-                    var idk = *(int*) bufferPointer == 841;
+            address = source;
+            foreach (var offset in new[] {ChatOpenedOffsets[1]})
+            {
+                ReadMemory(address, buffer);
+                address = *num + offset;
+            }
 
-                    if (valid && opened && idk)
-                    {
-                        _chatBaseAddress = i;
-                        if (_baseAddress != 0)
-                            return true;
-                    }
+            ReadMemory(address, buffer);
+            var idk = *num == 841;
 
-                    if (value != 0 && value > XCoordinate - 1 && value < XCoordinate + 1)
-                    {
-                        BaseAddress = i.ToString("X8");
-                        if (_chatBaseAddress != 0)
-                            return true;
-                    }
-                }
+            if (valid && opened && idk)
+            {
+                _chatBaseAddress = i;
+                if (_baseAddress != 0)
+                    return true;
+            }
+
+            if (value != 0 && value > XCoordinate - 1 && value < XCoordinate + 1)
+            {
+                BaseAddress = i.ToString("X8");
+                if (_chatBaseAddress != 0)
+                    return true;
             }
 
             return false;
         }
 
-        private void WindowMouseDown(object sender, MouseButtonEventArgs args) => WindowDeactivated(sender, args);
+        private void WindowMouseDown(object sender, EventArgs args) => WindowDeactivated(sender, args);
 
         public void BindKeyDown(object sender, KeyEventArgs args)
         {
