@@ -458,18 +458,23 @@ namespace TroveSkip.ViewModels
 
         private void EnableAntiAfk(Process process = null)
         {
-            process ??= HookModel.Process;
-            if (_antiAfkList.Contains(process.Id)) return;
-            _antiAfkList.Add(process.Id);
-            var address = IntPtr.Zero;
-            Task.Run(() => address = (IntPtr) FindSignature(_antiAfk, process)).GetAwaiter();
-            if (address == IntPtr.Zero) return;
-            
-            var handle = process.Handle;
-            var hAlloc = VirtualAllocEx(handle, IntPtr.Zero, (uint) _antiAfkCave.Length + 5, AllocationType.Commit, MemoryProtection);
-            
-            WriteMemory(handle, hAlloc, AsmJump((ulong)address + 6, (ulong)hAlloc, _antiAfkCave));
-            WriteMemory(handle, address, AsmJump((ulong)hAlloc, (ulong)address));
+            _dispatcher.InvokeAsync(() =>
+            {
+                process ??= HookModel.Process;
+                if (_antiAfkList.Contains(process.Id)) return;
+                _antiAfkList.Add(process.Id);
+                var address = (IntPtr) FindSignature(_antiAfk, process);
+                //var address = IntPtr.Zero;
+                //Task.Run(() => address = (IntPtr) FindSignature(_antiAfk, process)).GetAwaiter();
+                if (address == IntPtr.Zero) return;
+
+                var handle = process.Handle;
+                var hAlloc = VirtualAllocEx(handle, IntPtr.Zero, (uint) _antiAfkCave.Length + 5, AllocationType.Commit,
+                    MemoryProtection);
+
+                WriteMemory(handle, hAlloc, AsmJump((ulong) address + 6, (ulong) hAlloc, _antiAfkCave));
+                WriteMemory(handle, address, AsmJump((ulong) hAlloc, (ulong) address));
+            });
         }
 
         private void InjectCheckChanged(ToggleButton checkBox, int[] find, int[] change)
