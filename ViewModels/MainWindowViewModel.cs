@@ -938,8 +938,8 @@ namespace TroveSkip.ViewModels
         {
             var buffer = new byte[16];
             if (handle != IntPtr.Zero)
-                //ReadMemory(handle, GetAddress(handle, NameOffests), buffer);
-                ReadProcessMemory(handle, GetAddress(handle, NameOffests), buffer, buffer.Length, out _);
+                ReadMemory(handle, GetAddress(handle, NameOffests), buffer);
+            //ReadProcessMemory(handle, GetAddress(handle, NameOffests), buffer, buffer.Length, out _);
             else
                 ReadMemory(GetAddress(NameOffests), buffer);
 
