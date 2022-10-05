@@ -424,13 +424,6 @@ namespace TroveSkip.ViewModels
             // CreateWorker(HooksUpdate);
         }
 
-        private static void CreateWorker(Action work)
-        {
-            var worker = new BackgroundWorker();
-            worker.DoWork += (_, _) => work();
-            worker.RunWorkerAsync();
-        }
-
         private void HideWindow()
         {
             if (Application.Current.MainWindow != null)
