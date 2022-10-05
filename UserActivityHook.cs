@@ -188,7 +188,7 @@ namespace TroveSkip
             CallingConvention = CallingConvention.StdCall, SetLastError = true)]
         private static extern int SetWindowsHookEx(
             int idHook,
-            HookProc lpfn,
+            HookProcedure lpfn,
             IntPtr hMod,
             int dwThreadId);
 
@@ -272,7 +272,7 @@ namespace TroveSkip
         /// <remarks>
         /// http://msdn.microsoft.com/library/default.asp?url=/library/en-us/winui/winui/windowsuserinterface/windowing/hooks/hookreference/hookfunctions/callwndproc.asp
         /// </remarks>
-        private delegate int HookProc(int nCode, int wParam, IntPtr lParam);
+        private delegate int HookProcedure(int nCode, int wParam, IntPtr lParam);
 
         /// <summary>
         /// The ToAscii function translates the specified virtual-key code and keyboard 
@@ -487,6 +487,10 @@ namespace TroveSkip
             Stop(true, true, false);
         }
 
+        private KeyboardDevice _keyboardDevice => Keyboard.PrimaryDevice;
+        private MouseDevice _mouseDevice => Mouse.PrimaryDevice;
+        public delegate void MouseEventHandler(ref MouseButtonEventArgs args);
+        public delegate void KeyEventHandler(Key key);
         /// <summary>
         /// Occurs when the user moves the mouse, presses any mouse button or scrolls the wheel
         /// </summary>
@@ -517,23 +521,27 @@ namespace TroveSkip
         /// Stores the handle to the keyboard hook procedure.
         /// </summary>
         private int _hKeyboardHook = 0;
-
-
+        
         /// <summary>
         /// Declare MouseHookProcedure as HookProc type.
         /// </summary>
-        private static HookProc _mouseHookProcedure;
+        private static HookProcedure _mouseHookProcedure;
 
         /// <summary>
         /// Declare KeyboardHookProcedure as HookProc type.
         /// </summary>
-        private static HookProc _keyboardHookProcedure;
+        private static HookProcedure _keyboardHookProcedure;
 
         /// <summary>
-        ///
+        /// Points to the program assembly.
         /// </summary>
-        PresentationSource Source = new HwndSource(0, 0, 0, 0, 0, "", IntPtr.Zero);
-
+        private readonly IntPtr _modulePointer = Marshal.GetHINSTANCE(Assembly.GetExecutingAssembly().GetModules()[0]);
+        
+        /// <summary>
+        /// 
+        /// </summary>
+        public PresentationSource Source = new HwndSource(0, 0, 0, 0, 0, string.Empty, IntPtr.Zero);
+        
         /// <summary>
         /// Installs both mouse and keyboard hooks and starts rasing events
         /// </summary>
@@ -543,13 +551,13 @@ namespace TroveSkip
         /// <summary>
         /// Installs both or one of mouse and/or keyboard hooks and starts rasing events
         /// </summary>
-        /// <param name="InstallMouseHook"><b>true</b> if mouse events must be monitored</param>
-        /// <param name="InstallKeyboardHook"><b>true</b> if keyboard events must be monitored</param>
+        /// <param name="hookMouse"><b>true</b> if mouse events must be monitored</param>
+        /// <param name="hookKeyboard"><b>true</b> if keyboard events must be monitored</param>
         /// <exception cref="Win32Exception">Any windows problem.</exception>
-        public void Start(bool InstallMouseHook, bool InstallKeyboardHook)
+        public void Start(bool hookMouse, bool hookKeyboard)
         {
             // install Mouse hook only if it is not installed and must be installed
-            if (_hMouseHook == 0 && InstallMouseHook)
+            if (_hMouseHook == 0 && hookMouse)
             {
                 // Create an instance of HookProc.
                 _mouseHookProcedure = MouseHookProc;
@@ -557,14 +565,13 @@ namespace TroveSkip
                 _hMouseHook = SetWindowsHookEx(
                     WH_MOUSE_LL,
                     _mouseHookProcedure,
-                    Marshal.GetHINSTANCE(
-                        Assembly.GetExecutingAssembly().GetModules()[0]),
+                    _modulePointer,
                     0);
                 //If SetWindowsHookEx fails.
                 if (_hMouseHook == 0)
                 {
                     //Returns the error code returned by the last unmanaged function called using platform invoke that has the DllImportAttribute.SetLastError flag set. 
-                    int errorCode = Marshal.GetLastWin32Error();
+                    var errorCode = Marshal.GetLastWin32Error();
                     //do cleanup
                     Stop(true, false, false);
                     //Initializes and throws a new instance of the Win32Exception class with the specified error. 
@@ -573,7 +580,7 @@ namespace TroveSkip
             }
 
             // install Keyboard hook only if it is not installed and must be installed
-            if (_hKeyboardHook == 0 && InstallKeyboardHook)
+            if (_hKeyboardHook == 0 && hookKeyboard)
             {
                 // Create an instance of HookProc.
                 _keyboardHookProcedure = KeyboardHookProc;
@@ -581,14 +588,13 @@ namespace TroveSkip
                 _hKeyboardHook = SetWindowsHookEx(
                     WH_KEYBOARD_LL,
                     _keyboardHookProcedure,
-                    Marshal.GetHINSTANCE(
-                        Assembly.GetExecutingAssembly().GetModules()[0]),
+                    _modulePointer,
                     0);
                 //If SetWindowsHookEx fails.
                 if (_hKeyboardHook == 0)
                 {
                     //Returns the error code returned by the last unmanaged function called using platform invoke that has the DllImportAttribute.SetLastError flag set. 
-                    int errorCode = Marshal.GetLastWin32Error();
+                    var errorCode = Marshal.GetLastWin32Error();
                     //do cleanup
                     Stop(false, true, false);
                     //Initializes and throws a new instance of the Win32Exception class with the specified error. 
@@ -606,21 +612,21 @@ namespace TroveSkip
         /// <summary>
         /// Stops monitoring both or one of mouse and/or keyboard events and rasing events.
         /// </summary>
-        /// <param name="UninstallMouseHook"><b>true</b> if mouse hook must be uninstalled</param>
-        /// <param name="UninstallKeyboardHook"><b>true</b> if keyboard hook must be uninstalled</param>
-        /// <param name="ThrowExceptions"><b>true</b> if exceptions which occured during uninstalling must be thrown</param>
+        /// <param name="unhookMouse"><b>true</b> if mouse hook must be uninstalled</param>
+        /// <param name="unhookKeyboard"><b>true</b> if keyboard hook must be uninstalled</param>
+        /// <param name="throwExceptions"><b>true</b> if exceptions which occured during uninstalling must be thrown</param>
         /// <exception cref="Win32Exception">Any windows problem.</exception>
-        public void Stop(bool UninstallMouseHook, bool UninstallKeyboardHook, bool ThrowExceptions)
+        public void Stop(bool unhookMouse, bool unhookKeyboard, bool throwExceptions)
         {
             //if mouse hook set and must be uninstalled
-            if (_hMouseHook != 0 && UninstallMouseHook)
+            if (_hMouseHook != 0 && unhookMouse)
             {
                 //uninstall hook
                 var retMouse = UnhookWindowsHookEx(_hMouseHook);
                 //reset invalid handle
                 _hMouseHook = 0;
                 //if failed and exception must be thrown
-                if (retMouse == 0 && ThrowExceptions)
+                if (retMouse == 0 && throwExceptions)
                 {
                     //Returns the error code returned by the last unmanaged function called using platform invoke that has the DllImportAttribute.SetLastError flag set. 
                     var errorCode = Marshal.GetLastWin32Error();
@@ -630,14 +636,14 @@ namespace TroveSkip
             }
 
             //if keyboard hook set and must be uninstalled
-            if (_hKeyboardHook != 0 && UninstallKeyboardHook)
+            if (_hKeyboardHook != 0 && unhookKeyboard)
             {
                 //uninstall hook
                 var retKeyboard = UnhookWindowsHookEx(_hKeyboardHook);
                 //reset invalid handle
                 _hKeyboardHook = 0;
                 //if failed and exception must be thrown
-                if (retKeyboard == 0 && ThrowExceptions)
+                if (retKeyboard == 0 && throwExceptions)
                 {
                     //Returns the error code returned by the last unmanaged function called using platform invoke that has the DllImportAttribute.SetLastError flag set. 
                     var errorCode = Marshal.GetLastWin32Error();
@@ -674,50 +680,76 @@ namespace TroveSkip
         /// </returns>
         private int MouseHookProc(int nCode, int wParam, IntPtr lParam)
         {
-            if ((nCode >= 0) && (OnMouseActivity != null))
+            if (nCode < 0 || OnMouseActivity == null) return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
+            //var mouseHookStruct = (MouseLLHookStruct) Marshal.PtrToStructure(lParam, typeof(MouseLLHookStruct));
+
+            //detect button clicked
+            var button = wParam switch
             {
-                var mouseHookStruct = (MouseLLHookStruct) Marshal.PtrToStructure(lParam, typeof(MouseLLHookStruct));
+                WM_LBUTTONDOWN => MouseButton.Left,
+                WM_RBUTTONDOWN => MouseButton.Right,
+                _ => default
+            };
 
-                //detect button clicked
-                MouseButton button = default;
-                short mouseDelta = 0;
-                switch (wParam)
-                {
-                    case WM_LBUTTONDOWN:
-                        button = MouseButton.Left;
-                        break;
-                    case WM_RBUTTONDOWN:
-                        button = MouseButton.Right;
-                        break;
-                    case WM_MOUSEWHEEL:
-                        //If the message is WM_MOUSEWHEEL, the high-order word of mouseData member is the wheel delta. 
-                        //One wheel click is defined as WHEEL_DELTA, which is 120. 
-                        //(value >> 16) & 0xffff; retrieves the high-order word from the given 32-bit value
-                        mouseDelta = (short) ((mouseHookStruct.mouseData >> 16) & 0xffff);
-                        //TODO: X BUTTONS (I havent them so was unable to test)
-                        //If the message is WM_XBUTTONDOWN, WM_XBUTTONUP, WM_XBUTTONDBLCLK, WM_NCXBUTTONDOWN, WM_NCXBUTTONUP, 
-                        //or WM_NCXBUTTONDBLCLK, the high-order word specifies which X button was pressed or released, 
-                        //and the low-order word is reserved. This value can be one or more of the following values. 
-                        //Otherwise, mouseData is not used. 
-                        break;
-                }
+            //double clicks
+            // int clickCount = 0;
+            // if (button > (MouseButton) (-1))
+            //     if (wParam == WM_LBUTTONDBLCLK || wParam == WM_RBUTTONDBLCLK) clickCount = 2;
+            //     else clickCount = 1;
 
-                //double clicks
-                // int clickCount = 0;
-                // if (button > (MouseButton) (-1))
-                //     if (wParam == WM_LBUTTONDBLCLK || wParam == WM_RBUTTONDBLCLK) clickCount = 2;
-                //     else clickCount = 1;
-
-                //generate event 
-                //var e = new MouseEventArgs(button, clickCount, mouseHookStruct.pt.x, mouseHookStruct.pt.y, mouseDelta);
-                var e = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button);
-                OnMouseActivity(this, e);
-            }
+            //generate event 
+            //var e = new MouseEventArgs(button, clickCount, mouseHookStruct.pt.x, mouseHookStruct.pt.y, mouseDelta);
+            var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button);
+            OnMouseActivity(ref args);
 
             //call next hook
             return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
         }
-
+        
+        // private int MouseHookProcOLD(int nCode, int wParam, IntPtr lParam)
+        // {
+        //     if (nCode < 0 || OnMouseActivity == null) return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
+        //     var mouseHookStruct = (MouseLLHookStruct) Marshal.PtrToStructure(lParam, typeof(MouseLLHookStruct));
+        //
+        //     //detect button clicked
+        //     MouseButton button = default;
+        //     short mouseDelta = 0;
+        //     switch (wParam)
+        //     {
+        //         case WM_LBUTTONDOWN:
+        //             button = MouseButton.Left;
+        //             break;
+        //         case WM_RBUTTONDOWN:
+        //             button = MouseButton.Right;
+        //             break;
+        //         case WM_MOUSEWHEEL:
+        //             //If the message is WM_MOUSEWHEEL, the high-order word of mouseData member is the wheel delta. 
+        //             //One wheel click is defined as WHEEL_DELTA, which is 120. 
+        //             //(value >> 16) & 0xffff; retrieves the high-order word from the given 32-bit value
+        //             mouseDelta = (short) ((mouseHookStruct.mouseData >> 0x10) & 0xFFFF);
+        //             //TODO: X BUTTONS (I havent them so was unable to test)
+        //             //If the message is WM_XBUTTONDOWN, WM_XBUTTONUP, WM_XBUTTONDBLCLK, WM_NCXBUTTONDOWN, WM_NCXBUTTONUP, 
+        //             //or WM_NCXBUTTONDBLCLK, the high-order word specifies which X button was pressed or released, 
+        //             //and the low-order word is reserved. This value can be one or more of the following values. 
+        //             //Otherwise, mouseData is not used. 
+        //             break;
+        //     }
+        //
+        //     //double clicks
+        //     // int clickCount = 0;
+        //     // if (button > (MouseButton) (-1))
+        //     //     if (wParam == WM_LBUTTONDBLCLK || wParam == WM_RBUTTONDBLCLK) clickCount = 2;
+        //     //     else clickCount = 1;
+        //
+        //     //generate event 
+        //     //var e = new MouseEventArgs(button, clickCount, mouseHookStruct.pt.x, mouseHookStruct.pt.y, mouseDelta);
+        //     var e = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button);
+        //     OnMouseActivity(this, e);
+        //
+        //     //call next hook
+        //     return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
+        // }
+        
         /// <summary>
         /// A callback function which will be called every time a keyboard activity detected.
         /// </summary>
@@ -744,7 +776,7 @@ namespace TroveSkip
         /// </returns>
         private int KeyboardHookProc(int nCode, int wParam, IntPtr lParam)
         {
-            var handled = false;
+            //var handled = false;
             if (nCode < 0 || KeyDown == null && KeyUp == null && KeyPress == null)
                 return CallNextHookEx(_hKeyboardHook, nCode, wParam, lParam);
             
@@ -753,11 +785,11 @@ namespace TroveSkip
             
             if (KeyDown != null && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN))
             {
-                var keyData = KeyInterop.KeyFromVirtualKey(myKeyboardHookStruct.vkCode);
-                var args = new KeyEventArgs(Keyboard.PrimaryDevice,
-                    Source, 0, keyData);
-                KeyDown(this, args);
-                handled = args.Handled;
+                // var keyData = KeyInterop.KeyFromVirtualKey(myKeyboardHookStruct.vkCode);
+                // var args = new KeyEventArgs(_keyboardDevice,
+                //     Source, 0, keyData);
+                KeyDown(KeyInterop.KeyFromVirtualKey(myKeyboardHookStruct.vkCode));
+                //handled = args.Handled;
             }
 
             if (KeyPress != null && wParam == WM_KEYDOWN)
@@ -767,7 +799,7 @@ namespace TroveSkip
 
                 var keyState = new byte[256];
                 GetKeyboardState(keyState);
-                var inBuffer = new byte[2];
+                var inBuffer = new byte[1];
                 if (ToAscii(myKeyboardHookStruct.vkCode,
                     myKeyboardHookStruct.scanCode,
                     keyState,
@@ -778,23 +810,24 @@ namespace TroveSkip
                     var key = (char) inBuffer[0];
                     if (isDownCapslock ^ isDownShift && char.IsLetter(key)) 
                         key = char.ToUpper(key);
-                    var args = new KeyEventArgs(Keyboard.PrimaryDevice,
-                        Source, 0, KeyInterop.KeyFromVirtualKey(key));
-                    KeyPress(this, args);
-                    handled = handled || args.Handled;
+                    // var args = new KeyEventArgs(_keyboardDevice,
+                    //     Source, 0, KeyInterop.KeyFromVirtualKey(key));
+                    KeyPress(KeyInterop.KeyFromVirtualKey(key));
+                    //handled = handled || args.Handled;
                 }
             }
 
             if (KeyUp != null && (wParam == WM_KEYUP || wParam == WM_SYSKEYUP))
             {
-                var keyData = KeyInterop.KeyFromVirtualKey(myKeyboardHookStruct.vkCode);
-                var args = new KeyEventArgs(Keyboard.PrimaryDevice,
-                    Source, 0, keyData);
-                KeyUp(this, args);
-                handled = handled || args.Handled;
+                //var keyData = KeyInterop.KeyFromVirtualKey(myKeyboardHookStruct.vkCode);
+                // var args = new KeyEventArgs(_keyboardDevice,
+                //     Source, 0, keyData);
+                KeyUp(KeyInterop.KeyFromVirtualKey(myKeyboardHookStruct.vkCode));
+                //handled = handled || args.Handled;
             }
 
-            return handled ? 1 : CallNextHookEx(_hKeyboardHook, nCode, wParam, lParam);
+            //return handled ? 1 : CallNextHookEx(_hKeyboardHook, nCode, wParam, lParam);
+            return CallNextHookEx(_hKeyboardHook, nCode, wParam, lParam);
         }
     }
 }

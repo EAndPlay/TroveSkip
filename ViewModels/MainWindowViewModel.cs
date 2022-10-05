@@ -7,10 +7,8 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -74,7 +72,7 @@ namespace TroveSkip.ViewModels
         private readonly Dictionary<Key, bool> _pressedKeys = new();
         private readonly List<int> _antiAfkList = new();
 
-        private readonly Regex _avaibleName = new(@"^[1-9-a-zA-Z-_]+$");
+        //private readonly Regex _avaibleName = new(@"^[1-9-a-zA-Z-_]+$");
 
         private Settings _settings;
         private readonly UserActivityHook _activityHook = new(false, true);
@@ -412,18 +410,18 @@ namespace TroveSkip.ViewModels
             _dispatcher.ShutdownStarted += (_, _) => CloseWindow();
             _dispatcher.InvokeAsync(LoadSettings);
 
-            _activityHook.KeyDown += (_, eve) => KeyCheck(eve.Key);
-            _activityHook.KeyUp += (_, eve) => _pressedKeys[eve.Key] = false;
+            _activityHook.KeyDown += OnKeyDown;
+            _activityHook.KeyUp += key => _pressedKeys[key] = false;
+            //_activityHook.OnMouseActivity += MouseCheck;
 
             _dispatcher.InvokeAsync(UpdateCurrent);
             _dispatcher.InvokeAsync(FocusUpdate);
-            CreateWorker(ForceSprint);
-            CreateWorker(ForceSpeed);
-            CreateWorker(HooksUpdate);
-            // _dispatcher.InvokeAsync(UpdateCurrent);
-            // _dispatcher.InvokeAsync(ForceSprint);
-            // _dispatcher.InvokeAsync(ForceSpeed);
-            // _dispatcher.InvokeAsync(HooksUpdate);
+            _dispatcher.InvokeAsync(ForceSprint);
+            _dispatcher.InvokeAsync(ForceSpeed);
+            _dispatcher.InvokeAsync(HooksUpdate);
+            // CreateWorker(ForceSprint);
+            // CreateWorker(ForceSpeed);
+            // CreateWorker(HooksUpdate);
         }
 
         private static void CreateWorker(Action work)
@@ -769,7 +767,6 @@ namespace TroveSkip.ViewModels
                 }
 
                 var handle = GetForegroundWindow();
-
                 GetWindowThreadProcessId(handle, out var procId);
                 // if (_processesExcept.Contains(procId))
                 // {
@@ -859,7 +856,11 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        private void KeyCheck(Key key)
+        // private void MouseCheck(ref MouseButtonEventArgs args)
+        // {
+        //     
+        // }
+        private void OnKeyDown(Key key)
         {
             if (GameClosed() || NotFocused() || ChatOpened()) return;
 
@@ -903,9 +904,12 @@ namespace TroveSkip.ViewModels
                 if (!FollowApp)
                 {
                     if (HookModel != null && HookModel.HasExited)
-                    { 
-                        Hooks.Remove(Hooks.First(x => x.Id == HookModel.Id));
-                        HookModel = null;
+                    {
+                        //var leftHook = Hooks.FirstOrDefault(x => x.Id == HookModel.Id);
+                        //if (leftHook != null)
+                        //    Hooks.Remove(leftHook);
+                        if (HookModel != null)
+                            HookModel = null;
                     }
                     while (HookModel == null)
                     {
@@ -1048,17 +1052,17 @@ namespace TroveSkip.ViewModels
 
         private void WindowMouseDown(object sender, EventArgs args) => WindowDeactivated(sender, args);
 
-        public void BindKeyDown(object sender, KeyEventArgs args)
+        public void BindKeyDown(Key key)
         {
             if (_currentButton == null) return;
-            _binds[_currentButton] = args.Key;
+            _binds[_currentButton] = key;
             _currentButtonElement.Content = _binds[_currentButton];
             _currentButton = null;
             _currentButtonElement = null;
             _activityHook.KeyDown -= BindKeyDown;
         }
         
-        public void WindowDeactivated(object sender, EventArgs args)
+        public void WindowDeactivated(object _, EventArgs __)
         {
             if (_currentButton == null) return;
             _binds[_currentButton] = Key.None;
