@@ -10,27 +10,26 @@ namespace TroveSkip.ViewModels
     public sealed partial class MainWindowViewModel
     {
         private readonly int[] _speedOffsets = { 0x8, 0x28, 0xC4, 0x2D4, 0x1BC };
-//1F8 - battle factor;
-//1F4 - crit dmg;
-//1F0 - experience;
-//1DC - flasks;
-//1D8 - AS;
-//1D4 - lasermancy;
-//1D0 - magicF;
-//1C0 - jumps;
-//1B8 - crit hit;
-//1AC - health regen;
-//1B0 - energy regen;
-//1A4 - max health;
-//1A0 - magicD;
-//1A8 - max energy;
-//19C - physD;
-//238 - light; 
+        
+//1F8 - Battle Factor
+//1F4 - Critical Damage
+//1F0 - Experience gain
+//1DC - Flasks amount
+//1D8 - Attack Speed
+//1D4 - Lasermancy
+//1D0 - Magic Find
+//1C0 - Jumps amount
+//1B8 - Critical Hit
+//1AC - Health Regeneration
+//1B0 - Energy Regeneration
+//1A4 - Maximum Health
+//1A0 - Magic Damage
+//1A8 - Maximum Energy
+//19C - Physiscal Damage
+//238 - Light
 
+//baseAddress + (0xCFC | 0xD1C) = Players amount in current world
 
-//from baseAddress: 
-//Players in world = 8, cfc / d1c
-//		        
         private static readonly int[] CoordsOffsets = { 0x8, 0x28, 0xC4, 0x4 };
         private static readonly int[] ViewOffsets = { 0x4, 0x24, 0x84, 0x0 };
         private static readonly int[] AccelOffsets = { 0x4, 0x11C, 0xC4, 0x4 };
@@ -43,8 +42,6 @@ namespace TroveSkip.ViewModels
         private readonly int[] _yPosition = CoordsOffsets.Join(0x64);
         private readonly int[] _xVelocity = AccelOffsets.Join(0x90);
         private readonly int[] _xView = ViewOffsets.Join(0x100);
-        
-        //private readonly Dictionary<int[], int> _addresses = new();
 
         //private readonly int[] MaxCamDist = { 0x4, 0x3C };
         //private readonly int[] MinCamDist = { 0x4, 0x38 };
@@ -90,14 +87,11 @@ namespace TroveSkip.ViewModels
 
         #endregion
 
-        private const int MemoryProtection = 0x40;
-
         private unsafe int ReadInt(int[] offsets)
         {
             fixed (byte* p = GetBuffer(offsets))
             {
                 return *(int*) p;
-                //return *p | *(p + 1) << 8 | *(p + 2) << 16 | *(p + 3) << 24;
             }
         }
 
@@ -117,7 +111,7 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        private unsafe float ReadFloat(IntPtr address)
+        private unsafe float ReadFloat(int address)
         {
             fixed (byte* p = GetBuffer(address))
             {
@@ -130,13 +124,13 @@ namespace TroveSkip.ViewModels
         private void WriteInt(int[] offsets, int value) => WriteMemory(GetAddress(offsets), BitConverter.GetBytes(value));
         private void WriteUInt(int[] offsets, uint value) => WriteMemory(GetAddress(offsets), BitConverter.GetBytes((int)value));
         private void WriteFloat(int[] offsets, float value) => WriteMemory(GetAddress(offsets), BitConverter.GetBytes(value));
-        private void WriteFloat(IntPtr address, float value) => WriteMemory(address, BitConverter.GetBytes(value));
+        private void WriteFloat(int address, float value) => WriteMemory(address, BitConverter.GetBytes(value));
 
         private unsafe void OverwriteBytes(int[] pattern, int[] bytes)
         {
-            var address = (IntPtr) FindSignature(pattern);
+            var address = FindSignature(pattern);
             //_dispatcher.Invoke(() => address = Addresses.ContainsKey(pattern) ? (IntPtr) Addresses[pattern] : (IntPtr) FindSignature(pattern));
-            if (address == IntPtr.Zero) return;
+            if (address == 0) return;
 
             var val = new byte[bytes.Length];
             var buffer = new byte[pattern.Length];
@@ -165,7 +159,7 @@ namespace TroveSkip.ViewModels
                 MessageBox.Show("Module is NULL at 'FindSignature', doesn't it surprise?");
                 return 0;
             }
-            var startAdd = module.BaseAddress;
+            var startAdd = (int) module.BaseAddress;
             var allocSize = module.ModuleMemorySize;
             var buffer = new byte[allocSize];
             ReadProcessMemory(process.Handle, startAdd, buffer, allocSize, out _);
@@ -191,7 +185,7 @@ namespace TroveSkip.ViewModels
 
                             compare++;
                             if (compare == count)
-                                return i + (int) startAdd;
+                                return i + startAdd;
                         }
                     }
                 }
@@ -200,13 +194,13 @@ namespace TroveSkip.ViewModels
             return 0;
         }
         
-        private void ReadMemory(IntPtr address, byte[] buffer) => ReadProcessMemory(_handle, address, buffer, buffer.Length, out _);
+        private void ReadMemory(int address, byte[] buffer) => ReadProcessMemory(_handle, address, buffer, buffer.Length, out _);
         private unsafe void ReadMemory(int address, byte* buffer) => ReadProcessMemory(_handle, address, buffer, 4, out _);
-        private void WriteMemory(IntPtr address, byte[] buffer) => WriteProcessMemory(_handle, address, buffer, buffer.Length, out _);
-        private void ReadMemory(IntPtr handle, IntPtr address, byte[] buffer) => ReadProcessMemory(handle, address, buffer, buffer.Length, out _);
-        private void WriteMemory(IntPtr handle, IntPtr address, byte[] buffer) => WriteProcessMemory(handle, address, buffer, buffer.Length, out _);
+        private void WriteMemory(int address, byte[] buffer) => WriteProcessMemory(_handle, address, buffer, buffer.Length, out _);
+        private void ReadMemory(IntPtr handle, int address, byte[] buffer) => ReadProcessMemory(handle, address, buffer, buffer.Length, out _);
+        private void WriteMemory(IntPtr handle, int address, byte[] buffer) => WriteProcessMemory(handle, address, buffer, buffer.Length, out _);
 
-        private unsafe IntPtr GetAddress(IEnumerable<int> offsets)
+        private unsafe int GetAddress(IEnumerable<int> offsets)
         {
             var bytes = new byte[4];
             var address = _currentBaseAddress;
@@ -216,12 +210,12 @@ namespace TroveSkip.ViewModels
                 foreach (var offset in offsets)
                 {
                     ReadMemory(address, bytes);
-                    address = (IntPtr) (*num + offset);
+                    address = *num + offset;
                 }
                 return address;
             }
         }
-        private unsafe IntPtr GetAddress(IntPtr handle, IEnumerable<int> offsets)
+        private unsafe int GetAddress(IntPtr handle, IEnumerable<int> offsets)
         {
             var bytes = new byte[4];
             var address = _currentBaseAddress;
@@ -231,7 +225,7 @@ namespace TroveSkip.ViewModels
                 foreach (var offset in offsets)
                 {
                     ReadProcessMemory(handle, address, bytes, 4, out _);
-                    address = (IntPtr) (*num + offset);
+                    address = *num + offset;
                 }
                 return address;
             }
@@ -243,43 +237,60 @@ namespace TroveSkip.ViewModels
             ReadMemory(GetAddress(offsets), bytes);
             return bytes;
         }
-        private byte[] GetBuffer(IntPtr address)
+        private byte[] GetBuffer(int address)
         {
             var bytes = new byte[4];
             ReadMemory(address, bytes);
             return bytes;
         }
         
+        // private static unsafe byte[] AsmJump(ulong destination, ulong origin, byte[] cave = null)
+        // {
+        //     var jumpStart = destination - origin - 5;
+        //     var str = jumpStart.ToString("x");
+        //     var builder = new StringBuilder();
+        //     if (str.Length == 7)
+        //         builder.Append("0");
+        //     builder.Append(str).Append("E9");
+        //
+        //     var hex = new byte[builder.Length / 2];
+        //     fixed (byte* hexByte = hex)
+        //     {
+        //         var dump = builder.ToString();
+        //         fixed (char* code = dump)
+        //         {
+        //             for (var i = 0; i < hex.Length; i++)
+        //                 *(hexByte + i) = Convert.ToByte(new string(code, i * 2, 2), 16);
+        //         }
+        //     }
+        //
+        //     Array.Reverse(hex);
+        //     if (cave != null)
+        //         hex = cave.Join(hex);
+        //     
+        //     return hex;
+        // }
         private static unsafe byte[] AsmJump(ulong destination, ulong origin, byte[] cave = null)
         {
             var jumpStart = destination - origin - 5;
-            var str = jumpStart.ToString("x");
-            var builder = new StringBuilder();
-            if (str.Length == 7)
-                builder.Append("0");
-            // if (dump.Length == 7)
-            //     dump = "0" + dump;
-            builder.Append(str).Append("E9");
-            
-            // dump += "E9";
-
-            var hex = new byte[builder.Length / 2];
-            fixed (byte* hexByte = hex)
+            var bytes = new byte[4];
+            var address = BitConverter.GetBytes(jumpStart);
+            var addressLength = address.Length;
+            if (addressLength > bytes.Length)
+                Array.Resize(ref bytes, addressLength + 1);
+            Array.Copy(address, 0, bytes, 1, addressLength - 1);
+            bytes[0] = 0xE9;
+            int newLength;
+            for (newLength = bytes.Length - 1; newLength > 0; newLength--)
             {
-                var dump = builder.ToString();
-                fixed (char* code = dump)
-                {
-                    for (var i = 0; i < hex.Length; i++)
-                        *(hexByte + i) = Convert.ToByte(new string(code, i * 2, 2), 16);
-                    //*(hexByte + i) = Convert.ToByte(dump.Substring(i * 2, 2), 16);
-                }
+                if (bytes[newLength] != 0) break;
             }
+            Array.Resize(ref bytes, newLength + 1);
 
-            Array.Reverse(hex);
             if (cave != null)
-                hex = cave.Join(hex);
+                bytes = cave.Join(bytes);
             
-            return hex;
+            return bytes;
         }
         
         #region Dlls
@@ -320,6 +331,7 @@ namespace TroveSkip.ViewModels
             ShowWindow = 0x0040
         }
         [Flags]
+        
         public enum AllocationType
         {
             Commit = 0x1000,
@@ -332,31 +344,54 @@ namespace TroveSkip.ViewModels
             WriteWatch = 0x200000,
             LargePages = 0x20000000
         }
-        public enum Instructions : byte
+        
+        [Flags]
+        public enum MemoryProtection
         {
-            Jp = 0xE9,
-            Nop = 0x90
+            Execute = 0x10,
+            ExecuteRead = 0x20,
+            ExecuteReadWrite = 0x40,
+            ExecuteWriteCopy = 0x80,
+            NoAccess = 0x01,
+            ReadOnly = 0x02,
+            ReadWrite = 0x04,
+            WriteCopy = 0x08,
+            GuardModifierflag = 0x100,
+            NoCacheModifierflag = 0x200,
+            WriteCombineModifierflag = 0x400
         }
 
         [DllImport("kernel32.dll")]
-        static extern bool VirtualFreeEx(IntPtr handle, IntPtr lpAddress,
-            int dwSize, AllocationType dwFreeType);
+        static extern bool VirtualFreeEx(
+            IntPtr handle,
+            int lpAddress,
+            int dwSize,
+            AllocationType allocationType);
         
         [DllImport("kernel32.dll")]
-        static extern bool VirtualProtectEx(IntPtr handle, IntPtr lpAddress,
-            UIntPtr dwSize, uint flNewProtect, out uint lpflOldProtect);
+        static extern bool VirtualProtectEx(
+            IntPtr handle,
+            int lpAddress,
+            int dwSize,
+            MemoryProtection flNewProtect,
+            out MemoryProtection oldProtection);
         
         [DllImport("kernel32.dll")]
-        static extern IntPtr VirtualAllocEx(IntPtr hProcess, IntPtr lpAddress,
-            uint dwSize, AllocationType allocationType, int flProtect);
+        static extern int VirtualAllocEx(
+            IntPtr hProcess,
+            int lpAddress,
+            int dwSize,
+            AllocationType allocationType,
+            MemoryProtection flProtect);
 
         [DllImport("kernel32.dll")]
         private static extern bool ReadProcessMemory(
             IntPtr hProcess, 
-            IntPtr lpBaseAddress, 
+            int lpBaseAddress, 
             byte[] lpBuffer, 
             int dwSize, 
             out IntPtr lpNumberOfBytesRead);
+        
         [DllImport("kernel32.dll")]
         private static extern unsafe bool ReadProcessMemory(
             IntPtr hProcess, 
@@ -368,7 +403,7 @@ namespace TroveSkip.ViewModels
         [DllImport("kernel32.dll")]
         private static extern bool WriteProcessMemory(
           IntPtr hProcess,
-          IntPtr lpBaseAddress,
+          int lpBaseAddress,
           byte[] lpBuffer,
           int nSize,
           out IntPtr lpNumberOfBytesWritten);
@@ -377,10 +412,16 @@ namespace TroveSkip.ViewModels
         private static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll")]
-        private static extern int GetWindowThreadProcessId(IntPtr handle, out int processId);
+        private static extern int GetWindowThreadProcessId(
+            IntPtr handle,
+            out int processId);
         
         [DllImport("user32.dll")]
-        public static extern IntPtr PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+        public static extern IntPtr PostMessage(
+            IntPtr hWnd,
+            uint msg,
+            IntPtr wParam,
+            IntPtr lParam);
 
         #endregion
     }

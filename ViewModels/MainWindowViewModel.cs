@@ -38,7 +38,15 @@ namespace TroveSkip.ViewModels
                 {
                     try
                     {
-                        _currentBaseAddress = value.Module.BaseAddress + _baseAddress;
+                        _currentModuleAddress = (int)value.Module.BaseAddress;
+                        _currentBaseAddress = _currentModuleAddress + _baseAddress;
+                        unsafe
+                        {
+                            var bytes = stackalloc byte[4];
+                            _currentChatStateAddress = _currentModuleAddress + _chatBaseAddress; //+ 0x98 ; 00FD9E20
+                            ReadMemory(_currentChatStateAddress, bytes);
+                            _currentChatStateAddress = *(int*) bytes + ChatOpenedOffsets[0];
+                        }
                         _hookModel = value;
                         _handle = _hookModel.Handle;
                         _encryptionKey = ReadUInt(StatsEncKeyOffsets);
@@ -72,8 +80,6 @@ namespace TroveSkip.ViewModels
         private readonly Dictionary<Key, bool> _pressedKeys = new();
         private readonly List<int> _antiAfkList = new();
 
-        //private readonly Regex _avaibleName = new(@"^[1-9-a-zA-Z-_]+$");
-
         private Settings _settings;
         private readonly UserActivityHook _activityHook = new(false, true);
 
@@ -82,7 +88,9 @@ namespace TroveSkip.ViewModels
 
         private int _baseAddress;
         private int _chatBaseAddress;
-        private IntPtr _currentBaseAddress;
+        private int _currentBaseAddress;
+        private int _currentChatStateAddress;
+        private int _currentModuleAddress;
 
         private float _sprintValue;
         private float _skipValue;
@@ -133,17 +141,13 @@ namespace TroveSkip.ViewModels
 
         public string BaseAddress
         {
-            get
-            {
-                var str = _baseAddress.ToString("X8");
-                return str;
-            }
+            get => _baseAddress.ToString("X8");
 
             set
             {
                 _baseAddress = int.Parse(value, NumberStyles.HexNumber);
                 if (HookModel != null)
-                    _currentBaseAddress = HookModel.Module.BaseAddress + _baseAddress;
+                    _currentBaseAddress = _currentModuleAddress + _baseAddress;
 
                 OnPropertyChanged();
             }
@@ -227,8 +231,7 @@ namespace TroveSkip.ViewModels
                 _speedHackValue = value;
                 if (_encryptionKey != 0)
                 {
-                    var bytes = BitConverter.GetBytes((float)value);
-                    _encryptedSpeed = BitConverter.ToUInt32(bytes, 0) ^ _encryptionKey;
+                    _encryptedSpeed = BitConverter.ToUInt32(BitConverter.GetBytes((float)value), 0) ^ _encryptionKey;
                 }
                 OnPropertyChanged();
             }
@@ -419,9 +422,6 @@ namespace TroveSkip.ViewModels
             _dispatcher.InvokeAsync(ForceSprint);
             _dispatcher.InvokeAsync(ForceSpeed);
             _dispatcher.InvokeAsync(HooksUpdate);
-            // CreateWorker(ForceSprint);
-            // CreateWorker(ForceSpeed);
-            // CreateWorker(HooksUpdate);
         }
 
         private void HideWindow()
@@ -434,7 +434,6 @@ namespace TroveSkip.ViewModels
         {
             SaveCurrent();
             _settings.Save();
-            //Application.Current.Shutdown();
             Environment.Exit(0);
         }
 
@@ -454,14 +453,15 @@ namespace TroveSkip.ViewModels
                 process ??= HookModel.Process;
                 if (_antiAfkList.Contains(process.Id)) return;
                 _antiAfkList.Add(process.Id);
-                var address = (IntPtr) FindSignature(_antiAfk, process);
-                //var address = IntPtr.Zero;
-                //Task.Run(() => address = (IntPtr) FindSignature(_antiAfk, process)).GetAwaiter();
-                if (address == IntPtr.Zero) return;
+                var address = FindSignature(_antiAfk, process);
+                if (address == 0) return;
 
                 var handle = process.Handle;
-                var hAlloc = VirtualAllocEx(handle, IntPtr.Zero, (uint) _antiAfkCave.Length + 5, AllocationType.Commit,
-                    MemoryProtection);
+                var caveLength = _antiAfkCave.Length + 5;
+                var hAlloc = VirtualAllocEx(handle, 0, caveLength, AllocationType.Commit,
+                    MemoryProtection.ExecuteReadWrite);
+
+                VirtualProtectEx(handle, hAlloc, caveLength, MemoryProtection.Execute, out _);
 
                 WriteMemory(handle, hAlloc, AsmJump((ulong) address + 6, (ulong) hAlloc, _antiAfkCave));
                 WriteMemory(handle, address, AsmJump((ulong) hAlloc, (ulong) address));
@@ -512,9 +512,7 @@ namespace TroveSkip.ViewModels
                 XCoordinate = 0;
         }
 
-        //private static BackgroundWorker _findAddressWorker;
-
-        private unsafe void FindAddress()
+        private void FindAddress()
         {
             if (GameClosed()) return;
 
@@ -524,91 +522,21 @@ namespace TroveSkip.ViewModels
                 return;
             }
 
-            MessageBox.Show("Open chat and Press ok\nDONT close chat till address found");
+            MessageBox.Show("Open chat and Press ok\nDONT close chat till address found\n(dialogue with info will appear)");
 
-            var moduleAddress = HookModel.Module.BaseAddress;
+            var moduleAddress = (int) HookModel.Module.BaseAddress;
             _baseAddress = _chatBaseAddress = 0;
-
-            //_findAddressWorker = new BackgroundWorker();
-            // bool findadd(int i)
-            // {
-            //     var bytes = new byte[4];
-            //     var address = moduleAddress + i;
-            //     fixed (byte* p = bytes)
-            //     {
-            //         var num = (int*) p;
-            //         foreach (var offset in _xPosition)
-            //         {
-            //             ReadMemory(address, bytes);
-            //             //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + offset);
-            //             address = (IntPtr) (*num + offset);
-            //         }
-            //     }
-            //
-            //     var buffer = new byte[4];
-            //     ReadMemory(address, buffer);
-            //     var value = BitConverter.ToSingle(buffer, 0);
-            //
-            //     bytes = new byte[4];
-            //     address = moduleAddress + i;
-            //     ReadMemory(address, bytes);
-            //     fixed (byte* p = bytes)
-            //         address = (IntPtr) (*(int*) p + ChatOpenedOffsets[0]);
-            //     //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + ChatOpenedOffsets[0]);
-            //     buffer = new byte[1];
-            //     ReadMemory(address, buffer);
-            //     bool opened, valid; //*bufferPointer == 1;
-            //     //bool valid; //opened || *bufferPointer == 0;
-            //     fixed (byte* b = buffer)
-            //     {
-            //         opened = *b == 1;
-            //         valid = opened || *b == 0;
-            //     }
-            //
-            //     bytes = new byte[4];
-            //     address = moduleAddress + i;
-            //     fixed (byte* p = bytes)
-            //         foreach (var offset in new[] {ChatOpenedOffsets[1]})
-            //         {
-            //             ReadMemory(address, bytes);
-            //             //address = (IntPtr) (BitConverter.ToInt32(bytes, 0) + offset);
-            //             address = (IntPtr) (*(int*) p + offset);
-            //         }
-            //
-            //     buffer = new byte[4];
-            //     ReadMemory(address, buffer);
-            //     bool idk; // = BitConverter.ToInt32(buffer, 0) == 841;
-            //     fixed (byte* b = buffer)
-            //         idk = *(int*) b == 841;
-            //
-            //     if (valid && opened && idk)
-            //     {
-            //         _chatBaseAddress = i;
-            //         if (_baseAddress != 0)
-            //             return true;
-            //     }
-            //
-            //     if (value != 0 && value > XCoordinate - 1 && value < XCoordinate + 1)
-            //     {
-            //         BaseAddress = i.ToString("X8");
-            //         if (_chatBaseAddress != 0)
-            //             return true;
-            //     }
-            //
-            //     return false;
-            // }
 
             for (int i = 16_000_000; i < 19_000_000; i++)
             {
                 var found = false;
                 _dispatcher.Invoke(() => { found = FindBaseAddress(moduleAddress, i); });
-                //_dispatcher.Invoke(() => { found = findadd(i); });
+                
                 if (found)
                     break;
             }
 
             SearchWindowVisibility = Visibility.Hidden;
-            //MessageBox.Show($"Base address: {BaseAddress}\nChat address: {_chatBaseAddress:X8}\n");
             MessageBox.Show(new StringBuilder().Append("Base address: ").Append(BaseAddress).Append("\nChat address: ")
                 .Append(_chatBaseAddress.ToString("X8")).Append("\n").ToString());
         }
@@ -688,7 +616,7 @@ namespace TroveSkip.ViewModels
             {
                 HookModel = null;
             }
-            else if (change && HookModel == null && Hooks.Count > 0)
+            else if (change && HookModel == null)
             {
                 HookModel = Hooks.First();
             }
@@ -699,18 +627,6 @@ namespace TroveSkip.ViewModels
             var xposAdd = GetAddress(_xPosition);
             var xviewAdd = GetAddress(_xView);
 
-            // var xPos = ReadFloat(xposAdd);
-            // var yPos = ReadFloat(yposAdd);
-            // var zPos = ReadFloat(zposAdd);
-            // var xPer = ReadFloat(xviewAdd);
-            // var yPer = ReadFloat(yviewAdd);
-            // var zPer = ReadFloat(zviewAdd);
-            // var xPos = ReadFloat(XPosition);
-            // var yPos = ReadFloat(YPosition);
-            // var zPos = ReadFloat(ZPosition);
-            // var xPer = ReadFloat(XView);
-            // var yPer = ReadFloat(YView);
-            // var zPer = ReadFloat(ZView);
             WriteFloat(xposAdd, ReadFloat(xviewAdd) * SkipValue + ReadFloat(xposAdd));
             WriteFloat(xposAdd + 4, ReadFloat(xviewAdd + 4) * SkipValue + ReadFloat(xposAdd + 4));
             WriteFloat(xposAdd + 8, ReadFloat(xviewAdd + 8) * SkipValue + ReadFloat(xposAdd + 8));
@@ -761,11 +677,7 @@ namespace TroveSkip.ViewModels
 
                 var handle = GetForegroundWindow();
                 GetWindowThreadProcessId(handle, out var procId);
-                // if (_processesExcept.Contains(procId))
-                // {
-                //     await Task.Delay(50);
-                //     continue;
-                // }
+                
                 var proc = Process.GetProcessById(procId);
 
                 if (proc.ProcessName == "Trove")
@@ -827,32 +739,17 @@ namespace TroveSkip.ViewModels
             if (handle == IntPtr.Zero) return true;
 
             GetWindowThreadProcessId(handle, out var procId);
-            //var notFocused = (HookModel?.Id ?? 0) != procId;
-            // if (FollowApp && notFocused)
-            //     Hook = null;
             return (HookModel?.Id ?? 0) != procId;
         }
 
         private unsafe bool ChatOpened()
         {
-            if (GameClosed() || _chatBaseAddress == 0) return true; // || _chatOffset == 0
-            var bytes = new byte[4];
-            var address = HookModel.Module.BaseAddress + _chatBaseAddress; //+ 0x98 ; 00FD9E20
-            ReadMemory(address, bytes);
-            fixed (byte* p = bytes)
-            {
-                //address = (IntPtr)(BitConverter.ToInt32(bytes, 0) + ChatOpenedOffsets[0]);
-                address = (IntPtr)(*(int*)p + ChatOpenedOffsets[0]);
-
-                ReadMemory(address, bytes);
-                return *p != 0;
-            }
+            if (GameClosed() || _chatBaseAddress == 0) return true;
+            var @byte = stackalloc byte[1];
+            ReadProcessMemory(_handle, _currentChatStateAddress, @byte, 1, out _);
+            return *@byte != 0;
         }
 
-        // private void MouseCheck(ref MouseButtonEventArgs args)
-        // {
-        //     
-        // }
         private void OnKeyDown(Key key)
         {
             if (GameClosed() || NotFocused() || ChatOpened()) return;
@@ -898,11 +795,9 @@ namespace TroveSkip.ViewModels
                 {
                     if (HookModel != null && HookModel.HasExited)
                     {
-                        //var leftHook = Hooks.FirstOrDefault(x => x.Id == HookModel.Id);
-                        //if (leftHook != null)
-                        //    Hooks.Remove(leftHook);
                         if (HookModel != null)
-                            HookModel = null;
+                            Hooks.Remove(HookModel);
+                        HookModel = null;
                     }
                     while (HookModel == null)
                     {
@@ -923,7 +818,7 @@ namespace TroveSkip.ViewModels
 
                 if (HookModel != null && HookModel.Name.Length == 0)
                 {
-                    var name = GetName(IntPtr.Zero);
+                    var name = GetName(_handle);
                     var copy = Hooks.FirstOrDefault(x => x.Id == HookModel.Id);
                     if (copy != null && name.Length > 0)
                     {
@@ -951,10 +846,10 @@ namespace TroveSkip.ViewModels
                 int last;
                 for (last = 0; last < name.Length; last++)
                 {
-                    //if (!_avaibleName.IsMatch(new string(char.ToLower(*(p + last)), 1)))
                     if (*(p + last) != '\0') continue;
                     if (last == 0)
                         break;
+                    
                     return name.Substring(0, last);
                 }
 
@@ -994,11 +889,11 @@ namespace TroveSkip.ViewModels
             return _pressedKeys[key];
         }
 
-        private unsafe bool FindBaseAddress(IntPtr baseAdd, int i)
+        private unsafe bool FindBaseAddress(int baseAdd, int i)
         {
             var buffer = stackalloc byte[4];
             var num = (int*) buffer;
-            var source = (int) baseAdd + i;
+            var source = baseAdd + i;
             var address = source;
             foreach (var offset in _xPosition)
             {
