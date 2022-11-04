@@ -3,22 +3,14 @@ using System.Diagnostics;
 
 namespace TroveSkip.Models
 {
-    public struct dddd
-    {
-        public byte x;
-        public byte y;
-
-        public override string ToString()
-        {
-            return x + " " + y;
-        }
-    }
     public class HookModel
     {
         public Process Process { get; private set; } //was readonly @field
         public int Id { get; }
         public IntPtr Handle { get; }
         public ProcessModule Module { get; }
+        public int ModuleAddress { get; }
+        public bool IsPrimary { get; set; }
 
         public bool MapCheck;
         public bool ZoomCheck;
@@ -43,8 +35,10 @@ namespace TroveSkip.Models
             Id = process.Id;
             Handle = process.Handle;
             Module = process.MainModule;
+            ModuleAddress = (int) Module.BaseAddress;
             Process.EnableRaisingEvents = true;
             Process.Exited += (_, _) => Process = null;
+            IsPrimary = false;
         }
 
         public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name)

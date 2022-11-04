@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -22,6 +23,7 @@ namespace TroveSkip.ViewModels
 {
     public partial class MainWindowViewModel : INotifyPropertyChanged, INotifyCollectionChanged
     {
+        //TODO: d3d hook
         private readonly Dispatcher _dispatcher;
 
         public ObservableCollection<HookModel> Hooks { get; } = new();
@@ -40,13 +42,27 @@ namespace TroveSkip.ViewModels
                     {
                         _currentModuleAddress = (int)value.Module.BaseAddress;
                         _currentBaseAddress = _currentModuleAddress + _baseAddress;
+                        _currentSettingsAddress = _currentModuleAddress + _settingsBaseAddress;
                         unsafe
                         {
-                            var bytes = stackalloc byte[4];
                             _currentChatStateAddress = _currentModuleAddress + _chatBaseAddress; //+ 0x98 ; 00FD9E20
-                            ReadMemory(_currentChatStateAddress, bytes);
-                            _currentChatStateAddress = *(int*) bytes + ChatOpenedOffsets[0];
+                            var buffer = stackalloc byte[4];
+                            ReadMemory(_currentChatStateAddress, buffer);
+                            _currentChatStateAddress = *(int*) buffer + ChatOpenedOffsets[0];
                         }
+
+                        int id;
+                        if (_hookModel != null)
+                        {
+                            _hookModel.IsPrimary = false;
+                            id = _hookModel.Id;
+                            if (FollowPrimary)
+                            {
+                                _lastSettings.Add(id, ReadSettings(_settingsBaseAddress));
+                                WriteSettings(ref _hookModel, _nullSettings);
+                            }
+                        }
+
                         _hookModel = value;
                         _handle = _hookModel.Handle;
                         _encryptionKey = ReadUInt(StatsEncKeyOffsets);
@@ -59,7 +75,14 @@ namespace TroveSkip.ViewModels
                         ZoomCheck = _hookModel.ZoomCheck;
                         FovCheck = _hookModel.FovCheck;
                         ChamsCheck = _hookModel.ChamsCheck;
-                        MiningCheck = _hookModel.MiningCheck; 
+                        MiningCheck = _hookModel.MiningCheck;
+                        _hookModel.IsPrimary = true;
+                        if (FollowPrimary)
+                        {
+                            id = _hookModel.Id;
+                            WriteSettings(ref _hookModel, _lastSettings[id]);
+                            _lastSettings.Remove(id);
+                        }
                         EnableAntiAfk();
                     }
                     catch
@@ -79,6 +102,10 @@ namespace TroveSkip.ViewModels
         private readonly Dictionary<string, Key> _binds = new();
         private readonly Dictionary<Key, bool> _pressedKeys = new();
         private readonly List<int> _antiAfkList = new();
+        private readonly Dictionary<int, (float, float, float)> _lastSettings = new();
+
+        private readonly (float, float, float) _nullSettings = (0, 0, 0);
+        private readonly byte[] _nullBytes = new byte[12];
 
         private Settings _settings;
         private readonly UserActivityHook _activityHook = new(false, true);
@@ -88,13 +115,17 @@ namespace TroveSkip.ViewModels
 
         private int _baseAddress;
         private int _chatBaseAddress;
+        private int _settingsBaseAddress;
         private int _currentBaseAddress;
+        private int _currentSettingsAddress;
         private int _currentChatStateAddress;
         private int _currentModuleAddress;
 
         private float _sprintValue;
         private float _skipValue;
         private float _jumpForceValue;
+
+        private float _followSpeedValue;
 
         private bool _followApp;
         private bool _sprintCheck;
@@ -121,6 +152,8 @@ namespace TroveSkip.ViewModels
         private bool _fovCheck;
         private bool _chamsCheck;
         private bool _miningCheck;
+
+        private bool _followPrimary;
         
         private Visibility _searchWindowVisibility;
         private Visibility _mainPageVisibility;
@@ -179,6 +212,16 @@ namespace TroveSkip.ViewModels
             set
             {
                 _jumpForceValue = value;
+                OnPropertyChanged();
+            }
+        }
+        
+        public float FollowSpeedValue
+        {
+            get => _followSpeedValue;
+            set
+            {
+                _followSpeedValue = value;
                 OnPropertyChanged();
             }
         }
@@ -356,6 +399,51 @@ namespace TroveSkip.ViewModels
                 OnPropertyChanged();
             }
         }
+        
+        // public bool FollowPrimary
+        // {
+        //     get => _followPrimary;
+        //     set
+        //     {
+        //         _followPrimary = value;
+        //         if (value)
+        //         {
+        //             for (int i = 0; i < Hooks.Count; i++)
+        //             {
+        //                 var hook = Hooks[i];
+        //                 if (hook.IsPrimary) continue;
+        //
+        //                 _lastSettings.Add(hook.Id, ReadSettings(ref hook));
+        //                 WriteSettings(ref hook, (0, 0, 0));
+        //             }
+        //         }
+        //         else
+        //         {
+        //             var newSettings = _lastSettings.Where(x => Hooks.Any(y => x.Key == y.Id))
+        //                 .ToDictionary(x => x.Key, y => y.Value);
+        //             _lastSettings.Clear();
+        //             for (int i = 0; i < Hooks.Count; i++)
+        //             {
+        //                 var hook = Hooks[i];
+        //                 // if (hook.IsPrimary) continue;
+        //                 var settings = newSettings[hook.Id];
+        //                 
+        //                 WriteSettings(ref hook, settings);
+        //             }
+        //         }
+        //         OnPropertyChanged();
+        //     }
+        // }
+        
+        public bool FollowPrimary
+        {
+            get => _followPrimary;
+            set
+            {
+                _followPrimary = value;
+                OnPropertyChanged();
+            }
+        }
 
         public Visibility SearchWindowVisibility
         {
@@ -392,7 +480,7 @@ namespace TroveSkip.ViewModels
         public ICommand ZoomCheckCommand => _zoomCheckCommand ??= new(x => InjectCheckChanged(x, _zoomHack, _zoomHackEnabled));
         public ICommand FovCheckCommand => _fovCheckCommand ??= new(x => InjectCheckChanged(x, _fovHack, _fovHackEnabled));
         public ICommand ChamsCheckCommand => _chamsCheckCommand ??= new(x => InjectCheckChanged(x, _chamsMonsters, _chamsMonstersEnabled));
-        public ICommand MiningCheckCommand => _miningCheckCommand ??= new(x => InjectCheckChanged(x, _mining, _miningEnabled));
+        public ICommand MiningCheckCommand => _miningCheckCommand ??= new(x => InjectCheckChanged(x, _miningSlow, _miningSlowEnabled));
         public ICommand BindClickCommand => _bindClickCommand ??= new(BindClick);
         public ICommand SwitchPageCommand => _switchPageCommand ??= new(x => SwitchPage(x));
         public ICommand InvokeSearchWindowCommand => _invokeSearchWindowCommand ??= new(InvokeSearchWindow);
@@ -405,7 +493,7 @@ namespace TroveSkip.ViewModels
             (object) (Regex.IsMatch(_binds[name].ToString(), @"D\d") ? 
                 _binds[name].ToString().Replace("D", "") : _binds[name]) : "Not binded";
 
-        public MainWindowViewModel()
+        public unsafe MainWindowViewModel()
         {
             _dispatcher = Application.Current.MainWindow.Dispatcher;
             SearchWindowVisibility = Visibility.Hidden;
@@ -422,6 +510,7 @@ namespace TroveSkip.ViewModels
             _dispatcher.InvokeAsync(ForceSprint);
             _dispatcher.InvokeAsync(ForceSpeed);
             _dispatcher.InvokeAsync(HooksUpdate);
+            _dispatcher.InvokeAsync(FollowUpdate);
         }
 
         private void HideWindow()
@@ -459,9 +548,9 @@ namespace TroveSkip.ViewModels
                 var handle = process.Handle;
                 var caveLength = _antiAfkCave.Length + 5;
                 var hAlloc = VirtualAllocEx(handle, 0, caveLength, AllocationType.Commit,
-                    MemoryProtection.ExecuteReadWrite);
+                    MemoryProtection.ExecuteRead);
 
-                VirtualProtectEx(handle, hAlloc, caveLength, MemoryProtection.Execute, out _);
+                //VirtualProtectEx(handle, hAlloc, caveLength, MemoryProtection.ExecuteRead, out _);
 
                 WriteMemory(handle, hAlloc, AsmJump((ulong) address + 6, (ulong) hAlloc, _antiAfkCave));
                 WriteMemory(handle, address, AsmJump((ulong) hAlloc, (ulong) address));
@@ -524,21 +613,26 @@ namespace TroveSkip.ViewModels
 
             MessageBox.Show("Open chat and Press ok\nDONT close chat till address found\n(dialogue with info will appear)");
 
-            var moduleAddress = (int) HookModel.Module.BaseAddress;
-            _baseAddress = _chatBaseAddress = 0;
-
-            for (int i = 16_000_000; i < 19_000_000; i++)
+            _baseAddress = _chatBaseAddress = _settingsBaseAddress = 0;
+            
+            for (int i = 16_150_000; i < 19_000_000; i++)
             {
                 var found = false;
-                _dispatcher.Invoke(() => { found = FindBaseAddress(moduleAddress, i); });
+                _dispatcher.Invoke(() => { found = FindBaseAddresses(i); });
                 
                 if (found)
                     break;
             }
 
+            for (int i = _chatBaseAddress - 4096; i < _chatBaseAddress + 4096; i++)
+            {
+                if (FindCharacterBaseAddress(i))
+                    break;
+            }
+
             SearchWindowVisibility = Visibility.Hidden;
-            MessageBox.Show(new StringBuilder().Append("Base address: ").Append(BaseAddress).Append("\nChat address: ")
-                .Append(_chatBaseAddress.ToString("X8")).Append("\n").ToString());
+            MessageBox.Show(new StringBuilder().Append("Base address: ").AppendLine(BaseAddress).Append("Chat address: ")
+                .AppendLine(_chatBaseAddress.ToString("X8")).Append("Settings address: ").AppendLine(_settingsBaseAddress.ToString("X8")).ToString());
         }
 
         private readonly Type _keyType = typeof(Key);
@@ -564,10 +658,12 @@ namespace TroveSkip.ViewModels
 
             BaseAddress = _settings.BaseAddress;
             _chatBaseAddress = Convert.ToInt32(_settings.ChatBaseAddress, 16);
+            _settingsBaseAddress = Convert.ToInt32(_settings.SettingsBaseAddress, 16);
             SprintValue = _settings.SprintValue;
             SkipValue = _settings.SkipValue;
             JumpForceValue = _settings.JumpForceValue;
             SpeedHackValue = _settings.SpeedHackValue;
+            FollowSpeedValue = _settings.FollowSpeedValue;
             FollowApp = _settings.FollowApp;
         }
         
@@ -602,6 +698,11 @@ namespace TroveSkip.ViewModels
                 else
                 {
                     Hooks.Add(hook);
+                    if (FollowPrimary)
+                    {
+                        _lastSettings.Add(hook.Id, ReadSettings(ref hook));
+                        WriteSettings(ref hook, _nullSettings);
+                    }
                 }
 
                 EnableAntiAfk(process);
@@ -624,8 +725,8 @@ namespace TroveSkip.ViewModels
         
         private void Skip()
         {
-            var xposAdd = GetAddress(_xPosition);
-            var xviewAdd = GetAddress(_xView);
+            var xposAdd = GetAddress(XPosition);
+            var xviewAdd = GetAddress(XView);
 
             WriteFloat(xposAdd, ReadFloat(xviewAdd) * SkipValue + ReadFloat(xposAdd));
             WriteFloat(xposAdd + 4, ReadFloat(xviewAdd + 4) * SkipValue + ReadFloat(xposAdd + 4));
@@ -635,7 +736,7 @@ namespace TroveSkip.ViewModels
         private void SuperJump()
         {
             if (!JumpCheck || GameClosed() || NotFocused()) return;
-            WriteFloat(_yPosition, ReadFloat(_yPosition) + JumpForceValue);
+            WriteFloat(YPosition, ReadFloat(YPosition) + JumpForceValue);
         }
         
         private async void ForceSprint()
@@ -646,8 +747,8 @@ namespace TroveSkip.ViewModels
                 while (!SprintCheck || !IsPressed(_binds[nameof(SprintButton)]) || GameClosed() || NotFocused())
                     await Task.Delay(10);
                 
-                var xviewAdd = GetAddress(_xView);
-                var velocityAdd = GetAddress(_xVelocity);
+                var xviewAdd = GetAddress(XView);
+                var velocityAdd = GetAddress(XVelocity);
                 
                 WriteFloat(velocityAdd, ReadFloat(xviewAdd) * SprintValue);
                 WriteFloat(velocityAdd + 4, ReadFloat(xviewAdd + 4) * SprintValue);
@@ -831,6 +932,50 @@ namespace TroveSkip.ViewModels
             }
         }
 
+        private async void FollowUpdate()
+        {
+            while (true)
+            {
+                await Task.Delay(50);
+                if (!FollowPrimary)
+                {
+                    await Task.Delay(50);
+                    continue;
+                }
+
+                //DONT REPEAT THIS AT HOME!!!
+                var xPosAdd = GetAddress(XPosition);
+                var sourceX = ReadFloat(xPosAdd);
+                var sourceY = ReadFloat(xPosAdd + 4);
+                var sourceZ = ReadFloat(xPosAdd + 8);
+
+                int xVelocity;
+                foreach (var hook in Hooks)
+                {
+                    if (hook.IsPrimary) continue;
+
+                    var handle = hook.Handle;
+                    xPosAdd = GetAddress(handle, XPosition);
+                    var xDiff = sourceX - ReadFloat(handle, xPosAdd);
+                    var yDiff = sourceY - ReadFloat(handle, xPosAdd + 4);
+                    var zDiff = sourceZ - ReadFloat(handle, xPosAdd + 8);
+                    
+                    xVelocity = GetAddress(handle, XVelocity);
+                    if (Math.Abs(xDiff) < 2 && Math.Abs(yDiff) < 2 && Math.Abs(zDiff) < 2)
+                    {
+                        WriteMemory(xVelocity, _nullBytes);
+                    }
+                    else
+                    {
+                        var length = (float) Math.Sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
+                        WriteFloat(handle, xVelocity, xDiff / length * FollowSpeedValue);
+                        WriteFloat(handle, xVelocity + 4, yDiff / length * FollowSpeedValue);
+                        WriteFloat(handle, xVelocity + 8, zDiff / length * FollowSpeedValue);
+                    }
+                }
+            }
+        }
+
         private unsafe string GetName(IntPtr handle)
         {
             var buffer = new byte[16];
@@ -869,10 +1014,12 @@ namespace TroveSkip.ViewModels
         {
             _settings.BaseAddress = BaseAddress;
             _settings.ChatBaseAddress = _chatBaseAddress.ToString("X8");
+            _settings.SettingsBaseAddress = _settingsBaseAddress.ToString("X8");
             _settings.SkipValue = SkipValue;
             _settings.SprintValue = SprintValue;
             _settings.JumpForceValue = JumpForceValue;
             _settings.SpeedHackValue = SpeedHackValue;
+            _settings.FollowSpeedValue = FollowSpeedValue;
             _settings.SkipButton = _binds[nameof(SkipButton)].ToString();
             _settings.SprintButton = _binds[nameof(SprintButton)].ToString();
             _settings.SprintToggleButton = _binds[nameof(SprintToggleButton)].ToString();
@@ -889,50 +1036,148 @@ namespace TroveSkip.ViewModels
             return _pressedKeys[key];
         }
 
-        private unsafe bool FindBaseAddress(int baseAdd, int i)
+        private unsafe (float, float, float) ReadSettings(int baseAddress)
         {
             var buffer = stackalloc byte[4];
-            var num = (int*) buffer;
-            var source = baseAdd + i;
-            var address = source;
-            foreach (var offset in _xPosition)
+            var intBuffer = (int*) buffer;
+            var floatBuffer = (float*) buffer;
+            ReadMemory(baseAddress, buffer);
+            baseAddress = *intBuffer;
+            
+            var address = baseAddress + IdkObject[0];
+            ReadMemory(address, buffer);
+            var idkObject = *floatBuffer;
+            
+            if (idkObject == 150)
             {
+                address = baseAddress + DrawDistance[0];
                 ReadMemory(address, buffer);
-                address = *num + offset;
+                var drawDistance = *floatBuffer;
+                
+                if (drawDistance >= 32 && drawDistance <= 210)
+                {
+                    address = baseAddress + HalfDrawDistance[0];
+                    ReadMemory(address, buffer);
+                    var halfDrawDistance = *floatBuffer;
+                    
+                    if (halfDrawDistance == Math.Min(96, drawDistance / 2))
+                    {
+                        return (drawDistance, halfDrawDistance, idkObject);
+                    }
+                }
+
             }
 
+            return (0, 0, 0);
+        }
+
+        private unsafe (float, float, float) ReadSettings(ref HookModel hook, int baseAddress)
+        {
+            var handle = hook.Handle;
+            var buffer = stackalloc byte[4];
+            var intBuffer = (int*) buffer;
+            var floatBuffer = (float*) buffer;
+            ReadMemory(handle, baseAddress, buffer);
+            var address = *intBuffer + IdkObject[0];
+            ReadMemory(handle, address, buffer);
+            var idkObject = *floatBuffer;
+            if (idkObject == 150)
+            {
+                ReadMemory(handle, baseAddress, buffer);
+                address = *intBuffer + DrawDistance[0];
+                ReadMemory(handle, address, buffer);
+                var drawDistance = *floatBuffer;
+
+                if (drawDistance >= 32 && drawDistance <= 210)
+                {
+                    ReadMemory(handle, baseAddress, buffer);
+                    address = *intBuffer + DrawDistance[0];
+                    ReadMemory(handle, address, buffer);
+                    var halfDrawDistance = *floatBuffer;
+
+                    if (halfDrawDistance == Math.Min(96, drawDistance / 2))
+                    {
+                        return (drawDistance, halfDrawDistance, idkObject);
+                    }
+                }
+            }
+
+            return (0, 0, 0);
+        }
+
+        private (float, float, float) ReadSettings(ref HookModel hook) => ReadSettings(ref hook, hook.ModuleAddress + _settingsBaseAddress);
+
+        private void WriteSettings(ref HookModel hook, (float, float, float) settings)
+        {
+            var handle = hook.Handle;
+            var halfDrawDistanceAdd = GetAddress(handle, HalfDrawDistance);
+            WriteFloat(handle, halfDrawDistanceAdd, settings.Item2);
+            WriteFloat(handle, halfDrawDistanceAdd + 4, settings.Item3);
+            WriteFloat(handle, halfDrawDistanceAdd + 0x24, settings.Item1);
+        }
+
+        private unsafe bool FindBaseAddresses(int i)
+        {
+            var buffer = stackalloc byte[4];
+            var intBuffer = (int*) buffer;
+            var address = _currentModuleAddress + i;
             ReadMemory(address, buffer);
+            var source = *intBuffer;
+            
+            if (_settingsBaseAddress == 0)
+            {
+                var settings = ReadSettings(address);
+                if (settings.Item1 != 0)
+                {
+                    _settingsBaseAddress = i;
+                    return _chatBaseAddress != 0;
+                }
+            }
+            
+            if (_chatBaseAddress == 0)
+            {
+                address = source + ChatOpenedOffsets[0];
+                ReadMemory(address, buffer);
+                var opened = *buffer == 1;
+                var valid = opened || *buffer == 0;
+
+                if (valid && opened)
+                {
+                    address = source + ChatOpenedOffsets[1];
+                    ReadMemory(address, buffer);
+                    if (*intBuffer == 841)
+                    {
+                        _chatBaseAddress = i;
+                        //return _baseAddress != 0;
+                        return _settingsBaseAddress != 0;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private unsafe bool FindCharacterBaseAddress(int i)
+        {
+            if (_baseAddress != 0) return false;
+            
+            var buffer = stackalloc byte[4];
+            var intBuffer = (int*) buffer;
+            var address = _currentModuleAddress + i;
+            ReadMemory(address, buffer);
+                    
+            foreach (var offset in XPosition)
+            {
+                address = *intBuffer + offset;
+                ReadMemory(address, buffer);
+            }
+
             var value = *(float*) buffer;
-
-            address = source;
-            ReadMemory(address, buffer);
-            address = *num + ChatOpenedOffsets[0];
-            ReadMemory(address, buffer);
-            var opened = *buffer == 1;
-            var valid = opened || *buffer == 0;
-
-            address = source;
-            foreach (var offset in new[] {ChatOpenedOffsets[1]})
-            {
-                ReadMemory(address, buffer);
-                address = *num + offset;
-            }
-
-            ReadMemory(address, buffer);
-            var idk = *num == 841;
-
-            if (valid && opened && idk)
-            {
-                _chatBaseAddress = i;
-                if (_baseAddress != 0)
-                    return true;
-            }
-
-            if (value != 0 && value > XCoordinate - 1 && value < XCoordinate + 1)
+            
+            if (value > XCoordinate - 1 && value < XCoordinate + 1)
             {
                 BaseAddress = i.ToString("X8");
-                if (_chatBaseAddress != 0)
-                    return true;
+                return true;
             }
 
             return false;

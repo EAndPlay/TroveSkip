@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:TroveSkip"
         xmlns:viewModels="clr-namespace:TroveSkip.ViewModels"
         mc:Ignorable="d"
-        Title="Not a cheat" Width="354" Height="287"
+        Title="Not a cheat" Width="354" Height="324"
         WindowStyle="None"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
@@ -306,13 +306,31 @@
                 <TextBox Text="{Binding SpeedHackValue, StringFormat={}{0:0}, UpdateSourceTrigger=PropertyChanged}"/>
                 <CheckBox IsChecked="{Binding SpeedCheck, UpdateSourceTrigger=PropertyChanged}">SpeedHack</CheckBox>
             </StackPanel>
+            <StackPanel Margin="5 155 0 0">
+                <TextBox Text="{Binding FollowSpeedValue, StringFormat={}{0:0}, UpdateSourceTrigger=PropertyChanged}"/>
+                <CheckBox IsChecked="{Binding FollowPrimary, UpdateSourceTrigger=PropertyChanged}">Follow Bots</CheckBox>
+            </StackPanel>
             
             <!-- <CheckBox Checked="AfkChecked" Unchecked="AfkUnChecked" Margin="65 160 0 0">Anti-AFK</CheckBox> -->
-            <CheckBox Name="MapCheck" Content="Map Hack" IsChecked="{Binding MapCheck}" Command="{Binding MapCheckCommand}" CommandParameter="{Binding ElementName=MapCheck}" Margin="65 155 0 0"/>
-            <CheckBox Name="ZoomCheck" Content="Zoom Hack" IsChecked="{Binding ZoomCheck}" Command="{Binding ZoomCheckCommand}" CommandParameter="{Binding ElementName=ZoomCheck}" Margin="65 180 0 0"/>
-            <CheckBox Name="FovCheck" Content="Fov Hack" IsChecked="{Binding FovCheck}" Command="{Binding FovCheckCommand}" CommandParameter="{Binding ElementName=FovCheck}" Margin="65 205 0 0"/>
-            <CheckBox Name="ChamsCheck" Content="Chams Monster" IsChecked="{Binding ChamsCheck}" Command="{Binding ChamsCheckCommand}" CommandParameter="{Binding ElementName=ChamsCheck}" Margin="65 230 0 0"/>
-            <CheckBox Name="MiningCheck" Content="Insta-Mining" IsChecked="{Binding MiningCheck}" Command="{Binding MiningCheckCommand}" CommandParameter="{Binding ElementName=MiningCheck}" Margin="65 255 0 0"/>
+            <CheckBox Name="MapCheck" Content="Map Hack" IsChecked="{Binding MapCheck}" Command="{Binding MapCheckCommand}" CommandParameter="{Binding ElementName=MapCheck}" Margin="65 183 0 0"/>
+            <CheckBox Name="ZoomCheck" Content="Zoom Hack" IsChecked="{Binding ZoomCheck}" Command="{Binding ZoomCheckCommand}" CommandParameter="{Binding ElementName=ZoomCheck}" Margin="65 208 0 0"/>
+            <CheckBox Name="FovCheck" Content="Fov Hack" IsChecked="{Binding FovCheck}" Command="{Binding FovCheckCommand}" CommandParameter="{Binding ElementName=FovCheck}" Margin="65 233 0 0"/>
+            <CheckBox Name="ChamsCheck" Content="Chams Monster" IsChecked="{Binding ChamsCheck}" Command="{Binding ChamsCheckCommand}" CommandParameter="{Binding ElementName=ChamsCheck}" Margin="65 258 0 0"/>
+            <CheckBox Name="MiningCheck" Content="Insta-Mining" IsChecked="{Binding MiningCheck}" Command="{Binding MiningCheckCommand}" CommandParameter="{Binding ElementName=MiningCheck}" Margin="65 283 0 0"/>
+            
+            <Path Stroke="#1E1E1E" StrokeThickness="2" Fill="#1E1E1E">
+                <Path.Data>
+                    <PathGeometry>
+                        <PathGeometry.Figures>
+                            <PathFigureCollection>
+                                <PathFigure StartPoint="65 181">
+                                    <PolyLineSegment Points="202 181"/>
+                                </PathFigure>
+                            </PathFigureCollection>
+                        </PathGeometry.Figures>
+                    </PathGeometry>
+                </Path.Data>
+            </Path>
         </Grid>
         <StackPanel Margin="0 31 0 0" Visibility="{Binding SettingsPageVisibility}" Orientation="Vertical">
             <StackPanel>

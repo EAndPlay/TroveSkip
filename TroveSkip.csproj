@@ -134,6 +134,10 @@
     <Compile Include="Models\HookModel.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Settings.cs" />
+    <Compile Include="SettingsParsers\FloatParser.cs" />
+    <Compile Include="SettingsParsers\IntParser.cs" />
+    <Compile Include="SettingsParsers\ISettingParser.cs" />
+    <Compile Include="SettingsParsers\StringParser.cs" />
     <Compile Include="UserActivityHook.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>

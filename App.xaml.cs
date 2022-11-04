@@ -15,12 +15,14 @@ namespace TroveSkip
     {
         private void App_OnStartup(object sender, StartupEventArgs e)
         {
-            Application.Current.DispatcherUnhandledException += CurrentOnDispatcherUnhandledException;
+            Current.DispatcherUnhandledException += OnDispatcherUnhandledException;
+            
+            //for invoke from other path
             if (e.Args.Length > 0)
-                Settings.Path = e.Args[0] + "/" + Settings.Path;
+                Settings.path = e.Args[0] + "/" + Settings.path;
         }
 
-        private void CurrentOnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             MessageBox.Show(e.Exception.Message + '\n' + e.Exception.StackTrace);
         }
