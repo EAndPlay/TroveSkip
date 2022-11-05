@@ -7,7 +7,6 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json;
-using TroveSkip.Parsers;
 
 namespace TroveSkip
 {

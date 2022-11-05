@@ -1,4 +1,4 @@
-﻿namespace TroveSkip.Parsers
+﻿namespace TroveSkip.SettingsParsers
 {
     public class StringParser : ISettingParser
     {

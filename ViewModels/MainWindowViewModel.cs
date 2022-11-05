@@ -6,7 +6,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -31,7 +30,7 @@ namespace TroveSkip.ViewModels
         private HookModel _hookModel;
         private IntPtr _handle;
 
-        public HookModel HookModel
+        public unsafe HookModel HookModel
         {
             get => _hookModel;
             set
@@ -42,25 +41,30 @@ namespace TroveSkip.ViewModels
                     {
                         _currentModuleAddress = (int)value.Module.BaseAddress;
                         _currentBaseAddress = _currentModuleAddress + _baseAddress;
+                        
+                        fixed (int* pointer = &_currentBaseAddress)
+                            ReadProcessMemory(value.Handle, _currentBaseAddress, pointer, 4, out _);
                         _currentSettingsAddress = _currentModuleAddress + _settingsBaseAddress;
-                        unsafe
-                        {
-                            _currentChatStateAddress = _currentModuleAddress + _chatBaseAddress; //+ 0x98 ; 00FD9E20
-                            var buffer = stackalloc byte[4];
-                            ReadMemory(_currentChatStateAddress, buffer);
-                            _currentChatStateAddress = *(int*) buffer + ChatOpenedOffsets[0];
-                        }
+                        
+                        _currentChatStateAddress = _currentModuleAddress + _chatBaseAddress; //+ 0x98 ; 00FD9E20
+                        var buffer = stackalloc byte[4];
+                        ReadMemory(_currentChatStateAddress, buffer);
+                        _currentChatStateAddress = *(int*) buffer + ChatOpenedOffsets[0];
 
-                        int id;
+                        // int id;
                         if (_hookModel != null)
                         {
                             _hookModel.IsPrimary = false;
-                            id = _hookModel.Id;
                             if (FollowPrimary)
                             {
-                                _lastSettings.Add(id, ReadSettings(_settingsBaseAddress));
-                                WriteSettings(ref _hookModel, _nullSettings);
+                                OverwriteBytes(_noClip, _noClipEnabled);
                             }
+                            // id = _hookModel.Id;
+                            // if (FollowPrimary)
+                            // {
+                            //     _lastSettings.Add(id, ReadSettings(_settingsBaseAddress));
+                            //     WriteSettings(ref _hookModel, _nullSettings);
+                            // }
                         }
 
                         _hookModel = value;
@@ -77,11 +81,15 @@ namespace TroveSkip.ViewModels
                         ChamsCheck = _hookModel.ChamsCheck;
                         MiningCheck = _hookModel.MiningCheck;
                         _hookModel.IsPrimary = true;
+                        // if (FollowPrimary)
+                        // {
+                        //     id = _hookModel.Id;
+                        //     WriteSettings(ref _hookModel, _lastSettings[id]);
+                        //     _lastSettings.Remove(id);
+                        // }
                         if (FollowPrimary)
                         {
-                            id = _hookModel.Id;
-                            WriteSettings(ref _hookModel, _lastSettings[id]);
-                            _lastSettings.Remove(id);
+                            OverwriteBytes(_noClipEnabled, _noClip);
                         }
                         EnableAntiAfk();
                     }
@@ -102,10 +110,10 @@ namespace TroveSkip.ViewModels
         private readonly Dictionary<string, Key> _binds = new();
         private readonly Dictionary<Key, bool> _pressedKeys = new();
         private readonly List<int> _antiAfkList = new();
-        private readonly Dictionary<int, (float, float, float)> _lastSettings = new();
+        //private readonly Dictionary<int, (float, float, float)> _lastSettings = new();
 
         private readonly (float, float, float) _nullSettings = (0, 0, 0);
-        private readonly byte[] _nullBytes = new byte[12];
+        //private readonly byte[] _nullBytes = new byte[12];
 
         private Settings _settings;
         private readonly UserActivityHook _activityHook = new(false, true);
@@ -441,6 +449,24 @@ namespace TroveSkip.ViewModels
             set
             {
                 _followPrimary = value;
+                if (value)
+                {
+                    foreach (var hook in Hooks)
+                    {
+                        if (hook.IsPrimary) continue;
+                        
+                        OverwriteBytes(hook, _noClip, _noClipEnabled);
+                    }
+                }
+                else
+                {
+                    foreach (var hook in Hooks)
+                    {
+                        if (hook.IsPrimary) continue;
+                        
+                        OverwriteBytes(hook, _noClipEnabled, _noClip);
+                    }
+                }
                 OnPropertyChanged();
             }
         }
@@ -521,6 +547,14 @@ namespace TroveSkip.ViewModels
 
         private void CloseWindow()
         {
+            if (FollowPrimary)
+            {
+                foreach (var hook in Hooks)
+                {
+                    if (hook.IsPrimary) continue;
+                    OverwriteBytes(hook, _noClipEnabled, _noClip);
+                }
+            }
             SaveCurrent();
             _settings.Save();
             Environment.Exit(0);
@@ -685,27 +719,32 @@ namespace TroveSkip.ViewModels
                 var handle = process.Handle;
                 var name = GetName(handle);
                 var hook = new HookModel(process, name);
-                var copy = Hooks.FirstOrDefault(x => x.Id == process.Id);
-                if (copy != null)
+                try
                 {
-                    if (copy.Name.Length == 0 && name.Length > 0)
+                    var copy = Hooks.FirstOrDefault(x => x.Id == process.Id);
+                    if (copy != null)
                     {
-                        var index = Hooks.IndexOf(copy);
-                        hook = new HookModel(copy, name);
-                        Hooks[index] = hook;
+                        if (copy.Name.Length == 0 && name.Length > 0)
+                        {
+                            var index = Hooks.IndexOf(copy);
+                            hook = new HookModel(copy, name);
+                            Hooks[index] = hook;
+                        }
                     }
-                }
-                else
-                {
-                    Hooks.Add(hook);
-                    if (FollowPrimary)
+                    else
                     {
-                        _lastSettings.Add(hook.Id, ReadSettings(ref hook));
-                        WriteSettings(ref hook, _nullSettings);
+                        Hooks.Add(hook);
+                        // if (FollowPrimary)
+                        // {
+                        //     _lastSettings.Add(hook.Id, ReadSettings(ref hook));
+                        //     WriteSettings(ref hook, _nullSettings);
+                        // }
                     }
-                }
 
-                EnableAntiAfk(process);
+                    if (!_antiAfkList.Contains(process.Id))
+                        EnableAntiAfk(process);
+                }
+                catch{}
             }
 
             foreach (var hook in Hooks)
@@ -817,7 +856,8 @@ namespace TroveSkip.ViewModels
                 var processList = Process.GetProcessesByName("Trove");
                 foreach (var process in processList)
                 {
-                    EnableAntiAfk(process);
+                    if (!_antiAfkList.Contains(process.Id))
+                        EnableAntiAfk(process);
                 }
             }
         }
@@ -936,7 +976,7 @@ namespace TroveSkip.ViewModels
         {
             while (true)
             {
-                await Task.Delay(50);
+                await Task.Delay(1);
                 if (!FollowPrimary)
                 {
                     await Task.Delay(50);
@@ -961,13 +1001,15 @@ namespace TroveSkip.ViewModels
                     var zDiff = sourceZ - ReadFloat(handle, xPosAdd + 8);
                     
                     xVelocity = GetAddress(handle, XVelocity);
-                    if (Math.Abs(xDiff) < 2 && Math.Abs(yDiff) < 2 && Math.Abs(zDiff) < 2)
+                    var length = (float) Math.Sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
+                    if (Math.Abs(xDiff) < 1 && Math.Abs(yDiff) < 1 && Math.Abs(zDiff) < 1)
                     {
-                        WriteMemory(xVelocity, _nullBytes);
+                        WriteFloat(handle, xVelocity, xDiff / length * 3);
+                        WriteFloat(handle, xVelocity + 4, yDiff / length * 3);
+                        WriteFloat(handle, xVelocity + 8, zDiff / length * 3);
                     }
                     else
                     {
-                        var length = (float) Math.Sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
                         WriteFloat(handle, xVelocity, xDiff / length * FollowSpeedValue);
                         WriteFloat(handle, xVelocity + 4, yDiff / length * FollowSpeedValue);
                         WriteFloat(handle, xVelocity + 8, zDiff / length * FollowSpeedValue);

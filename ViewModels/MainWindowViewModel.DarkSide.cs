@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
+using TroveSkip.Models;
 
 namespace TroveSkip.ViewModels
 {
@@ -31,21 +32,27 @@ namespace TroveSkip.ViewModels
 //baseAddress + (0xCFC | 0xD1C) = Players amount in current world (not actual)
 //baseAddress: [0x8, 0x28] = [0x4, 0x11C]
 
-        private static readonly int[] CoordsOffsets = { 0x8, 0x28, 0xC4, 0x4 };
-        private static readonly int[] AccelOffsets = { 0x8, 0x28, 0xC4, 0x4 };
+        private static readonly int[] PlayerOffsets = { 0x8, 0x28 };
+        private static readonly int[] CharactersOffsets = PlayerOffsets.Join(0xC4);
         private static readonly int[] ViewOffsets = { 0x4, 0x24, 0x84, 0x0 };
         private static readonly int[] NameOffests = { 0x8, 0x28, 0x1B4, 0x0 };
-	    private static readonly int[] ChatOpenedOffsets = { 0x20, 0x1C };
-        private static readonly int[] PowerRankOffsets = { 0x8, 0x28, 0xC4, 0x2D4, 0x200 };
-        private static readonly int[] StatsEncKeyOffsets = { 0x8, 0x28, 0xC4, 0x2D4, 0x21C };
+        
+        private static readonly int[] MoveOffsets = CharactersOffsets.Join(0x4);
+        private static readonly int[] XPosition = MoveOffsets.Join(0x60);
+        private static readonly int[] YPosition = MoveOffsets.Join(0x64);
+        private static readonly int[] XVelocity = MoveOffsets.Join(0x90);
+        //private static readonly int[] GravityOffsets = MoveOffsets.Join(0xB8);
+
+        private static readonly int[] StatsOffset = CharactersOffsets.Join(0x2D4);
+        private static readonly int[] PowerRankOffsets = StatsOffset.Join(0x200);
+        private static readonly int[] StatsEncKeyOffsets = StatsOffset.Join(0x21C);
+        private static readonly int[] XView = ViewOffsets.Join(0x100);
+        
+        private static readonly int[] ChatOpenedOffsets = { 0x20, 0x1C };
+        
         private static readonly int[] HalfDrawDistance = { 0x4 };
         private static readonly int[] IdkObject = { 0x8 };
         private static readonly int[] DrawDistance = { 0x28 };
-        
-        private static readonly int[] XPosition = CoordsOffsets.Join(0x60);
-        private static readonly int[] YPosition = CoordsOffsets.Join(0x64);
-        private static readonly int[] XVelocity = AccelOffsets.Join(0x90);
-        private static readonly int[] XView = ViewOffsets.Join(0x100);
 
         //private readonly int[] MaxCamDist = { 0x4, 0x3C };
         //private readonly int[] MinCamDist = { 0x4, 0x38 };
@@ -93,6 +100,10 @@ namespace TroveSkip.ViewModels
 
         private readonly int[] _chamsMonstersEnabled = { 0x0F, 0x29, 0x0F, 0x8B, 0xC7, 0x5F, 0x5E, 0x8B, 0xE5, 0x5D, 0x8B };
 
+        private readonly int[] _noClip = { 0x0F, 0x84, 0xF0, 0x05, 0x00, 0x00, 0x0F, 0x28, 0x45, 0xE0, 0x0F, 0x28, 0x65, 0xD0 };
+        
+        private readonly int[] _noClipEnabled = { 0x0F, 0x87, 0xF0, 0x05, 0x00, 0x00, 0x0F, 0x28, 0x45, 0xE0, 0x0F, 0x28, 0x65, 0xD0 };
+        
         #endregion
 
         private unsafe int ReadInt(int[] offsets)
@@ -113,6 +124,14 @@ namespace TroveSkip.ViewModels
 
         private unsafe float ReadFloat(int[] offsets)
         {
+            // var add = _currentBaseAddress;
+            // ReadProcessMemory(_handle, add, &add, 4, out _);
+            // foreach (var offset in offsets)
+            // {
+            //     ReadProcessMemory(_handle, add + offset, &add, 4, out _);
+            // }
+            //
+            // return *(float*) &add;
             fixed (byte* p = GetBuffer(offsets))
             {
                 return *(float*) p;
@@ -165,6 +184,31 @@ namespace TroveSkip.ViewModels
 
             WriteMemory(address, val);
         }
+        
+        private unsafe void OverwriteBytes(HookModel hook, int[] pattern, int[] bytes)
+        {
+            var address = FindSignature(pattern, hook.Process);
+            //_dispatcher.Invoke(() => address = Addresses.ContainsKey(pattern) ? (IntPtr) Addresses[pattern] : (IntPtr) FindSignature(pattern));
+            if (address == 0) return;
+
+            var handle = hook.Handle;
+            var val = new byte[bytes.Length];
+            var buffer = new byte[pattern.Length];
+            ReadMemory(handle, address, buffer);
+
+            fixed (byte* newCode = val)
+            {
+                fixed (int* code = bytes, offset = pattern)
+                {
+                    for (var i = 0; i < pattern.Length; i++)
+                    {
+                        *(newCode + i) = *(offset + i) == -1 || *(code + i) == -1 ? buffer[i] : (byte) *(code + i);
+                    }
+                }
+            }
+
+            WriteMemory(handle, address, val);
+        }
 
         private unsafe int FindSignature(int[] pattern, Process process = null)
         {
@@ -212,6 +256,7 @@ namespace TroveSkip.ViewModels
         
         private void ReadMemory(int address, byte[] buffer) => ReadProcessMemory(_handle, address, buffer, buffer.Length, out _);
         private unsafe void ReadMemory(int address, byte* buffer) => ReadProcessMemory(_handle, address, buffer, 4, out _);
+        private unsafe void ReadMemory(int* address) => ReadProcessMemory(_handle, *address, address, 4, out _);
         private void WriteMemory(int address, byte[] buffer) => WriteProcessMemory(_handle, address, buffer, buffer.Length, out _);
         private void ReadMemory(IntPtr handle, int address, byte[] buffer) => ReadProcessMemory(handle, address, buffer, buffer.Length, out _);
         private unsafe void ReadMemory(IntPtr handle, int address, byte* buffer) => ReadProcessMemory(handle, address, buffer, 4, out _);
@@ -219,9 +264,16 @@ namespace TroveSkip.ViewModels
 
         private unsafe int GetAddress(IEnumerable<int> offsets)
         {
+            // var add = _currentBaseAddress;
+            // ReadProcessMemory(_handle, add, &add, 4, out _);
+            // foreach (var offset in offsets)
+            // {
+            //     ReadProcessMemory(_handle, add + offset, &add, 4, out _);
+            // }
             var bytes = stackalloc byte[4];
             var address = _currentBaseAddress;
             var num = (int*) bytes;
+            
             foreach (var offset in offsets)
             {
                 ReadMemory(address, bytes);
@@ -397,19 +449,27 @@ namespace TroveSkip.ViewModels
 
         [DllImport("kernel32.dll")]
         private static extern bool ReadProcessMemory(
-            IntPtr hProcess, 
-            int lpBaseAddress, 
-            byte[] lpBuffer, 
-            int dwSize, 
-            out IntPtr lpNumberOfBytesRead);
+            IntPtr handle, 
+            int address, 
+            byte[] buffer, 
+            int size, 
+            out IntPtr numberOfBytesRead);
         
         [DllImport("kernel32.dll")]
         private static extern unsafe bool ReadProcessMemory(
-            IntPtr hProcess, 
-            int lpBaseAddress, 
-            byte* lpBuffer, 
-            int dwSize, 
-            out IntPtr lpNumberOfBytesRead);
+            IntPtr handle, 
+            int address, 
+            byte* buffer, 
+            int size, 
+            out IntPtr numberOfBytesRead);
+            
+        [DllImport("kernel32.dll")]
+        private static extern unsafe bool ReadProcessMemory(
+            IntPtr handle, 
+            int address, 
+            int* buffer, 
+            int size, 
+            out IntPtr numberOfBytesRead);
         
         [DllImport("kernel32.dll")]
         private static extern bool WriteProcessMemory(

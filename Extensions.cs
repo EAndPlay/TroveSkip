@@ -9,7 +9,7 @@ namespace TroveSkip
         /// </summary>
         /// <param name="to"></param>
         /// <param name="from"></param>
-        public static int[] Join(this int[] to, int[] from)
+        public static int[] Join(this int[] to, params int[] from)
         {
             var output = (int[])to.Clone();
             Array.Resize(ref output, from.Length + to.Length);
