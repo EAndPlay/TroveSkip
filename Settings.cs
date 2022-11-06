@@ -1,21 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json;
+using TroveSkip.SettingsParsers;
 
 namespace TroveSkip
 {
     [Serializable]
     public class Settings
     {
-        public string BaseAddress;
+        public string PlayerBaseAddress;
         public string ChatBaseAddress;
         public string SettingsBaseAddress;
+        public string GameGlobalsBaseAddress;
 
         public string SkipButton;
         public string SprintButton;
@@ -30,12 +33,11 @@ namespace TroveSkip
         public int SpeedHackValue;
         public float FollowSpeedValue;
 
-        //public bool SearchOnLoad;
         public bool FollowApp;
 
         public Settings()
         {
-            BaseAddress = ChatBaseAddress = SettingsBaseAddress = new string('0', 8);
+            PlayerBaseAddress = ChatBaseAddress = SettingsBaseAddress = new string('0', 8);
             SprintButton = Key.LeftShift.ToString();
             JumpButton = Key.Space.ToString();
             SkipButton = Key.D3.ToString();
@@ -46,35 +48,35 @@ namespace TroveSkip
             SkipValue = 4;
             SprintValue = FollowSpeedValue = 40;
             JumpForceValue = 4;
-            SpeedHackValue = 350;
+            SpeedHackValue = 200;
         }
         
-        // [NonSerialized] private static readonly Dictionary<string[], ISettingParser> Parsers = new();
+        // [NonSerialized] private static readonly Dictionary<Type, ISettingParser> Parsers = new();
         //
         // static Settings()
         // {
-        //     var fields = typeof(Settings).GetFields();
-        //     var strings = new List<string>();
-        //     var ints = new List<string>();
-        //     var floats = new List<string>();
-        //     foreach (var field in fields)
-        //     {
-        //         if (field.FieldType == typeof(string))
-        //         {
-        //             strings.Add(field.Name);
-        //         }
-        //         else if (field.FieldType == typeof(int))
-        //         {
-        //             ints.Add(field.Name);
-        //         }
-        //         else if (field.FieldType == typeof(float))
-        //         {
-        //             floats.Add(field.Name);
-        //         }
-        //     }
-        //     Parsers.Add(strings.ToArray(), new StringParser());
-        //     Parsers.Add(ints.ToArray(), new IntParser());
-        //     Parsers.Add(floats.ToArray(), new FloatParser());
+        //     // var fields = typeof(Settings).GetFields();
+        //     // var strings = new List<string>();
+        //     // var ints = new List<string>();
+        //     // var floats = new List<string>();
+        //     // foreach (var field in fields)
+        //     // {
+        //     //     if (field.FieldType == typeof(string))
+        //     //     {
+        //     //         strings.Add(field.Name);
+        //     //     }
+        //     //     else if (field.FieldType == typeof(int))
+        //     //     {
+        //     //         ints.Add(field.Name);
+        //     //     }
+        //     //     else if (field.FieldType == typeof(float))
+        //     //     {
+        //     //         floats.Add(field.Name);
+        //     //     }
+        //     // }
+        //     Parsers.Add(typeof(string), new StringParser());
+        //     Parsers.Add(typeof(int), new IntParser());
+        //     Parsers.Add(typeof(float), new FloatParser());
         // }
 
         [NonSerialized] internal static string path = "settings.json";
@@ -94,6 +96,15 @@ namespace TroveSkip
                 MessageBox.Show("Loaded settings file are broken. Some settings could switch to default");
                 foreach (var line in File.ReadLines(path))
                 {
+                    //// var it = typeof(Settings);
+                    //// foreach (var field in it.GetFields())
+                    //// {
+                    ////     var fieldType = field.FieldType;
+                    ////     if (line.Contains(field.Name) && Parsers.Keys.Contains(fieldType))
+                    ////     {
+                    ////         var value = Parsers[fieldType].Parse(line);
+                    ////     }
+                    //// }
                     // foreach (var s in Parsers)
                     // {
                     //     foreach (var b in s.Key)
@@ -104,9 +115,9 @@ namespace TroveSkip
                     //     }
                     // }
                     //TODO: rewrite adequate
-                    if (Regex.IsMatch(line, "\"BaseAddress\":.*\".{8}\""))
+                    if (Regex.IsMatch(line, "\"PlayerBaseAddress\":.*\".{8}\""))
                     {
-                        settings.BaseAddress = Regex.Match(line, "\"BaseAddress\":.*\"(.{8})\"").Groups[1].Value;
+                        settings.PlayerBaseAddress = Regex.Match(line, "\"PlayerBaseAddress\":.*\"(.{8})\"").Groups[1].Value;
                     }
                     else if (Regex.IsMatch(line, "\"ChatBaseAddress\":.*\".{8}\""))
                     {

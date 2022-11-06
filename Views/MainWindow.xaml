@@ -218,7 +218,7 @@
         </Style>
         <Style x:Key="FindKey" TargetType="Button">
             <Setter Property="Content" Value="FIND"/>
-            <Setter Property="Margin" Value="0 50 0 0"/>
+            <Setter Property="Margin" Value="0 75 0 0"/>
             <Setter Property="Width" Value="75"/>
             <Setter Property="Height" Value="25"/>
             <Setter Property="FontSize" Value="15"/>
@@ -334,7 +334,7 @@
         </Grid>
         <StackPanel Margin="0 31 0 0" Visibility="{Binding SettingsPageVisibility}" Orientation="Vertical">
             <StackPanel>
-                <TextBox Text="{Binding BaseAddress, UpdateSourceTrigger=PropertyChanged}" Width="105" Margin="2 0 0 0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                <TextBox Text="{Binding PlayerBaseAddress, UpdateSourceTrigger=PropertyChanged}" Width="105" Margin="2 0 0 0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
                 <Button Content="Find" Command="{Binding InvokeSearchWindowCommand}" Style="{StaticResource InvokeSearchWindowKey}"/>
             </StackPanel>
             
@@ -365,7 +365,7 @@
                 </StackPanel>
             </StackPanel>
         </StackPanel>
-        <Grid Width="152" Height="100" Visibility="{Binding SearchWindowVisibility}" Margin="202 3 0 0" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <Grid Width="152" Height="130" Visibility="{Binding SearchWindowVisibility}" Margin="202 3 0 0" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Path Stroke="#1E1E1E" StrokeThickness="1" Fill="#1E1E1E">
                 <Path.Data>
                     <PathGeometry>
@@ -383,8 +383,8 @@
                     </PathGeometry>
                 </Path.Data>
             </Path>
-            <Rectangle Fill="#646464" Width="150" Height="56" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-            <Border CornerRadius="0 5 5 0" BorderThickness="0 3 3 3" Width="152" Height="60" VerticalAlignment="Center">
+            <Rectangle Fill="#646464" Width="150" Height="84" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+            <Border CornerRadius="0 5 5 0" BorderThickness="0 3 3 3" Margin="0 -2 0 0 " Width="152" Height="88" VerticalAlignment="Center">
                 <Border.BorderBrush>
                     <LinearGradientBrush StartPoint="0 0" EndPoint="0 1">
                         <GradientStop Color="#1E1E1E" Offset="0" />
@@ -393,7 +393,9 @@
                 </Border.BorderBrush>
             </Border>
             <TextBlock Margin="2 24 0 0" Text="X position:" FontSize="15" FontWeight="DemiBold"/>
+            <TextBlock Margin="2 48 0 0" Text="World Id:" FontSize="15" FontWeight="DemiBold"/>
             <TextBox Text="{Binding XCoordinate, UpdateSourceTrigger=PropertyChanged}" Margin="75 24.5 0 0" Width="72" Height="22" HorizontalAlignment="Left" VerticalAlignment="Top" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <TextBox Text="{Binding WorldId, UpdateSourceTrigger=PropertyChanged}" Margin="75 48.5 0 0" Width="72" Height="22" HorizontalAlignment="Left" VerticalAlignment="Top" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
             <Button Command="{Binding FindAddressCommand}" Style="{StaticResource FindKey}"/>
         </Grid>
     </Grid>

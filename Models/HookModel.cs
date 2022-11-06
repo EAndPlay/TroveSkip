@@ -11,12 +11,13 @@ namespace TroveSkip.Models
         public ProcessModule Module { get; }
         public int ModuleAddress { get; }
         public bool IsPrimary { get; set; }
+        public int WorldId { get; set; }
 
-        public bool MapCheck;
-        public bool ZoomCheck;
-        public bool FovCheck;
-        public bool ChamsCheck;
-        public bool MiningCheck;
+        // public bool MapCheck;
+        // public bool ZoomCheck;
+        // public bool FovCheck;
+        // public bool ChamsCheck;
+        // public bool MiningCheck;
 
         public bool HasExited => Process == null;
         // {
@@ -41,13 +42,13 @@ namespace TroveSkip.Models
             IsPrimary = false;
         }
 
-        public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name)
-        {
-            MapCheck = hookModel.MapCheck;
-            ZoomCheck = hookModel.ZoomCheck;
-            FovCheck = hookModel.FovCheck;
-            ChamsCheck = hookModel.ChamsCheck;
-            MiningCheck = hookModel.MiningCheck;
-        }
+        // public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name)
+        // {
+        //     MapCheck = hookModel.MapCheck;
+        //     ZoomCheck = hookModel.ZoomCheck;
+        //     FovCheck = hookModel.FovCheck;
+        //     ChamsCheck = hookModel.ChamsCheck;
+        //     MiningCheck = hookModel.MiningCheck;
+        // }
     }
 }
