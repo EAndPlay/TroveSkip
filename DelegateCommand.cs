@@ -20,8 +20,8 @@ namespace TroveSkip
     /// parameter is null, the command is always executable.</param>
     public DelegateCommand(Action execute, Predicate<object> canExecute)
     {
-      this._execute = execute;
-      this._canExecute = canExecute;
+      _execute = execute;
+      _canExecute = canExecute;
     }
 
     /// <summary>

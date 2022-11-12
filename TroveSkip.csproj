@@ -126,11 +126,19 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="BotsSettings.cs" />
     <Compile Include="DelegateCommand.cs" />
     <Compile Include="DelegateCommandBase.cs" />
     <Compile Include="DelegateCommandT.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="InverseBooleanConverter.cs" />
+    <Compile Include="Memory\Camera\CameraOffset.cs" />
+    <Compile Include="Memory\GameOffset.cs" />
+    <Compile Include="Memory\Player\Character\CharacterOffset.cs" />
+    <Compile Include="Memory\Player\Character\ControllerOffset.cs" />
+    <Compile Include="Memory\Player\PlayerOffset.cs" />
+    <Compile Include="Memory\Player\StatOffset.cs" />
+    <Compile Include="Memory\SettingOffset.cs" />
     <Compile Include="Models\HookModel.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Settings.cs" />
@@ -138,6 +146,7 @@
     <Compile Include="SettingsParsers\IntParser.cs" />
     <Compile Include="SettingsParsers\ISettingParser.cs" />
     <Compile Include="SettingsParsers\StringParser.cs" />
+    <Compile Include="Signature.cs" />
     <Compile Include="UserActivityHook.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>

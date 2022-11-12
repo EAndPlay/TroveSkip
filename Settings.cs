@@ -15,10 +15,11 @@ namespace TroveSkip
     [Serializable]
     public class Settings
     {
-        public string PlayerBaseAddress;
-        public string ChatBaseAddress;
-        public string SettingsBaseAddress;
-        public string GameGlobalsBaseAddress;
+        public string LocalPlayerPointer;
+        public string ChatPointer;
+        public string SettingsPointer;
+        public string GameGlobalsPointer;
+        public string PlayersInWorldPointer;
 
         public string SkipButton;
         public string SprintButton;
@@ -35,9 +36,11 @@ namespace TroveSkip
 
         public bool FollowApp;
 
+        public BotsSettings BotsSettings;
+
         public Settings()
         {
-            PlayerBaseAddress = ChatBaseAddress = SettingsBaseAddress = new string('0', 8);
+            LocalPlayerPointer = ChatPointer = SettingsPointer = GameGlobalsPointer = PlayersInWorldPointer = new string('0', 8);
             SprintButton = Key.LeftShift.ToString();
             JumpButton = Key.Space.ToString();
             SkipButton = Key.D3.ToString();
@@ -49,8 +52,10 @@ namespace TroveSkip
             SprintValue = FollowSpeedValue = 40;
             JumpForceValue = 4;
             SpeedHackValue = 200;
+
+            BotsSettings = new();
         }
-        
+
         // [NonSerialized] private static readonly Dictionary<Type, ISettingParser> Parsers = new();
         //
         // static Settings()
@@ -114,15 +119,31 @@ namespace TroveSkip
                     //         }
                     //     }
                     // }
-                    //TODO: rewrite adequate
-                    if (Regex.IsMatch(line, "\"PlayerBaseAddress\":.*\".{8}\""))
+                    //TODO: rewrite adequate!!!
+                    if (Regex.IsMatch(line, "\"LocalPlayerPointer\":.*\".{8}\""))
                     {
-                        settings.PlayerBaseAddress = Regex.Match(line, "\"PlayerBaseAddress\":.*\"(.{8})\"").Groups[1].Value;
+                        settings.LocalPlayerPointer =
+                            Regex.Match(line, "\"LocalPlayerPointer\":.*\"(.{8})\"").Groups[1].Value;
                     }
-                    else if (Regex.IsMatch(line, "\"ChatBaseAddress\":.*\".{8}\""))
+                    else if (Regex.IsMatch(line, "\"ChatPointer\":.*\".{8}\""))
                     {
-                        settings.ChatBaseAddress =
-                            Regex.Match(line, "\"ChatBaseAddress\":.*\"(.{8})\"").Groups[1].Value;
+                        settings.ChatPointer =
+                            Regex.Match(line, "\"ChatPointer\":.*\"(.{8})\"").Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"SettingsPointer\":.*\".{8}\""))
+                    {
+                        settings.SettingsPointer =
+                            Regex.Match(line, "\"SettingsPointer\":.*\"(.{8})\"").Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"GameGlobalsPointer\":.*\".{8}\""))
+                    {
+                        settings.GameGlobalsPointer = Regex.Match(line, "\"GameGlobalsPointer\":.*\"(.{8})\"")
+                            .Groups[1].Value;
+                    }
+                    else if (Regex.IsMatch(line, "\"PlayersInWorldPointer\":.*\".{8}\""))
+                    {
+                        settings.PlayersInWorldPointer = Regex.Match(line, "\"PlayersInWorldPointer\":.*\"(.{8})\"")
+                            .Groups[1].Value;
                     }
                     else if (Regex.IsMatch(line, "\"SkipButton\":.*\".+\""))
                     {
@@ -178,6 +199,7 @@ namespace TroveSkip
                     }
                 }
 
+                File.WriteAllText(path, JsonConvert.SerializeObject(settings, Formatting.Indented));
                 return settings;
             }
         }

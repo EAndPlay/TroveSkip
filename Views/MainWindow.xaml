@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:TroveSkip"
         xmlns:viewModels="clr-namespace:TroveSkip.ViewModels"
         mc:Ignorable="d"
-        Title="Not a cheat" Width="354" Height="324"
+        Title="Not a cheat" Width="354" Height="374"
         WindowStyle="None"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
@@ -160,7 +160,14 @@
                 </EventTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="KeysPanel" TargetType="StackPanel">
+        <Style x:Key="LabelStandard" TargetType="Label">
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="NormalizedPanel" TargetType="StackPanel">
+            <!-- <Setter Property="Label.Style" Value="{StaticResource LabelStandard}"/> -->
             <Setter Property="Label.HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Label.VerticalContentAlignment" Value="Center"/>
             <Setter Property="Label.FontSize" Value="16"/>
@@ -260,6 +267,13 @@
                 </EventTrigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="RadioButtonsPanel" TargetType="StackPanel">
+            <Setter Property="RadioButton.Command">
+                <Setter.Value>
+                    <Binding Path="BotsStopTypeSwitchCommand"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid>
         <Border Background="#646464" CornerRadius="0 0 10 10" Width="202" Margin="0 26 0 0" HorizontalAlignment="Left"/>
@@ -308,9 +322,10 @@
             </StackPanel>
             <StackPanel Margin="5 155 0 0">
                 <TextBox Text="{Binding FollowSpeedValue, StringFormat={}{0:0}, UpdateSourceTrigger=PropertyChanged}"/>
-                <CheckBox IsChecked="{Binding FollowPrimary, UpdateSourceTrigger=PropertyChanged}">Follow Bots</CheckBox>
+                <CheckBox IsChecked="{Binding FollowBotsToggle, UpdateSourceTrigger=PropertyChanged}">Follow Bots</CheckBox>
             </StackPanel>
             
+            <!-- <TextBlock Margin="2 170 0 0" HorizontalAlignment="Left" VerticalAlignment="Top" Text="{Binding }"/> -->
             <!-- <CheckBox Checked="AfkChecked" Unchecked="AfkUnChecked" Margin="65 160 0 0">Anti-AFK</CheckBox> -->
             <CheckBox Name="MapCheck" Content="Map Hack" IsChecked="{Binding MapCheck}" Command="{Binding MapCheckCommand}" CommandParameter="{Binding ElementName=MapCheck}" Margin="65 183 0 0"/>
             <CheckBox Name="ZoomCheck" Content="Zoom Hack" IsChecked="{Binding ZoomCheck}" Command="{Binding ZoomCheckCommand}" CommandParameter="{Binding ElementName=ZoomCheck}" Margin="65 208 0 0"/>
@@ -332,6 +347,7 @@
                 </Path.Data>
             </Path>
         </Grid>
+        
         <StackPanel Margin="0 31 0 0" Visibility="{Binding SettingsPageVisibility}" Orientation="Vertical">
             <StackPanel>
                 <TextBox Text="{Binding PlayerBaseAddress, UpdateSourceTrigger=PropertyChanged}" Width="105" Margin="2 0 0 0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
@@ -339,32 +355,136 @@
             </StackPanel>
             
             <StackPanel Orientation="Vertical" Margin="0 5">
-                <StackPanel Style="{StaticResource KeysPanel}">
+                <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Skip" Width="105"/>
                     <Button Name="SkipButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SkipButton}" Content="{Binding SkipButton}"/>
                 </StackPanel>
-                <StackPanel Style="{StaticResource KeysPanel}">
+                <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Sprint" Width="105"/>
                     <Button Name="SprintButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SprintButton}" Content="{Binding SprintButton}"/>
                 </StackPanel>
-                <StackPanel Style="{StaticResource KeysPanel}">
+                <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Sprint toggle" Width="105"/>
                     <Button Name="SprintToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SprintToggleButton}" Content="{Binding SprintToggleButton}"/>
                 </StackPanel>
-                <StackPanel Style="{StaticResource KeysPanel}">
+                <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Jump" Width="105"/>
                     <Button Name="JumpButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=JumpButton}" Content="{Binding JumpButton}"/>
                 </StackPanel>
-                <StackPanel Style="{StaticResource KeysPanel}">
+                <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Jump toggle" Width="105"/>
                     <Button Name="JumpToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=JumpToggleButton}" Content="{Binding JumpToggleButton}"/>
                 </StackPanel>
-                <StackPanel Style="{StaticResource KeysPanel}">
+                <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="SH toggle" Width="105"/>
                     <Button Name="SpeedHackToggle" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SpeedHackToggle}" Content="{Binding SpeedHackToggle}"/>
                 </StackPanel>
+                <StackPanel Style="{StaticResource NormalizedPanel}">
+                    <Label Content="Bots NoClip" Width="105"/>
+                    <Button Name="BotsNoClipToggle" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=BotsNoClipToggle}" Content="{Binding BotsNoClipToggle}"/>
+                </StackPanel>
             </StackPanel>
         </StackPanel>
+        
+        <StackPanel Margin="2 25 0 0" Orientation="Vertical" Visibility="{Binding BotsSettingsPageVisibility}">
+            <Label Margin="7 -5 0 0" Content="Stop" Width="45" Style="{StaticResource LabelStandard}" HorizontalAlignment="Center" HorizontalContentAlignment="Center"/>
+            <StackPanel Margin="10 0 0 0" Orientation="Vertical">
+                <StackPanel Margin="0 -5 0 0" Style="{StaticResource NormalizedPanel}">
+                    <Label Content="Distance" Width="80"/>
+                    <TextBox Text="{Binding Path=BotsStopDistance, StringFormat={}{0:0.0}, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+                <StackPanel Margin="0 -12 0 0" Style="{StaticResource NormalizedPanel}">
+                    <Label Content="Type" Width="80"/>
+                    <StackPanel Margin="0 8 0 0" Orientation="Vertical" Style="{StaticResource RadioButtonsPanel}">
+                        <RadioButton IsChecked="{Binding FullStopState}" Content="Full stop" Command="{Binding BotsStopTypeSwitchCommand}" CommandParameter="0"/>
+                        <RadioButton IsChecked="{Binding SlowStopState}" Content="Slow" Command="{Binding BotsStopTypeSwitchCommand}" CommandParameter="1"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Style="{StaticResource NormalizedPanel}">
+                    <Label Content="Power" Width="80"/>
+                    <TextBox Margin="0 5 0 0" Text="{Binding Path=BotsStopPower, StringFormat={}{0:0.0}, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+            </StackPanel>
+            <Path Margin="0 -122 0 0" Stroke="#1E1E1E" StrokeThickness="2" Fill="#1E1E1E">
+                <Path.Data>
+                    <PathGeometry>
+                        <PathGeometry.Figures>
+                            <PathFigureCollection>
+                                <PathFigure IsFilled="False" StartPoint="59 125">
+                                    <PolyLineSegment Points="9 125 9 12 75 12"/>
+                                </PathFigure>
+                                <PathFigure IsFilled="False" StartPoint="139 125">
+                                    <PolyLineSegment Points="189 125 189 12 122 12"/>
+                                </PathFigure>
+                            </PathFigureCollection>
+                        </PathGeometry.Figures>
+                    </PathGeometry>
+                </Path.Data>
+            </Path>
+            
+            <Label Margin="7 -10 0 0" Content="Warning" Width="80" Style="{StaticResource LabelStandard}" HorizontalAlignment="Center" HorizontalContentAlignment="Center"/>
+            <StackPanel Margin="10 0 0 0" Orientation="Vertical">
+                <StackPanel Margin="0 -12 0 0" Style="{StaticResource NormalizedPanel}">
+                    <Label Content="Status" Width="80"/>
+                    <StackPanel Margin="0 8 0 0" Orientation="Vertical" Style="{StaticResource RadioButtonsPanel}">
+                        <RadioButton IsChecked="{Binding BotsWarnOff}" Content="Off" Command="{Binding BotsWarnStatusSwitchCommand}" CommandParameter="0"/>
+                        <RadioButton IsChecked="{Binding BotsWarnOn}" Content="On" Command="{Binding BotsWarnStatusSwitchCommand}" CommandParameter="1"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Style="{StaticResource NormalizedPanel}">
+                    <Label Content="Distance" Width="80"/>
+                    <TextBox Margin="0 5 0 0" Text="{Binding Path=BotsWarnDistance, StringFormat={}{0:0.0}, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+            </StackPanel>
+            <Path Margin="0 -95 0 0" Stroke="#1E1E1E" StrokeThickness="2" Fill="#1E1E1E">
+                <Path.Data>
+                    <PathGeometry>
+                        <PathGeometry.Figures>
+                            <PathFigureCollection>
+                                <PathFigure IsFilled="False" StartPoint="59 98">
+                                    <PolyLineSegment Points="9 98 9 12 62 12"/>
+                                </PathFigure>
+                                <PathFigure IsFilled="False" StartPoint="139 98">
+                                    <PolyLineSegment Points="189 98 189 12 135 12"/>
+                                </PathFigure>
+                            </PathFigureCollection>
+                        </PathGeometry.Figures>
+                    </PathGeometry>
+                </Path.Data>
+            </Path>
+            
+            <Label Margin="7 -6 0 0" Content="Follow" Width="80" Style="{StaticResource LabelStandard}" HorizontalAlignment="Center" HorizontalContentAlignment="Center"/>
+            <StackPanel Margin="10 0 0 0" Orientation="Vertical">
+                <StackPanel Margin="0 -12 0 0" Style="{StaticResource NormalizedPanel}">
+                    <Label Content="Type" Width="80"/>
+                    <StackPanel Margin="-25 8 0 0" Orientation="Vertical" Style="{StaticResource RadioButtonsPanel}">
+                        <RadioButton IsChecked="{Binding BotsFollowLocal}" Content="Local" Command="{Binding BotsFollowTypeSwitchCommand}" CommandParameter="0"/>
+                        <RadioButton IsChecked="{Binding BotsFollowTarget}" Content="Target" Command="{Binding BotsFollowTypeSwitchCommand}" CommandParameter="1"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Margin="0 -5 0 0" Style="{StaticResource NormalizedPanel}">
+                    <Label Content="Name" Width="80"/>
+                    <TextBox Width="120" IsEnabled="{Binding BotsFollowLocal, Converter={StaticResource InverseBooleanConverter}}" Margin="-25 5 0 0" Text="{Binding Path=BotsFollowTargetName, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+            </StackPanel>
+            <Path Margin="0 -95 0 0" Stroke="#1E1E1E" StrokeThickness="2" Fill="#1E1E1E">
+                <Path.Data>
+                    <PathGeometry>
+                        <PathGeometry.Figures>
+                            <PathFigureCollection>
+                                <PathFigure IsFilled="False" StartPoint="59 98">
+                                    <PolyLineSegment Points="9 98 9 16 68 16"/>
+                                </PathFigure>
+                                <PathFigure IsFilled="False" StartPoint="139 98">
+                                    <PolyLineSegment Points="189 98 189 16 129 16"/>
+                                </PathFigure>
+                            </PathFigureCollection>
+                        </PathGeometry.Figures>
+                    </PathGeometry>
+                </Path.Data>
+            </Path>
+        </StackPanel>
+        
         <Grid Width="152" Height="130" Visibility="{Binding SearchWindowVisibility}" Margin="202 3 0 0" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Path Stroke="#1E1E1E" StrokeThickness="1" Fill="#1E1E1E">
                 <Path.Data>

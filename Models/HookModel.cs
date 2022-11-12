@@ -1,5 +1,7 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
+using TroveSkip.ViewModels;
 
 namespace TroveSkip.Models
 {
@@ -12,6 +14,11 @@ namespace TroveSkip.Models
         public int ModuleAddress { get; }
         public bool IsPrimary { get; set; }
         public int WorldId { get; set; }
+        // public int NoClipAddress { get; set; }
+        // public bool NoClipEnabled { get; set; }
+        public bool Notified { get; set; }
+        public int NetworkPlayersAddress { get; private set; }
+        public int GameGlobalsAddress { get; private set; }
 
         // public bool MapCheck;
         // public bool ZoomCheck;
@@ -27,7 +34,7 @@ namespace TroveSkip.Models
         //         return Process == null || Process.HasExited;
         //     }
         // }
-        public string Name { get; }
+        public string Name { get; set; }
 
         public HookModel(Process process, string name)
         {
@@ -35,13 +42,26 @@ namespace TroveSkip.Models
             Name = name;
             Id = process.Id;
             Handle = process.Handle;
-            Module = process.MainModule;
+            try
+            {
+                Module = process.MainModule;
+            }
+            catch (Win32Exception)
+            {
+                return;
+            }
             ModuleAddress = (int) Module.BaseAddress;
             Process.EnableRaisingEvents = true;
             Process.Exited += (_, _) => Process = null;
             IsPrimary = false;
+            ResetAddreses();
         }
 
+        public void ResetAddreses() //TODO: ready address in arg
+        {
+            NetworkPlayersAddress = ModuleAddress + MainWindowViewModel.Instance.PlayersInWorldPointer;
+            GameGlobalsAddress = ModuleAddress + MainWindowViewModel.Instance.GameGlobalsPointer;
+        }
         // public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name)
         // {
         //     MapCheck = hookModel.MapCheck;
