@@ -10,6 +10,7 @@ namespace TroveSkip.Models
         public Process Process { get; private set; } //was readonly @field
         public int Id { get; }
         public IntPtr Handle { get; }
+        public IntPtr WindowHandle { get; }
         public ProcessModule Module { get; }
         public int ModuleAddress { get; }
         public bool IsPrimary { get; set; }
@@ -42,6 +43,7 @@ namespace TroveSkip.Models
             Name = name;
             Id = process.Id;
             Handle = process.Handle;
+            WindowHandle = process.MainWindowHandle;
             try
             {
                 Module = process.MainModule;

@@ -23,7 +23,7 @@ namespace TroveSkip.ViewModels
             { (int) PlayerOffset.Character, (int) CharacterOffset.Controller, (int) ControllerOffset.PositionX };
         private static readonly int[] NameOffsets = { (int) PlayerOffset.Name, 0x0 };
 
-        private static readonly int[] LocalPlayerOffsets = { 0x8, 0x28 };
+        private static readonly int[] LocalPlayerOffsets = { (int) GameOffset.LocalPlayer, 0x28 };
         private static readonly int[] LocalCharactersOffsets = LocalPlayerOffsets.Join((int) PlayerOffset.Character);
         private static readonly int[] ViewOffsets = { (int) GameOffset.Camera, (int) CameraOffset.LocalCamera, 0x84, 0x0 }; // float
         private static readonly int[] LocalPlayerNameOffsets = LocalPlayerOffsets.Join(NameOffsets);
@@ -106,21 +106,20 @@ namespace TroveSkip.ViewModels
 
         private unsafe int ReadInt(int[] offsets)
         {
-            fixed (byte* p = GetBuffer(offsets))
+            fixed (byte* p = GetBufferFromLocalPlayer(offsets))
             {
                 return *(int*) p;
             }
         }
         
-        private unsafe int ReadInt(IntPtr handle, int[] offsets)
+        private unsafe int ReadIntFromLocalPlayer(IntPtr handle, int[] offsets)
         {
-            fixed (byte* p = GetBuffer(handle, offsets))
+            fixed (byte* p = GetBuffer(handle, _currentLocalPlayerBaseAddress, offsets))
             {
                 return *(int*) p;
             }
         }
-        
-        
+
         private unsafe int ReadInt(IntPtr handle, int baseAddress, int[] offsets)
         {
             fixed (byte* p = GetBuffer(handle, baseAddress, offsets))
@@ -137,9 +136,9 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        private unsafe uint ReadUInt(int[] offsets)
+        private unsafe uint ReadUIntFromLocalPlayer(int[] offsets)
         {
-            fixed (byte* p = GetBuffer(offsets))
+            fixed (byte* p = GetBufferFromLocalPlayer(offsets))
             {
                 return *(uint*) p;
             }
@@ -155,7 +154,7 @@ namespace TroveSkip.ViewModels
             // }
             //
             // return *(float*) &add;
-            fixed (byte* p = GetBuffer(offsets))
+            fixed (byte* p = GetBufferFromLocalPlayer(offsets))
             {
                 return *(float*) p;
             }
@@ -176,7 +175,7 @@ namespace TroveSkip.ViewModels
             return *(float*) buffer;
         }
 
-        private string ReadString(int[] offsets) => Encoding.ASCII.GetString(GetBuffer(offsets, 28));
+        private string ReadString(int[] offsets) => Encoding.ASCII.GetString(GetBufferFromLocalPlayer(offsets, 28));
 
         private void WriteInt(int[] offsets, int value) => WriteMemory(GetAddressFromLocalPlayer(offsets), BitConverter.GetBytes(value));
         private void WriteUInt(int[] offsets, uint value) => WriteMemory(GetAddressFromLocalPlayer(offsets), BitConverter.GetBytes((int)value));
@@ -305,12 +304,12 @@ namespace TroveSkip.ViewModels
 
         private int GetAddressFromLocalPlayer(int[] offsets)
         {
-            return GetAddress(_currentPlayerAddress, offsets);
+            return GetAddress(_currentLocalPlayerBaseAddress, offsets);
         }
         
         private int GetAddressFromLocalPlayer(IntPtr handle, int[] offsets)
         {
-            return GetAddress(handle, _currentPlayerAddress, offsets);
+            return GetAddress(handle, _currentLocalPlayerBaseAddress, offsets);
         }
 
         private unsafe int GetAddress(IntPtr handle, int baseAddress, int[] offsets)
@@ -335,14 +334,14 @@ namespace TroveSkip.ViewModels
             return bytes;
         }
         
-        private byte[] GetBuffer(IntPtr handle, int[] offsets, int size = 4)
+        private byte[] GetBufferFromLocalPlayer(IntPtr handle, int[] offsets, int size = 4)
         {
             var bytes = new byte[size];
             ReadMemory(GetAddressFromLocalPlayer(handle, offsets), bytes);
             return bytes;
         }
         
-        private byte[] GetBuffer(int[] offsets, int size = 4)
+        private byte[] GetBufferFromLocalPlayer(int[] offsets, int size = 4)
         {
             var bytes = new byte[size];
             ReadMemory(GetAddressFromLocalPlayer(offsets), bytes);
@@ -387,6 +386,8 @@ namespace TroveSkip.ViewModels
         }
         
         #region Dlls
+        
+        #region Kernel
         
         [Flags]
         public enum ProcessAccessFlags : uint
@@ -506,6 +507,10 @@ namespace TroveSkip.ViewModels
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
+        #endregion
+
+        #region User32
+        
         [DllImport("user32.dll")]
         private static extern int GetWindowThreadProcessId(
             IntPtr handle,
@@ -515,9 +520,10 @@ namespace TroveSkip.ViewModels
         public static extern IntPtr PostMessage(
             IntPtr handle,
             uint message,
-            IntPtr wParam,
-            IntPtr lParam);
+            int wParam,
+            int lParam);
 
+        #endregion
         #endregion
     }
 }
