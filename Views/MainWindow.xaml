@@ -350,7 +350,7 @@
         
         <StackPanel Margin="0 31 0 0" Visibility="{Binding SettingsPageVisibility}" Orientation="Vertical">
             <StackPanel>
-                <TextBox Text="{Binding PlayerBaseAddress, UpdateSourceTrigger=PropertyChanged}" Width="105" Margin="2 0 0 0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                <TextBox Text="{Binding LocalPlayerPointer, UpdateSourceTrigger=PropertyChanged}" Width="105" Margin="2 0 0 0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
                 <Button Content="Find" Command="{Binding InvokeSearchWindowCommand}" Style="{StaticResource InvokeSearchWindowKey}"/>
             </StackPanel>
             

@@ -19,7 +19,7 @@ namespace TroveSkip
         public string ChatPointer;
         public string SettingsPointer;
         public string GameGlobalsPointer;
-        public string PlayersInWorldPointer;
+        public string WorldPointer;
 
         public string SkipButton;
         public string SprintButton;
@@ -40,7 +40,7 @@ namespace TroveSkip
 
         public Settings()
         {
-            LocalPlayerPointer = ChatPointer = SettingsPointer = GameGlobalsPointer = PlayersInWorldPointer = new string('0', 8);
+            LocalPlayerPointer = ChatPointer = SettingsPointer = GameGlobalsPointer = WorldPointer = new string('0', 8);
             SprintButton = Key.LeftShift.ToString();
             JumpButton = Key.Space.ToString();
             SkipButton = Key.D3.ToString();
@@ -142,7 +142,7 @@ namespace TroveSkip
                     }
                     else if (Regex.IsMatch(line, "\"PlayersInWorldPointer\":.*\".{8}\""))
                     {
-                        settings.PlayersInWorldPointer = Regex.Match(line, "\"PlayersInWorldPointer\":.*\"(.{8})\"")
+                        settings.WorldPointer = Regex.Match(line, "\"PlayersInWorldPointer\":.*\"(.{8})\"")
                             .Groups[1].Value;
                     }
                     else if (Regex.IsMatch(line, "\"SkipButton\":.*\".+\""))

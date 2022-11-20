@@ -18,8 +18,8 @@ namespace TroveSkip.Models
         // public int NoClipAddress { get; set; }
         // public bool NoClipEnabled { get; set; }
         public bool Notified { get; set; }
-        public int NetworkPlayersAddress { get; private set; }
-        public int GameGlobalsAddress { get; private set; }
+        public int LocalPlayerPointer { get; set; }
+        public int WorldPointer { get; set; }
 
         // public bool MapCheck;
         // public bool ZoomCheck;
@@ -27,14 +27,8 @@ namespace TroveSkip.Models
         // public bool ChamsCheck;
         // public bool MiningCheck;
 
-        public bool HasExited => Process == null;
-        // {
-        //     get
-        //     {
-        //         Process?.Refresh();
-        //         return Process == null || Process.HasExited;
-        //     }
-        // }
+        public bool HasExited => Process == null || Process.HasExited;
+        
         public string Name { get; set; }
 
         public HookModel(Process process, string name)
@@ -56,14 +50,9 @@ namespace TroveSkip.Models
             Process.EnableRaisingEvents = true;
             Process.Exited += (_, _) => Process = null;
             IsPrimary = false;
-            ResetAddreses();
         }
 
-        public void ResetAddreses() //TODO: ready address in arg
-        {
-            NetworkPlayersAddress = ModuleAddress + MainWindowViewModel.Instance.PlayersInWorldPointer;
-            GameGlobalsAddress = ModuleAddress + MainWindowViewModel.Instance.GameGlobalsPointer;
-        }
+        public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name) {}
         // public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name)
         // {
         //     MapCheck = hookModel.MapCheck;

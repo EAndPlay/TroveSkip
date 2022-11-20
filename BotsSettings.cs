@@ -28,6 +28,7 @@ namespace TroveSkip
         public byte WarnStatus;
         public uint WarnDistance;
         public byte FollowType;
+        public byte TargetCheckType;
         public string FollowTargetName;
         public bool NoClip;
 
@@ -37,7 +38,7 @@ namespace TroveSkip
             StopType = (byte) BotsStopType.Slow;
             StopPower = 5;
             NoClipToggle = Key.V.ToString();
-            WarnStatus = FollowType = 0;
+            WarnStatus = FollowType = TargetCheckType = 0;
             WarnDistance = 15;
             FollowTargetName = string.Empty;
             NoClip = false;

@@ -1,4 +1,4 @@
-﻿namespace TroveSkip.Memory
+﻿namespace TroveSkip.Memory.Player
 {
     public enum PlayerOffset
     {

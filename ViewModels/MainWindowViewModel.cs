@@ -9,7 +9,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -52,41 +51,40 @@ namespace TroveSkip.ViewModels
                                 //OverwriteBytes(_handle, _hookModel.NoClipAddress, _noClipEnabled);
                                 //_hookModel.NoClipEnabled = true;
                                 OverwriteBytes(_noClip, _noClipEnabled);
-                                WriteFloat(GravityOffsets, 0);
+                                WriteFloatToLocalPlayer(GravityOffsets, 0);
                             }
                         }
 
                         _hookModel = value;
                         _handle = _hookModel.Handle;
-                        // PostMessage(_hookModel.WindowHandle, 0x204, 0, 0);
-                        // PostMessage(_hookModel.WindowHandle, 0x205, 0, 0);
-
                         try
                         {
-                            _currentModuleAddress = (int) value.Module.BaseAddress;
+                            _currentModulePointer = (int) value.Module.BaseAddress;
                         }
                         catch
                         {
                             _hookModel = null;
-                            _currentModuleAddress = 0;
+                            _currentModulePointer = 0;
                             return;
                         }
 
-                        _currentLocalPlayerBaseAddress = _currentModuleAddress + _localPlayerPointer;
+                        _currentLocalPlayerPointer = _currentModulePointer + _localPlayerOffset;
                         // fixed (int* pointer = &_currentBaseAddress)
                         //     ReadProcessMemory(value.Handle, _currentBaseAddress, pointer, 4, out _);
-                        _currentSettingsBaseAddress = _currentModuleAddress + _settingsPointer;
-                        _currentGameGlobalsBaseAddress = _currentModuleAddress + _gameGlobalsPointer;
+                        _currentSettingsPointer = _currentModulePointer + _settingsOffset;
+                        _currentGameGlobalsPointer = _currentModulePointer + _gameGlobalsOffset;
+                        _currentWorldPointer = _currentModulePointer + _worldOffset;
                         
                         unsafe
                         {
-                            _currentChatStateAddress = _currentModuleAddress + _chatPointer;
-                            var buffer = stackalloc byte[4];
-                            ReadMemory(_currentChatStateAddress, buffer);
-                            _currentChatStateAddress = *(int*) buffer + ChatOpenedOffsets[0];
+                            _currentChatStatePointer = _currentModulePointer + _chatOffset;
+                            var buffer = stackalloc byte[sizeof(int)];
+                            ReadMemory(_currentChatStatePointer, buffer);
+                            _currentChatStatePointer = *(int*) buffer + ChatOpenedOffsets[0];
                         }
-                        
-                        _encryptionKey = ReadUIntFromLocalPlayer(StatsEncKeyOffsets);
+
+                        _encryptionKey = ReadUInt(_currentLocalPlayerPointer, StatsEncKeyOffsets);
+                        //_encryptionKey = ReadUIntFromLocalPlayer(StatsEncKeyOffsets);
                         if (_encryptionKey != 0)
                         {
                             var bytes = BitConverter.GetBytes((float) SpeedHackValue);
@@ -104,7 +102,7 @@ namespace TroveSkip.ViewModels
                             //OverwriteBytes(_hookModel, _noClipEnabled, _noClip);
                             // _hookModel.NoClipEnabled = false;
                             OverwriteBytes(_noClipEnabled, _noClip);
-                            WriteFloat(GravityOffsets, Gravity);
+                            WriteFloatToLocalPlayer(GravityOffsets, Gravity);
                         }
 
                         //EnableAntiAfk();
@@ -145,19 +143,19 @@ namespace TroveSkip.ViewModels
         private string _currentButton;
         private Button _currentButtonElement;
 
-        private int _localPlayerPointer;
-        private int _chatPointer;
-        private int _settingsPointer;
-        private int _gameGlobalsPointer;
-        private int _playersInWorldPointer;
+        private int _localPlayerOffset;
+        private int _chatOffset;
+        private int _settingsOffset;
+        private int _gameGlobalsOffset;
+        private int _worldOffset;
         
-        private int _currentLocalPlayerBaseAddress;
-        private int _currentSettingsBaseAddress;
-        private int _currentGameGlobalsBaseAddress;
-        private int _currentModuleAddress;
+        private int _currentModulePointer;
         
-        private int _currentChatStateAddress;
-        private int _currentWorldId;
+        private int _currentLocalPlayerPointer;
+        private int _currentSettingsPointer;
+        private int _currentGameGlobalsPointer;
+        private int _currentWorldPointer;
+        private int _currentChatStatePointer;
 
         private BotsSettings _botsSettings;
         private float _botsStopDistance;
@@ -166,6 +164,7 @@ namespace TroveSkip.ViewModels
         private byte _botsWarnStatus;
         private uint _botsWarnDistance;
         private byte _botsFollowType;
+        private byte _botsTargetCheckType;
         private string _botsFollowTargetName;
         private int _botsFollowTargetNameLength;
 
@@ -227,35 +226,56 @@ namespace TroveSkip.ViewModels
         private DelegateCommand _closeWindowCommand;
         // private DelegateCommand _clickComboBox;
 
-        public string PlayerBaseAddress
+        public string LocalPlayerPointer
         {
-            get => _localPlayerPointer.ToString("X8");
+            get => _localPlayerOffset.ToString("X8");
 
             set
             {
-                _localPlayerPointer = int.Parse(value, NumberStyles.HexNumber);
-                if (HookModel != null)
-                    _currentLocalPlayerBaseAddress = _currentModuleAddress + _localPlayerPointer;
+                _localPlayerOffset = int.Parse(value, NumberStyles.HexNumber);
+                // if (HookModel != null)
+                //     _currentLocalPlayerPointer = _currentModulePointer + _localPlayerOffset;
 
                 OnPropertyChanged();
             }
         }
 
-        public int GameGlobalsPointer
+        public string SettingsOffset
         {
-            get => _gameGlobalsPointer;
+            get => _settingsOffset.ToString("X8");
             set
             {
-                _gameGlobalsPointer = value;
+                _settingsOffset = int.Parse(value, NumberStyles.HexNumber);
                 OnPropertyChanged();
             }
         }
-        public int PlayersInWorldPointer
+
+        public string ChatOffset
         {
-            get => _playersInWorldPointer;
+            get => _chatOffset.ToString("X8");
             set
             {
-                _playersInWorldPointer = value;
+                _chatOffset = int.Parse(value, NumberStyles.HexNumber); 
+                OnPropertyChanged();
+            }
+        }
+
+        public string GameGlobalsOffset
+        {
+            get => _gameGlobalsOffset.ToString("X8");
+            set
+            {
+                _gameGlobalsOffset = int.Parse(value, NumberStyles.HexNumber);
+                OnPropertyChanged();
+            }
+        }
+        
+        public string WorldOffset
+        {
+            get => _worldOffset.ToString("X8");
+            set
+            {
+                _worldOffset = int.Parse(value, NumberStyles.HexNumber);
                 OnPropertyChanged();
             }
         }
@@ -544,31 +564,26 @@ namespace TroveSkip.ViewModels
             set
             {
                 _followBotsToggle = value;
-                IntPtr handle;
                 if (value)
                 {
                     foreach (var hook in Hooks)
                     {
-                        if (hook.IsPrimary) continue;
+                        if (_botsFollowType == 0 && hook.IsPrimary) continue;
 
-                        handle = hook.Handle;
                         //OverwriteBytes(handle, hook.NoClipAddress, _noClipEnabled);
                         if (_botsNoClipCheck && _botsFollowType == 0)
                             OverwriteBytes(hook, _noClip, _noClipEnabled);
-                        WriteFloat(handle, GravityOffsets, 0);
+                        WriteFloatToLocalPlayer(hook.Handle, GravityOffsets, 0);
                     }
                 }
                 else
                 {
                     foreach (var hook in Hooks)
                     {
-                        if (hook.IsPrimary) continue;
-                        
-                        handle = hook.Handle;
                         //OverwriteBytes(handle, hook.NoClipAddress, _noClip);
                         if (_botsNoClipCheck && _botsFollowType == 0)
                             OverwriteBytes(hook, _noClipEnabled, _noClip);
-                        WriteFloat(handle, GravityOffsets, Gravity);
+                        WriteFloatToLocalPlayer(hook.Handle, GravityOffsets, Gravity);
                     }
                 }
                 
@@ -749,6 +764,16 @@ namespace TroveSkip.ViewModels
                 OnPropertyChanged();
             }
         }
+        
+        public byte BotsTargetCheckType
+        {
+            get => _botsTargetCheckType;
+            set
+            {
+                _botsTargetCheckType = value;
+                OnPropertyChanged();
+            }
+        }
 
         public Visibility SearchWindowVisibility
         {
@@ -866,7 +891,7 @@ namespace TroveSkip.ViewModels
                     handle = hook.Handle;
                     if (_botsNoClipCheck)
                         OverwriteBytes(hook, _noClipEnabled, _noClip);
-                    WriteFloat(handle, GravityOffsets, Gravity);
+                    WriteFloatToLocalPlayer(handle, GravityOffsets, Gravity);
                 }
             }
             SaveSettings();
@@ -922,25 +947,28 @@ namespace TroveSkip.ViewModels
         
         //----------------------------
 
-        private void EnableAntiAfk(Process process = null)
+        private void EnableAntiAfk(HookModel hook = null)
         {
             _dispatcher.InvokeAsync(() =>
             {
-                process ??= HookModel.Process;
-                var id = process.Id;
+                hook ??= HookModel;
+                var id = hook.Id;
                 if (_antiAfkList.Contains(id)) return;
                 _antiAfkList.Add(id);
-                var address = FindSignature(_antiAfk, process);
+                var address = FindSignature(_antiAfk, hook);
                 if (address == 0) return;
 
-                var handle = process.Handle;
+                var handle = hook.Handle;
                 var caveLength = _antiAfkCave.Length + 5;
-                var hAlloc = VirtualAllocEx(handle, 0, caveLength, AllocationType.Commit,
+                var hAlloc = VirtualAllocEx(
+                    handle, 
+                    0, 
+                    caveLength, 
+                    AllocationType.Commit,
                     MemoryProtection.ExecuteRead);
 
                 WriteMemory(handle, hAlloc, AsmJump((ulong) address + 6, (ulong) hAlloc, _antiAfkCave));
                 WriteMemory(handle, address, AsmJump((ulong) hAlloc, (ulong) address));
-                process.Exited += (_, _) => _antiAfkList.Remove(id);
             });
         }
 
@@ -1028,7 +1056,7 @@ namespace TroveSkip.ViewModels
             {
                 return;
             }
-            _localPlayerPointer = _chatPointer = _settingsPointer = _gameGlobalsPointer = 0;
+            _localPlayerOffset = _chatOffset = _settingsOffset = _gameGlobalsOffset = _worldOffset = 0;
             
             for (int i = 16_150_000; i < 19_000_000; i++)
             {
@@ -1039,23 +1067,22 @@ namespace TroveSkip.ViewModels
                     break;
             }
 
-            for (int i = _chatPointer - PlayerPointerDifference; i < _chatPointer + PlayerPointerDifference; i++)
+            for (int i = _chatOffset - PlayerPointerDifference; i < _chatOffset + PlayerPointerDifference; i++)
             {
-                if (FindCharacterBaseAddress(i))
+                if (FindPlayersAddresses(i))
                     break;
             }
 
             foreach (var hook in Hooks)
-            {
-                hook.ResetAddreses();
-            }
+                UpdateHookAddresses(hook);
             
             SearchWindowVisibility = Visibility.Hidden;
             MessageBox.Show(new StringBuilder()
-                .Append("Player address: ").AppendLine(PlayerBaseAddress)
-                .Append("Chat address: ").AppendLine(_chatPointer.ToString("X8"))
-                .Append("Settings address: ").AppendLine(_settingsPointer.ToString("X8"))
-                .Append("Game Globals address: ").AppendLine(_gameGlobalsPointer.ToString("X8")).ToString());
+                .Append("Player offset: ").AppendLine(LocalPlayerPointer)
+                .Append("Chat offset: ").AppendLine(_chatOffset.ToString("X8"))
+                .Append("Settings offset: ").AppendLine(_settingsOffset.ToString("X8"))
+                .Append("Game Globals offset: ").AppendLine(_gameGlobalsOffset.ToString("X8"))
+                .Append("World offset: ").AppendLine(_worldOffset.ToString("X8")).ToString());
         }
 
         private readonly Type _keyType = typeof(Key);
@@ -1065,6 +1092,19 @@ namespace TroveSkip.ViewModels
         {
             _settings = Settings.Load();
             
+            LocalPlayerPointer = _settings.LocalPlayerPointer;
+            ChatOffset = _settings.ChatPointer;
+            SettingsOffset = _settings.SettingsPointer;
+            GameGlobalsOffset = _settings.GameGlobalsPointer;
+            WorldOffset = _settings.WorldPointer;
+
+            SprintValue = _settings.SprintValue;
+            SkipValue = _settings.SkipValue;
+            JumpForceValue = _settings.JumpForceValue;
+            SpeedHackValue = _settings.SpeedHackValue;
+            FollowSpeedValue = _settings.FollowSpeedValue;
+            FollowApp = _settings.FollowApp;
+
             _binds.Add(nameof(SkipButton), ParseKey(_settings.SkipButton));
             _binds.Add(nameof(SprintButton), ParseKey(_settings.SprintButton));
             _binds.Add(nameof(SprintToggleButton), ParseKey(_settings.SprintToggleButton));
@@ -1078,18 +1118,6 @@ namespace TroveSkip.ViewModels
             JumpButton = GetKey(nameof(JumpButton)).ToString();
             JumpToggleButton = GetKey(nameof(JumpToggleButton)).ToString();
             SpeedHackToggle = GetKey(nameof(SpeedHackToggle)).ToString();
-
-            PlayerBaseAddress = _settings.LocalPlayerPointer;
-            _chatPointer = Convert.ToInt32(_settings.ChatPointer, 16);
-            _settingsPointer = Convert.ToInt32(_settings.SettingsPointer, 16);
-            _gameGlobalsPointer = Convert.ToInt32(_settings.GameGlobalsPointer, 16);
-            _playersInWorldPointer = Convert.ToInt32(_settings.PlayersInWorldPointer, 16);
-            SprintValue = _settings.SprintValue;
-            SkipValue = _settings.SkipValue;
-            JumpForceValue = _settings.JumpForceValue;
-            SpeedHackValue = _settings.SpeedHackValue;
-            FollowSpeedValue = _settings.FollowSpeedValue;
-            FollowApp = _settings.FollowApp;
 
             _botsSettings = _settings.BotsSettings;
             _binds.Add(nameof(BotsNoClipToggle), ParseKey(_botsSettings.NoClipToggle));
@@ -1108,21 +1136,25 @@ namespace TroveSkip.ViewModels
         
         private void SaveSettings()
         {
-            _settings.LocalPlayerPointer = PlayerBaseAddress;
-            _settings.ChatPointer = _chatPointer.ToString("X8");
-            _settings.SettingsPointer = _settingsPointer.ToString("X8");
-            _settings.GameGlobalsPointer = _gameGlobalsPointer.ToString("X8");
+            _settings.LocalPlayerPointer = LocalPlayerPointer;
+            _settings.ChatPointer = ChatOffset;
+            _settings.SettingsPointer = SettingsOffset;
+            _settings.GameGlobalsPointer = GameGlobalsOffset;
+            _settings.WorldPointer = WorldOffset;
+            
             _settings.SkipValue = SkipValue;
             _settings.SprintValue = SprintValue;
             _settings.JumpForceValue = JumpForceValue;
             _settings.SpeedHackValue = SpeedHackValue;
             _settings.FollowSpeedValue = FollowSpeedValue;
+            
             _settings.SkipButton = _binds[nameof(SkipButton)].ToString();
             _settings.SprintButton = _binds[nameof(SprintButton)].ToString();
             _settings.SprintToggleButton = _binds[nameof(SprintToggleButton)].ToString();
             _settings.JumpButton = _binds[nameof(JumpButton)].ToString();
             _settings.JumpToggleButton = _binds[nameof(JumpToggleButton)].ToString();
             _settings.SpeedHackToggle = _binds[nameof(SpeedHackToggle)].ToString();
+            
             _settings.FollowApp = FollowApp;
             _botsSettings.StopDistance = BotsStopDistance;
             _botsSettings.StopType = BotsStopType;
@@ -1132,6 +1164,7 @@ namespace TroveSkip.ViewModels
             _botsSettings.WarnDistance = BotsWarnDistance;
             _botsSettings.FollowType = BotsFollowType;
             _botsSettings.FollowTargetName = BotsFollowTargetName;
+            _botsSettings.TargetCheckType = BotsTargetCheckType;
             _botsSettings.NoClip = BotsNoClipCheck;
             
             _settings.Save();
@@ -1143,9 +1176,14 @@ namespace TroveSkip.ViewModels
 
             foreach (var process in processList)
             {
+                int baseAddress;
                 try
                 {
-                    if (process.MainModule == null) continue;
+                    ProcessModule module;
+                    if ((module = process.MainModule) == null)
+                        continue;
+                    
+                    baseAddress = (int) module.BaseAddress;
                 }
                 catch
                 {
@@ -1153,7 +1191,7 @@ namespace TroveSkip.ViewModels
                 }
 
                 var handle = process.Handle;
-                var name = GetName(handle);
+                var name = GetName(handle, baseAddress);
                 try
                 {
                     var hooksCopy = Hooks.ToList();
@@ -1161,12 +1199,13 @@ namespace TroveSkip.ViewModels
                     HookModel hook;
                     if (copy != null)
                     {
-                        if (copy.Name.Length == 0 && name.Length > 0)
+                        if (copy.Name.Length == 0 && name.Length != 0)
                         {
                             var index = hooksCopy.IndexOf(copy);
-                            hook = new HookModel(copy.Process, name);
+                            copy.Name = name;
+                            //hook = new HookModel(copy, name);
                             //hook.NetworkPlayersAddress = hook.ModuleAddress + _playersInWorldPointer;
-                            Hooks[index] = hook;
+                            Hooks[index] = copy;
                         }
                     }
                     else
@@ -1180,13 +1219,10 @@ namespace TroveSkip.ViewModels
                         //     WriteSettings(ref hook, _nullSettings);
                         // }
                     }
-
-                    if (!_antiAfkList.Contains(process.Id))
-                        EnableAntiAfk(process);
                 }
                 catch {}
             }
-
+            
             foreach (var hook in Hooks)
             {
                 if (processList.FirstOrDefault(x => x.Id == hook.Id) == null)
@@ -1204,18 +1240,18 @@ namespace TroveSkip.ViewModels
         
         private void Skip()
         {
-            var xposAdd = GetAddressFromLocalPlayer(LocalXPosition);
-            var xviewAdd = GetAddressFromLocalPlayer(XView);
+            var xPositionAddress = GetAddressFromLocalPlayer(LocalXPosition);
+            var xCameraRotationAddress = GetAddressFromLocalPlayer(XView);
 
-            WriteFloat(xposAdd, ReadFloat(xviewAdd) * _skipValue + ReadFloat(xposAdd));
-            WriteFloat(xposAdd + 4, ReadFloat(xviewAdd + 4) * _skipValue + ReadFloat(xposAdd + 4));
-            WriteFloat(xposAdd + 8, ReadFloat(xviewAdd + 8) * _skipValue + ReadFloat(xposAdd + 8));
+            WriteFloat(xPositionAddress, ReadFloat(xCameraRotationAddress) * _skipValue + ReadFloat(xPositionAddress));
+            WriteFloat(xPositionAddress + 4, ReadFloat(xCameraRotationAddress + 4) * _skipValue + ReadFloat(xPositionAddress + 4));
+            WriteFloat(xPositionAddress + 8, ReadFloat(xCameraRotationAddress + 8) * _skipValue + ReadFloat(xPositionAddress + 8));
         }
 
         private void SuperJump()
         {
             if (!_jumpCheck || GameClosed() || NotFocused()) return;
-            WriteFloat(LocalYPosition, ReadFloat(LocalYPosition) + _jumpForceValue);
+            WriteFloatToLocalPlayer(LocalYPosition, ReadFloatFromLocalPlayer(LocalYPosition) + _jumpForceValue);
         }
         
         private async void ForceSprint()
@@ -1242,7 +1278,7 @@ namespace TroveSkip.ViewModels
                 await Task.Delay(10);
                 while (!_speedCheck || GameClosed() || _followApp && NotFocused())
                     await Task.Delay(100);
-                WriteUInt(SpeedOffsets, _encryptedSpeed);
+                WriteUIntToLocalPlayer(SpeedOffsets, _encryptedSpeed);
             }
         }
 
@@ -1277,14 +1313,25 @@ namespace TroveSkip.ViewModels
                     OverwriteBytes(hook, _miningSlow, _miningSlowEnabled);
                 }
             });
-
+            
+            UpdateHookAddresses(hook);
             hook.Process.Exited += (_, _) =>
             {
                 Hooks.Remove(Hooks.First(x => x.Id == hook.Id));
                 _antiAfkList.Remove(hook.Id);
-            };
+            }; 
+            if (!_antiAfkList.Contains(hook.Id))
+                EnableAntiAfk(hook);
         }
-        
+
+        private void UpdateHookAddresses(HookModel hook)
+        {
+            // for future
+            var moduleAddress = hook.ModuleAddress;
+            hook.WorldPointer = moduleAddress + _worldOffset;
+            hook.LocalPlayerPointer = moduleAddress + _localPlayerOffset;
+        }
+
         private async void FocusUpdate()
         {
             while (true)
@@ -1310,9 +1357,10 @@ namespace TroveSkip.ViewModels
                         }
                         else
                         {
-                            var name = GetName(handle);
+                            var name = GetName(handle, (int) proc.MainModule.BaseAddress);
                             var hook = new HookModel(proc, name);
-                            Hooks.Add(hook);
+                            //Hooks.Add(hook);
+                            AddHook(hook);
                             HookModel = hook;
                         }
                     }
@@ -1328,61 +1376,44 @@ namespace TroveSkip.ViewModels
 
         private async void HooksUpdate()
         {
-            // Process[] allProcesses;
-            // Process indexedProcess;
-            Process[]/*List<Process>*/ processList;
-            HookModel hook;
             while (true)
             {
-                await Task.Delay(750); // 60000
-                processList = Process.GetProcessesByName("Trove");
+                await Task.Delay(750);
+                var processList = Process.GetProcessesByName("Trove");
 
-                // allProcesses = Process.GetProcesses(".");
-                // for (short i = 0; i < allProcesses.Length; ++i)
-                // {
-                //     indexedProcess = allProcesses[i];
-                //     if (indexedProcess.ProcessName == "Trove")
-                //         processList.Add(indexedProcess);
-                //     else
-                //         indexedProcess.Dispose();
-                // }
-                
                 foreach (var process in processList)
                 {
-                    if (!_antiAfkList.Contains(process.Id))
-                        EnableAntiAfk(process);
-                    
-                    hook = Hooks.FirstOrDefault(x => x.Id == process.Id);
+                    var hook = Hooks.FirstOrDefault(x => x.Id == process.Id);
+                    string name;
                     if (hook == null)
                     {
-                        var name = GetName(process.Handle);
+                        name = GetName(process.Handle, (int) process.MainModule.BaseAddress);
                         hook = new HookModel(process, name);
                         if (hook.ModuleAddress == 0)
                             continue;
+                        
                         AddHook(hook);
                     }
                     else if (hook.Name.Length == 0)
                     {
-                        var name = GetName(process.Handle);
+                        name = GetName(process.Handle, (int) process.MainModule.BaseAddress);
                         if (name != null)
                         {
                             var index = Hooks.IndexOf(hook);
-                            hook = new HookModel(hook.Process, name);
+                            hook.Name = name;
                             Hooks[index] = hook;
                         }
                     }
                 }
 
-                for (byte i = 0; i < Hooks.Count; i++)
+                if (FollowBotsToggle)
                 {
-                    hook = Hooks[i];
-                    if (hook.IsPrimary) continue;
-
-                    var address = GetAddress(hook.Handle, hook.ModuleAddress + _gameGlobalsPointer, WorldIdStableOffsets);
-                    unsafe
+                    foreach (var hook in Hooks)
                     {
-                        fixed (byte* pointer = GetBuffer(hook.Handle, address))
-                            hook.WorldId = *(int*) pointer;
+                        var handle = hook.Handle;
+                        var gravity = hook.IsPrimary && _botsFollowType == 0 ? Gravity : 0;
+                        WriteFloat(handle, hook.LocalPlayerPointer, GravityOffsets, gravity);
+                        hook.WorldId = ReadInt(handle, hook.WorldPointer, WorldIdOffsets);
                     }
                 }
                 // foreach (var hook in Hooks)
@@ -1399,8 +1430,7 @@ namespace TroveSkip.ViewModels
 
                 if (_hookModel != null)
                 {
-                    _currentWorldId = ReadInt(GetAddress(_currentGameGlobalsBaseAddress, WorldIdStableOffsets));
-                    _hookModel.WorldId = _currentWorldId;
+                    _hookModel.WorldId = ReadInt(_currentWorldPointer, WorldIdOffsets);
                 }
                 // if (_currentWorldIdAddress == 0)
 
@@ -1439,9 +1469,9 @@ namespace TroveSkip.ViewModels
         private unsafe bool ChatOpened()
         {
             if (GameClosed()) return true;
-            var @byte = stackalloc byte[1];
-            ReadProcessMemory(_handle, _currentChatStateAddress, @byte, 1, out _);
-            return *@byte != 0;
+            //var @byte = stackalloc byte[1];
+            //ReadProcessMemory(_handle, _currentChatStatePointer, @byte, 1, out _);
+            return ReadByte(_currentChatStatePointer) != 0;
         }
 
         private void OnKeyDown(Key key)
@@ -1468,11 +1498,11 @@ namespace TroveSkip.ViewModels
                 else if (key == _binds[nameof(SpeedHackToggle)])
                 {
                     SpeedCheck = !SpeedCheck;
-                    var speed = ReadUIntFromLocalPlayer(SpeedOffsets);
+                    var speed = ReadUInt(_currentLocalPlayerPointer, SpeedOffsets);
                     if (SpeedCheck)
                         _lastSpeed = speed;
                     else
-                        WriteUInt(SpeedOffsets, _lastSpeed);
+                        WriteUIntToLocalPlayer(SpeedOffsets, _lastSpeed);
                 }
                 
                 else if (key == _binds[nameof(BotsNoClipToggle)] && FollowBotsToggle)
@@ -1515,7 +1545,7 @@ namespace TroveSkip.ViewModels
 
                 if (HookModel != null && HookModel.Name.Length == 0)
                 {
-                    var name = GetName(IntPtr.Zero);
+                    var name = GetName(_handle, _hookModel.ModuleAddress);
                     var copy = Hooks.FirstOrDefault(x => x.Id == HookModel.Id);
                     if (copy != null && name.Length > 0)
                     {
@@ -1528,17 +1558,18 @@ namespace TroveSkip.ViewModels
             }
         }
 
+        private void FollowFunc()
+        {
+            
+        }
+        
         private async void FollowUpdate()
         {
-            int xPosAdd, xVelAdd, worldId = 0;
-            float sourceX = 0, sourceY = 0, sourceZ = 0, 
-                length, xDiff, yDiff, zDiff;
+            var worldId = 0;
+            float sourceX = 0, sourceY = 0, sourceZ = 0;
 
-            var offsets = (int[]) PlayerInWorld.Clone();
-            //int[] posOffsets;
-            string name;
-            bool playerFound;
-
+            var offsets = (int[]) PlayersArray.Clone();
+            
             while (true)
             {
                 await Task.Delay(1);
@@ -1560,62 +1591,71 @@ namespace TroveSkip.ViewModels
                 // var sourceY = ReadFloat(xPosAdd + 4) + yVelocity / length;
                 // var sourceZ = ReadFloat(xPosAdd + 8) + zVelocity / length;
 
+                int xPosAdd;
+
+                bool GetSourcePositionsFromTarget(HookModel hook)
+                {
+                    var handle = hook.Handle;
+                    var playersCount = ReadInt(handle, hook.WorldPointer, PlayersCountInWorldOffsets);
+                    for (byte i = 1; i < playersCount; i++)
+                    {
+                        offsets[PlayerInWorldOffset] = i * sizeof(int);
+                        var name = GetName(hook.Handle, hook.WorldPointer, offsets.Join(NameOffsets));
+
+                        if (name != _botsFollowTargetName)
+                            continue;
+
+                        xPosAdd = GetAddress(hook.WorldPointer,
+                            offsets.Join(CharacterPositionX));
+                        sourceX = ReadFloat(handle, xPosAdd);
+                        sourceY = ReadFloat(handle, xPosAdd + 4);
+                        sourceZ = ReadFloat(handle, xPosAdd + 8);
+
+                        worldId = hook.WorldId;
+
+                        return true;
+                    }
+
+                    return false;
+                }
+
                 if (_botsFollowLocal)
                 {
                     xPosAdd = GetAddressFromLocalPlayer(LocalXPosition);
                     sourceX = ReadFloat(xPosAdd);
                     sourceY = ReadFloat(xPosAdd + 4);
                     sourceZ = ReadFloat(xPosAdd + 8);
-                    worldId = _currentWorldId;
+                    worldId = _hookModel.WorldId;
                 }
-                else
+                else if (_botsTargetCheckType == 0)
                 {
-                    if (_botsFollowTargetNameLength == 0 || Hooks.Count == 0) continue;
-
-                    playerFound = false;
                     foreach (var hook in Hooks)
                     {
-                        var handle = hook.Handle;
-                        for (byte i = 0; i < 32; i++)
-                        {
-                            offsets[1] = PlayersStartOffset + NetworkPlayerStructureSize * i;
-                            name = GetName(hook.Handle, hook.NetworkPlayersAddress, offsets.Join(NameOffsets));
-                            
-                            if (name != _botsFollowTargetName)
-                                continue;
-    
-                            xPosAdd = GetAddress(hook.NetworkPlayersAddress,
-                                offsets.Join(CharacterPositionX));
-                            sourceX = ReadFloat(handle, xPosAdd);
-                            sourceY = ReadFloat(handle, xPosAdd + 4);
-                            sourceZ = ReadFloat(handle, xPosAdd + 8);
-
-                            worldId = ReadInt(handle, hook.GameGlobalsAddress, WorldIdStableOffsets);
-                            
-                            playerFound = true;
-                            break;
-                        }
-
-                        if (playerFound)
+                        if (GetSourcePositionsFromTarget(hook))
                             break;
                     }
-
-                    if (!playerFound)
-                        continue;
                 }
 
                 foreach (var hook in Hooks)
                 {
-                    if (_botsFollowLocal && hook.IsPrimary || worldId != hook.WorldId) continue;
-
+                    if (_botsTargetCheckType == 1)
+                    {
+                        if (_botsFollowTargetNameLength == 0 || 
+                            Hooks.Count == 0 ||
+                            !GetSourcePositionsFromTarget(hook)) continue;
+                    }
+                    else if (_botsFollowLocal && hook.IsPrimary || worldId != hook.WorldId) continue;
+                    
                     var handle = hook.Handle;
-                    xPosAdd = GetAddressFromLocalPlayer(handle, LocalXPosition);
-                    xDiff = sourceX - ReadFloat(handle, xPosAdd);
-                    yDiff = sourceY - ReadFloat(handle, xPosAdd + 4);
-                    zDiff = sourceZ - ReadFloat(handle, xPosAdd + 8);
+                    xPosAdd = GetAddress(handle, hook.LocalPlayerPointer, LocalXPosition);
+                    //xPosAdd = GetAddressFromLocalPlayer(handle, LocalXPosition);
+                    var xDiff = sourceX - ReadFloat(handle, xPosAdd);
+                    var yDiff = sourceY - ReadFloat(handle, xPosAdd + 4);
+                    var zDiff = sourceZ - ReadFloat(handle, xPosAdd + 8);
 
-                    xVelAdd = GetAddressFromLocalPlayer(handle, LocalXVelocity);
-                    length = 1;
+                    var xVelAdd = GetAddress(handle, hook.LocalPlayerPointer, LocalXVelocity);
+                    //var xVelAdd = GetAddressFromLocalPlayer(handle, LocalXVelocity);
+                    float length = 1;
                     if (Math.Abs(xDiff) < _botsStopDistance &&
                         Math.Abs(yDiff) < _botsStopDistance &&
                         Math.Abs(zDiff) < _botsStopDistance)
@@ -1665,42 +1705,33 @@ namespace TroveSkip.ViewModels
                 }
             }
         }
-
+        
         private string GetName(IntPtr handle, int address, int[] offsets)
         {
+            //return ReadString(handle, GetAddress(handle, address, offsets), (byte) _botsFollowTargetNameLength, Encoding.ASCII);
             var buffer = new byte[_botsFollowTargetNameLength];
             ReadMemory(handle, GetAddress(handle, address, offsets), buffer);
             return Encoding.ASCII.GetString(buffer);
         }
+
+        private string GetName(IntPtr handle, int moduleAddress) => 
+            ReadStringToEnd(handle,
+            GetAddress(moduleAddress + _localPlayerOffset, LocalPlayerNameOffsets), 
+            Encoding.ASCII);
         
-        private unsafe string GetName(IntPtr handle)
-        {
-            var buffer = new byte[28];
-            if (handle == IntPtr.Zero)
-                ReadMemory(GetAddressFromLocalPlayer(LocalPlayerNameOffsets), buffer);
-            else
-                ReadMemory(handle, GetAddressFromLocalPlayer(handle, LocalPlayerNameOffsets), buffer);
+        private string GetName(HookModel hook) => 
+            ReadStringToEnd(hook.Handle,
+                GetAddress(hook.ModuleAddress + _localPlayerOffset, LocalPlayerNameOffsets), 
+                Encoding.ASCII);
 
-            fixed (byte* p = buffer)
-            {
-                for (byte i = 0; i < buffer.Length; i++)
-                {
-                    if (*(p + i) != 0) continue;
-                    if (i == 0)
-                        break;
-                    
-                    return Encoding.ASCII.GetString(buffer).Substring(0, i);
-                }
-            
-                return string.Empty;
-            }
-        }
+        private float GetEncryptedFloat(IntPtr handle, int baseAddress, int[] offsets) =>
+            GetEncryptedFloat(handle, GetAddress(handle, baseAddress, offsets));
 
-        private unsafe string GetPowerRank()
+        private unsafe float GetEncryptedFloat(IntPtr handle, int address)
         {
-            fixed (byte* p = BitConverter.GetBytes(ReadUIntFromLocalPlayer(PowerRankOffsets) ^ _encryptionKey))
+            fixed (byte* p = BitConverter.GetBytes(ReadUInt(handle, address) ^ _encryptionKey))
             {
-                return (*(int*)p).ToString();
+                return *(float*)p;
             }
         }
 
@@ -1731,7 +1762,7 @@ namespace TroveSkip.ViewModels
                 
                 if (drawDistance >= 32 && drawDistance <= 210)
                 {
-                    address = baseAddress + HalfDrawDistance[0];
+                    address = baseAddress + HalfDrawDistanceOffsets[0];
                     ReadMemory(address, buffer);
                     var halfDrawDistance = *floatBuffer;
                     
@@ -1780,12 +1811,12 @@ namespace TroveSkip.ViewModels
             return (0, 0, 0);
         }
 
-        private (float, float, float) ReadSettings(ref HookModel hook) => ReadSettings(ref hook, hook.ModuleAddress + _settingsPointer);
+        private (float, float, float) ReadSettings(ref HookModel hook) => ReadSettings(ref hook, hook.ModuleAddress + _settingsOffset);
 
         private void WriteSettings(ref HookModel hook, (float, float, float) settings)
         {
             var handle = hook.Handle;
-            var halfDrawDistanceAdd = GetAddressFromLocalPlayer(handle, HalfDrawDistance);
+            var halfDrawDistanceAdd = GetAddressFromLocalPlayer(handle, HalfDrawDistanceOffsets);
             WriteFloat(handle, halfDrawDistanceAdd, settings.Item2);
             WriteFloat(handle, halfDrawDistanceAdd + 4, settings.Item3);
             WriteFloat(handle, halfDrawDistanceAdd + 0x24, settings.Item1);
@@ -1795,21 +1826,21 @@ namespace TroveSkip.ViewModels
         {
             var buffer = stackalloc byte[4];
             var intBuffer = (int*) buffer;
-            var address = _currentModuleAddress + i;
+            var address = _currentModulePointer + i;
             ReadMemory(address, buffer);
             var source = *intBuffer;
             
-            if (_settingsPointer == 0)
+            if (_settingsOffset == 0)
             {
                 var settings = ReadSettings(address);
                 if (settings.Item1 != 0)
                 {
-                    _settingsPointer = i;
-                    return _chatPointer != 0 && _gameGlobalsPointer != 0;
+                    _settingsOffset = i;
+                    return _chatOffset != 0 && _gameGlobalsOffset != 0;
                 }
             }
             
-            if (_chatPointer == 0)
+            if (_chatOffset == 0)
             {
                 address = source + ChatOpenedOffsets[0];
                 if (ReadMemory(address, buffer))
@@ -1824,15 +1855,15 @@ namespace TroveSkip.ViewModels
                         {
                             if (*intBuffer == 841)
                             {
-                                _chatPointer = i;
-                                return _settingsPointer != 0 && _gameGlobalsPointer != 0;
+                                _chatOffset = i;
+                                return _settingsOffset != 0 && _gameGlobalsOffset != 0;
                             }
                         }
                     }
                 }
             }
 
-            if (_gameGlobalsPointer == 0)
+            if (_gameGlobalsOffset == 0)
             {
                 *intBuffer = source;
                 foreach (var offset in WorldIdStableOffsets)
@@ -1843,38 +1874,73 @@ namespace TroveSkip.ViewModels
 
                 if (_worldId == *intBuffer)
                 {
-                    _gameGlobalsPointer = i;
-                    return _chatPointer != 0 && _settingsPointer != 0;
+                    _gameGlobalsOffset = i;
+                    return _chatOffset != 0 && _settingsOffset != 0;
                 }
             }
 
             return false;
         }
 
-        private unsafe bool FindCharacterBaseAddress(int i)
+        private unsafe bool FindPlayersAddresses(int i)
         {
-            if (_localPlayerPointer != 0) return false;
+            if (_localPlayerOffset != 0 || _worldOffset != 0) return false;
             
             var buffer = stackalloc byte[4];
             var intBuffer = (int*) buffer;
-            var address = _currentModuleAddress + i;
+            var address = _currentModulePointer + i;
             ReadMemory(address, buffer);
-                    
-            foreach (var offset in LocalXPosition)
+            var source = *intBuffer;
+
+            if (_localPlayerOffset == 0)
             {
-                address = *intBuffer + offset;
-                if (!ReadMemory(address, buffer))
+                foreach (var offset in LocalXPosition)
                 {
-                    return false;
+                    address = *intBuffer + offset;
+                    if (!ReadMemory(address, buffer))
+                    {
+                        address = 0;
+                        break;
+                    }
+                }
+
+                if (address != 0)
+                {
+                    var value = *(float*) buffer;
+
+                    if (value > _xCoordinate - 1 && value < _xCoordinate + 1)
+                    {
+                        LocalPlayerPointer = i.ToString("X8");
+                        return _worldOffset != 0;
+                    }
                 }
             }
-
-            var value = *(float*) buffer;
-            
-            if (value > XCoordinate - 1 && value < XCoordinate + 1)
+ 
+            *intBuffer = source;
+            if (_worldOffset == 0)
             {
-                PlayerBaseAddress = i.ToString("X8");
-                return true;
+                foreach (var offset in FirstPlayerXPosition)
+                {
+                    address = *intBuffer + offset;
+                    if (!ReadMemory(address, buffer))
+                        return false;
+                }
+                
+                var xPos = *(float*) buffer;
+                *intBuffer = source;
+
+                foreach (var offset in WorldIdOffsets)
+                {
+                    address = *intBuffer + offset;
+                    if (!ReadMemory(address, buffer))
+                        return false;
+                }
+                
+                if (xPos > _xCoordinate - 1 && xPos < _xCoordinate + 1 && *intBuffer == _worldId)
+                {
+                    _worldOffset = i;
+                    return _localPlayerOffset != 0;
+                }
             }
 
             return false;

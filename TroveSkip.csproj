@@ -136,9 +136,12 @@
     <Compile Include="Memory\GameOffset.cs" />
     <Compile Include="Memory\Player\Character\CharacterOffset.cs" />
     <Compile Include="Memory\Player\Character\ControllerOffset.cs" />
+    <Compile Include="Memory\Player\Character\Info\InfoOffset.cs" />
+    <Compile Include="Memory\Player\Character\StatOffset.cs" />
     <Compile Include="Memory\Player\PlayerOffset.cs" />
-    <Compile Include="Memory\Player\StatOffset.cs" />
     <Compile Include="Memory\SettingOffset.cs" />
+    <Compile Include="Memory\World\Players\PlayersOffset.cs" />
+    <Compile Include="Memory\World\WorldOffset.cs" />
     <Compile Include="Models\HookModel.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Settings.cs" />
