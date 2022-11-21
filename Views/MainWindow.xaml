@@ -283,7 +283,7 @@
         <Button Name="SwitchPage" Content="SETS" Command="{Binding SwitchPageCommand}" CommandParameter="{Binding ElementName=SwitchPage}" Background="#8233D4" Style="{StaticResource SwitchButton}"/>
         
         <Grid Visibility="{Binding MainPageVisibility}">
-            <ComboBox IsEnabled="{Binding FollowApp, Converter={StaticResource InverseBooleanConverter}}" ItemsSource="{Binding Hooks}" SelectedItem="{Binding HookModel, UpdateSourceTrigger=PropertyChanged}" Margin="5 30 0 0" PreviewMouseLeftButtonDown="ClickComboBox">
+            <ComboBox IsEnabled="{Binding FollowApp, Converter={StaticResource InverseBooleanConverter}}" ItemsSource="{Binding Hooks}" SelectedItem="{Binding HookModel, UpdateSourceTrigger=PropertyChanged}" Margin="5 30 0 0">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal">

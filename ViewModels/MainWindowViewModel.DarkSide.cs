@@ -193,6 +193,14 @@ namespace TroveSkip.ViewModels
             }
         }
 
+        private static int GetForegroundWindowProcessId() => GetProcessIdFromWindowHandle(GetForegroundWindow());
+        
+        private static int GetProcessIdFromWindowHandle(IntPtr windowHandle)
+        {
+            GetWindowThreadProcessId(windowHandle, out var processId);
+            return processId;
+        }
+
         private string ReadStringToEnd(int address, Encoding encoding, int maxLength = MaxStringLength) =>
             ReadStringToEnd(_handle, address, encoding, maxLength);
         

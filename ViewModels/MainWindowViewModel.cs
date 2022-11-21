@@ -865,8 +865,8 @@ namespace TroveSkip.ViewModels
             }
             //_activityHook.OnMouseActivity += MouseCheck;
 
-            _dispatcher.InvokeAsync(UpdateCurrent);
-            _dispatcher.InvokeAsync(FocusUpdate);
+            //_dispatcher.InvokeAsync(UpdateCurrent);
+            //_dispatcher.InvokeAsync(FocusUpdate);
             _dispatcher.InvokeAsync(ForceSprint);
             _dispatcher.InvokeAsync(ForceSpeed);
             _dispatcher.InvokeAsync(HooksUpdate);
@@ -1172,72 +1172,83 @@ namespace TroveSkip.ViewModels
         
         public void RefreshHooks(bool change = false)
         {
-            var processList = Process.GetProcessesByName("Trove");
-
-            foreach (var process in processList)
+            try
             {
-                int baseAddress;
-                try
-                {
-                    ProcessModule module;
-                    if ((module = process.MainModule) == null)
-                        continue;
-                    
-                    baseAddress = (int) module.BaseAddress;
-                }
-                catch
-                {
-                    continue;
-                }
+                var processList = Process.GetProcessesByName("Trove");
 
-                var handle = process.Handle;
-                var name = GetName(handle, baseAddress);
-                try
+                foreach (var process in processList)
                 {
-                    var hooksCopy = Hooks.ToList();
-                    var copy = hooksCopy.FirstOrDefault(x => x.Id == process.Id);
-                    HookModel hook;
-                    if (copy != null)
+                    int baseAddress;
+                    try
                     {
-                        if (copy.Name.Length == 0 && name.Length != 0)
+                        ProcessModule module;
+                        if ((module = process.MainModule) == null)
+                            continue;
+
+                        baseAddress = (int) module.BaseAddress;
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    var handle = process.Handle;
+                    var name = GetName(handle, baseAddress);
+                    try
+                    {
+                        var hooksCopy = Hooks.ToList();
+                        var copy = hooksCopy.FirstOrDefault(x => x.Id == process.Id);
+                        HookModel hook;
+                        if (copy != null)
                         {
-                            var index = hooksCopy.IndexOf(copy);
-                            copy.Name = name;
-                            //hook = new HookModel(copy, name);
-                            //hook.NetworkPlayersAddress = hook.ModuleAddress + _playersInWorldPointer;
-                            Hooks[index] = copy;
+                            if (copy.Name.Length == 0 && name.Length != 0)
+                            {
+                                var index = hooksCopy.IndexOf(copy);
+                                copy.Name = name;
+                                //hook = new HookModel(copy, name);
+                                //hook.NetworkPlayersAddress = hook.ModuleAddress + _playersInWorldPointer;
+                                Hooks[index] = copy;
+                            }
+                        }
+                        else
+                        {
+                            hook = new HookModel(process, name);
+                            AddHook(hook);
+
+                            // if (FollowPrimary)
+                            // {
+                            //     _lastSettings.Add(hook.Id, ReadSettings(ref hook));
+                            //     WriteSettings(ref hook, _nullSettings);
+                            // }
                         }
                     }
-                    else
+                    catch (Exception e)
                     {
-                        hook = new HookModel(process, name);
-                        AddHook(hook);
-
-                        // if (FollowPrimary)
-                        // {
-                        //     _lastSettings.Add(hook.Id, ReadSettings(ref hook));
-                        //     WriteSettings(ref hook, _nullSettings);
-                        // }
+                        MessageBox.Show(e.Message + "\n" + e.StackTrace, "RH: getting copy");
                     }
                 }
-                catch {}
+
+                foreach (var hook in Hooks)
+                {
+                    if (processList.FirstOrDefault(x => x.Id == hook.Id) == null)
+                        Hooks.Remove(hook);
+                }
+
+                if (Hooks.Count == 0)
+                {
+                    HookModel = null;
+                }
+                else if (change && HookModel == null)
+                {
+                    HookModel = Hooks.First();
+                }
             }
-            
-            foreach (var hook in Hooks)
+            catch (Exception e)
             {
-                if (processList.FirstOrDefault(x => x.Id == hook.Id) == null)
-                    Hooks.Remove(hook);
-            }
-            if (Hooks.Count == 0)
-            {
-                HookModel = null;
-            }
-            else if (change && HookModel == null)
-            {
-                HookModel = Hooks.First();
+                MessageBox.Show(e.Message + "\n" + e.StackTrace, "RH");
             }
         }
-        
+
         private void Skip()
         {
             var xPositionAddress = GetAddressFromLocalPlayer(LocalXPosition);
@@ -1373,8 +1384,91 @@ namespace TroveSkip.ViewModels
                 await Task.Delay(50);
             }
         }
-
+        
         private async void HooksUpdate()
+        {
+            while (true)
+            {
+                await Task.Delay(50);
+                
+                foreach (var process in Process.GetProcessesByName("Trove"))
+                {
+                    int baseAddress;
+                    try
+                    {
+                        ProcessModule module;
+                        if ((module = process.MainModule) == null)
+                            continue;
+
+                        baseAddress = (int) module.BaseAddress;
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    var hooksCopy = Hooks.ToList();
+                    var hook = hooksCopy.FirstOrDefault(x => x.Id == process.Id);
+                    string name;
+                    if (hook == null)
+                    {
+                        name = GetName(process.Handle, baseAddress);
+                        hook = new HookModel(process, name);
+                        if (hook.ModuleAddress == 0)
+                            continue;
+
+                        AddHook(hook);
+
+                        if (HookModel == null)
+                            HookModel = hook;
+                    }
+                    else if (hook.Name.Length == 0)
+                    {
+                        name = GetName(process.Handle, baseAddress);
+                        if (name != null)
+                        {
+                            hook.Name = name;
+                            Hooks[Hooks.IndexOf(hook)] = hook;
+                        }
+                    }
+
+                    if (HookModel == null)
+                    {
+                        if (FollowApp && 
+                            GetForegroundWindowProcessId() == hook.Id ||
+                            !FollowApp)
+                            HookModel = hook;
+                    }
+                }
+                
+                if (FollowApp && HookModel != null)
+                {
+                    var handle = GetForegroundWindow();
+                    GetWindowThreadProcessId(handle, out var procId);
+                    
+                    if (Hooks.All(x => x.Id != procId))
+                        HookModel = null;
+                }
+
+                if (FollowBotsToggle)
+                {
+                    foreach (var hook in Hooks)
+                    {
+                        var handle = hook.Handle;
+                        var gravity = hook.IsPrimary && _botsFollowType == 0 ? Gravity : 0;
+                        WriteFloat(handle, hook.LocalPlayerPointer, GravityOffsets, gravity);
+                        hook.WorldId = ReadInt(handle, hook.WorldPointer, WorldIdOffsets);
+                    }
+                }
+
+                // if (HookModel != null)
+                // {
+                //     HookModel.WorldId = ReadInt(_currentWorldPointer, WorldIdOffsets);
+                // }
+            }
+        }
+        
+        private async void HooksUpdate1()
         {
             while (true)
             {
@@ -1383,20 +1477,34 @@ namespace TroveSkip.ViewModels
 
                 foreach (var process in processList)
                 {
+                    int baseAddress;
+                    try
+                    {
+                        ProcessModule module;
+                        if ((module = process.MainModule) == null)
+                            continue;
+
+                        baseAddress = (int) module.BaseAddress;
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
                     var hook = Hooks.FirstOrDefault(x => x.Id == process.Id);
                     string name;
                     if (hook == null)
                     {
-                        name = GetName(process.Handle, (int) process.MainModule.BaseAddress);
+                        name = GetName(process.Handle, baseAddress);
                         hook = new HookModel(process, name);
                         if (hook.ModuleAddress == 0)
                             continue;
-                        
+
                         AddHook(hook);
                     }
                     else if (hook.Name.Length == 0)
                     {
-                        name = GetName(process.Handle, (int) process.MainModule.BaseAddress);
+                        name = GetName(process.Handle, baseAddress);
                         if (name != null)
                         {
                             var index = Hooks.IndexOf(hook);
@@ -1444,7 +1552,7 @@ namespace TroveSkip.ViewModels
                 // }
             }
         }
-        
+
         public bool GameClosed()
         {
             if (HookModel == null || HookModel.HasExited)
@@ -1466,7 +1574,7 @@ namespace TroveSkip.ViewModels
             return (HookModel?.Id ?? 0) != procId;
         }
 
-        private unsafe bool ChatOpened()
+        private bool ChatOpened()
         {
             if (GameClosed()) return true;
             //var @byte = stackalloc byte[1];
@@ -1556,11 +1664,6 @@ namespace TroveSkip.ViewModels
                     }
                 }
             }
-        }
-
-        private void FollowFunc()
-        {
-            
         }
         
         private async void FollowUpdate()
@@ -1718,11 +1821,8 @@ namespace TroveSkip.ViewModels
             ReadStringToEnd(handle,
             GetAddress(moduleAddress + _localPlayerOffset, LocalPlayerNameOffsets), 
             Encoding.ASCII);
-        
-        private string GetName(HookModel hook) => 
-            ReadStringToEnd(hook.Handle,
-                GetAddress(hook.ModuleAddress + _localPlayerOffset, LocalPlayerNameOffsets), 
-                Encoding.ASCII);
+
+        private string GetName(HookModel hook) => GetName(hook.Handle, hook.ModuleAddress);
 
         private float GetEncryptedFloat(IntPtr handle, int baseAddress, int[] offsets) =>
             GetEncryptedFloat(handle, GetAddress(handle, baseAddress, offsets));

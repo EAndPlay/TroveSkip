@@ -36,6 +36,6 @@ namespace TroveSkip.Views
                 DragMove();
         }
 
-        private void ClickComboBox(object sender, MouseButtonEventArgs e) => _viewModel.RefreshHooks(true);
+        // private void ClickComboBox(object sender, MouseButtonEventArgs e) => _viewModel.RefreshHooks(true);
     }
 }
