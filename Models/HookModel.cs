@@ -1,14 +1,15 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
-using TroveSkip.ViewModels;
+using System.Runtime.CompilerServices;
+using TroveSkip.Properties;
 
 namespace TroveSkip.Models
 {
-    public class HookModel
+    public class HookModel : INotifyPropertyChanged
     {
-        public Process Process { get; private set; } //was readonly @field
         public int Id { get; }
+        public Process Process { get; } //was readonly @field
         public IntPtr Handle { get; }
         public IntPtr WindowHandle { get; }
         public ProcessModule Module { get; }
@@ -27,17 +28,27 @@ namespace TroveSkip.Models
         // public bool ChamsCheck;
         // public bool MiningCheck;
 
-        public bool HasExited => Process == null || Process.HasExited;
+        //public bool HasExited => Process == null || Process.HasExited;
         
-        public string Name { get; set; }
+        private string _name;
+        public string Name
+        {
+            get => _name;
+            set
+            {
+                _name = value;
+                OnPropertyChanged();
+            }
+        }
 
         public HookModel(Process process, string name)
         {
             Process = process;
-            Name = name;
+            Name = name ?? string.Empty;
             Id = process.Id;
             Handle = process.Handle;
             WindowHandle = process.MainWindowHandle;
+            ModuleAddress = 0;
             try
             {
                 Module = process.MainModule;
@@ -47,12 +58,10 @@ namespace TroveSkip.Models
                 return;
             }
             ModuleAddress = (int) Module.BaseAddress;
-            Process.EnableRaisingEvents = true;
-            Process.Exited += (_, _) => Process = null;
             IsPrimary = false;
         }
 
-        public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name) {}
+        // public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name) {}
         // public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name)
         // {
         //     MapCheck = hookModel.MapCheck;
@@ -61,5 +70,13 @@ namespace TroveSkip.Models
         //     ChamsCheck = hookModel.ChamsCheck;
         //     MiningCheck = hookModel.MiningCheck;
         // }
+        
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 }

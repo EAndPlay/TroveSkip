@@ -24,7 +24,7 @@ namespace TroveSkip
         public float StopDistance;
         public byte StopType;
         public float StopPower;
-        public string NoClipToggle;
+        public string NoClipToggleButton;
         public byte WarnStatus;
         public uint WarnDistance;
         public byte FollowType;
@@ -37,7 +37,7 @@ namespace TroveSkip
             StopDistance = 2;
             StopType = (byte) BotsStopType.Slow;
             StopPower = 5;
-            NoClipToggle = Key.V.ToString();
+            NoClipToggleButton = Key.V.ToString();
             WarnStatus = FollowType = TargetCheckType = 0;
             WarnDistance = 15;
             FollowTargetName = string.Empty;

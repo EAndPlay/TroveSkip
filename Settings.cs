@@ -26,7 +26,9 @@ namespace TroveSkip
         public string SprintToggleButton;
         public string JumpButton;
         public string JumpToggleButton;
-        public string SpeedHackToggle;
+        public string SpeedHackToggleButton;
+        public string MiningToggleButton;
+        public string FollowBotsToggleButton;
 
         public float SkipValue;
         public float SprintValue;
@@ -46,7 +48,9 @@ namespace TroveSkip
             SkipButton = Key.D3.ToString();
             SprintToggleButton = Key.D4.ToString();
             JumpToggleButton = Key.None.ToString();
-            SpeedHackToggle = Key.None.ToString();
+            SpeedHackToggleButton = Key.None.ToString();
+            MiningToggleButton = Key.None.ToString();
+            FollowBotsToggleButton = Key.None.ToString();
 
             SkipValue = 4;
             SprintValue = FollowSpeedValue = 40;
@@ -169,7 +173,7 @@ namespace TroveSkip
                     }
                     else if (Regex.IsMatch(line, "\"SpeedHackToggle\":.*\".+\""))
                     {
-                        settings.SpeedHackToggle = Regex.Match(line, "\"SpeedHackToggle\":.*\"(.+)\"").Groups[1].Value;
+                        settings.SpeedHackToggleButton = Regex.Match(line, "\"SpeedHackToggle\":.*\"(.+)\"").Groups[1].Value;
                     }
                     else if (Regex.IsMatch(line, "\"SprintValue\":.*[0-9]*[.][0-9]+"))
                     {

@@ -2,7 +2,7 @@
 {
     public enum GameOffset
     {
-        Camera = 0x4,
-        LocalPlayer = 0x8
+        LocalPlayer = 0x0, // 0x8
+        Camera = 0x4
     }
 }

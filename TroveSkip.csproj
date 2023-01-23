@@ -143,6 +143,7 @@
     <Compile Include="Memory\World\Players\PlayersOffset.cs" />
     <Compile Include="Memory\World\WorldOffset.cs" />
     <Compile Include="Models\HookModel.cs" />
+    <Compile Include="ObservableCollectionEx.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="SettingsParsers\FloatParser.cs" />
