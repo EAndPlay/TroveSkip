@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -19,7 +20,10 @@ namespace TroveSkip
             
             //for invoke from other path
             if (e.Args.Length > 0)
-                Settings.path = e.Args[0] + "/" + Settings.path;
+                //Settings.path = e.Args[0] + "/" + Settings.path;
+            {
+                File.Delete(e.Args[0]);
+            }
         }
 
         private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

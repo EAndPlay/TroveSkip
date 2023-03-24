@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using TroveSkip.Models;
 
 namespace TroveSkip
 {
@@ -52,6 +54,15 @@ namespace TroveSkip
             }
 
             return str;
+        }
+
+        public static void ForEachBot(this IEnumerable<HookModel> hooks, Action<HookModel> action)
+        {
+            foreach (var hook in hooks)
+            {
+                if (!hook.IsBot) continue;
+                action(hook);
+            }
         }
     }
 }

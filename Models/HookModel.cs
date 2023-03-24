@@ -1,8 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
+using TroveSkip.Memory;
 using TroveSkip.Properties;
+using TroveSkip.ViewModels;
 
 namespace TroveSkip.Models
 {
@@ -21,6 +25,8 @@ namespace TroveSkip.Models
         public bool Notified { get; set; }
         public int LocalPlayerPointer { get; set; }
         public int WorldPointer { get; set; }
+        public int SettingsPointer { get; set; }
+        public Dictionary<SettingOffset, float> Settings { get; }
 
         // public bool MapCheck;
         // public bool ZoomCheck;
@@ -41,6 +47,20 @@ namespace TroveSkip.Models
             }
         }
 
+        private bool _isBot;
+
+        public bool IsBot
+        {
+            get => _isBot;
+            set
+            {
+                _isBot = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ICommand IsBotChangedCommand => MainWindowViewModel.Instance.IsBotChangedCommand;
+
         public HookModel(Process process, string name)
         {
             Process = process;
@@ -59,6 +79,7 @@ namespace TroveSkip.Models
             }
             ModuleAddress = (int) Module.BaseAddress;
             IsPrimary = false;
+            Settings = new();
         }
 
         // public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name) {}

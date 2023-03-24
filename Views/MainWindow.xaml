@@ -21,6 +21,8 @@
     </Window.DataContext>
     <Window.Resources>
         <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <local:ComparisonConverter x:Key="ComparisonConverter"/>
+        <!-- <local:InverseComparisonConverter x:Key="InverseComparisonConverter"/> -->
         <Style x:Key="CornerButtons" TargetType="{x:Type Button}">
             <Setter Property="Template">
                 <Setter.Value>
@@ -86,7 +88,7 @@
             <Setter Property="VerticalAlignment" Value="Top"/>
             <Setter Property="Orientation" Value="Horizontal"/>
         </Style>
-        <Style TargetType="{x:Type TextBox}">
+        <Style TargetType="TextBox">
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Width" Value="55"/>
@@ -99,10 +101,63 @@
             <Setter Property="SelectionBrush" Value="#9835EF"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
-        <Style TargetType="{x:Type CheckBox}">
+        <Style TargetType="CheckBox">
             <Setter Property="Margin" Value="5 2 0 0"/>
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="DemiBold"/>
+            <!-- <Setter Property="Width" Value="140"/> -->
+            <!-- <Setter Property="Height" Value="30"/> -->
+            <!-- <Setter Property="Template"> -->
+            <!--     <Setter.Value> -->
+            <!--         <ControlTemplate> -->
+            <!--             <Grid Name="CheckBoxGrid" Background="Pink"> -->
+            <!--                 <Grid.ColumnDefinitions> -->
+            <!--                     <ColumnDefinition Width="20"/> -->
+            <!--                     <ColumnDefinition Width="Auto"/> -->
+            <!--                 </Grid.ColumnDefinitions> -->
+            <!--                 <Border Name="CheckBoxBorder" Grid.Column="0" Height="10" Width="10" Background="Black"> -->
+            <!--                      -->
+            <!--                 </Border> -->
+            <!--                  -->
+            <!--                 <Label Grid.Column="1" Content="{TemplateBinding CheckBox.Content}"/> -->
+            <!--                 <Grid.Triggers> -->
+            <!--                     <EventTrigger RoutedEvent="UIElement.MouseEnter"> -->
+            <!--                         <BeginStoryboard> -->
+            <!--                             <Storyboard> -->
+            <!--                                 <ColorAnimation To="#236DFF"  -->
+            <!--                                                 Storyboard.TargetName="CheckBoxBorder" -->
+            <!--                                                 Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"  -->
+            <!--                                                 FillBehavior="HoldEnd"  -->
+            <!--                                                 Duration="0:0:0"/> -->
+            <!--                             </Storyboard> -->
+            <!--                         </BeginStoryboard> -->
+            <!--                     </EventTrigger> -->
+            <!--                     <EventTrigger RoutedEvent="UIElement.MouseLeave"> -->
+            <!--                         <BeginStoryboard> -->
+            <!--                             <Storyboard> -->
+            <!--                                 <ColorAnimation Storyboard.TargetName="CheckBoxBorder" -->
+            <!--                                                 Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"  -->
+            <!--                                                 FillBehavior="HoldEnd"  -->
+            <!--                                                 Duration="0:0:0"/> -->
+            <!--                             </Storyboard> -->
+            <!--                         </BeginStoryboard> -->
+            <!--                     </EventTrigger> -->
+            <!--                     <EventTrigger RoutedEvent="UIElement.PreviewMouseDown"> -->
+            <!--                         <BeginStoryboard> -->
+            <!--                             <Storyboard> -->
+            <!--                                 <ColorAnimation To="#FFF353" -->
+            <!--                                                 Storyboard.TargetName="CheckBoxBorder" -->
+            <!--                                                 Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"  -->
+            <!--                                                 FillBehavior="HoldEnd"  -->
+            <!--                                                 Duration="0:0:0"/> -->
+            <!--                             </Storyboard> -->
+            <!--                         </BeginStoryboard> -->
+            <!--                     </EventTrigger> -->
+            <!--                 </Grid.Triggers> -->
+            <!--             </Grid> -->
+            <!--         </ControlTemplate> -->
+            <!--     </Setter.Value> -->
+            <!-- </Setter> -->
         </Style>
         <Style TargetType="ComboBox">
             <Setter Property="Width" Value="192"/>
@@ -274,6 +329,151 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="KeyBindButton" TargetType="Button">
+            <Setter Property="Margin" Value="-2 0 0 0"/>
+            <Setter Property="Width" Value="96"/>
+            <Setter Property="Height" Value="26.35"/>
+            <!-- <Setter Property="Background" Value="#B995EF"/> -->
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="DemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Grid>
+                            <Border Name="BUTTON_Border" Background="#B995EF" CornerRadius="3">
+                                <Border.Triggers>
+                                    <EventTrigger RoutedEvent="Button.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation To="#DFCDFF" 
+                                                                Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" 
+                                                                FillBehavior="HoldEnd" 
+                                                                Duration="0:0:0"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Button.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" 
+                                                                FillBehavior="HoldEnd" 
+                                                                Duration="0:0:0"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Border.Triggers>
+                            </Border>
+                            <Label Margin="0 -2 0 0" Height="30" Content="{TemplateBinding Button.Content}" HorizontalAlignment="Center" VerticalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                                <Label.Triggers>
+                                    <EventTrigger RoutedEvent="Label.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation To="#DFCDFF" 
+                                                                Storyboard.TargetName="BUTTON_Border"
+                                                                Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" 
+                                                                FillBehavior="HoldEnd" 
+                                                                Duration="0:0:0"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Label.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <ColorAnimation Storyboard.TargetName="BUTTON_Border"
+                                                                Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" 
+                                                                FillBehavior="HoldEnd" 
+                                                                Duration="0:0:0"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Label.Triggers>
+                            </Label>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!--     <Style x:Key="SliderRepeatButton" TargetType="RepeatButton"> -->
+    <!--     <Setter Property="SnapsToDevicePixels" Value="true" /> -->
+    <!--     <Setter Property="OverridesDefaultStyle" Value="true" /> -->
+    <!--     <Setter Property="IsTabStop" Value="false" /> -->
+    <!--     <Setter Property="Focusable" Value="false" /> -->
+    <!--     <Setter Property="Template"> -->
+    <!--         <Setter.Value> -->
+    <!--             <ControlTemplate TargetType="RepeatButton"> -->
+    <!--                 <Border BorderBrush="Black" Background="Black" Height="4"/> -->
+    <!--             </ControlTemplate> -->
+    <!--         </Setter.Value> -->
+    <!--     </Setter> -->
+    <!-- </Style> -->
+    <!-- -->
+    <!-- <Style x:Key="SliderRepeatButton1" TargetType="RepeatButton"> -->
+    <!--     <Setter Property="SnapsToDevicePixels" Value="true" /> -->
+    <!--     <Setter Property="OverridesDefaultStyle" Value="true" /> -->
+    <!--     <Setter Property="Template"> -->
+    <!--         <Setter.Value> -->
+    <!--             <ControlTemplate TargetType="RepeatButton"> -->
+    <!--                 <Border SnapsToDevicePixels="True" Background="#59F3FF" Height="4"/> -->
+    <!--             </ControlTemplate> -->
+    <!--         </Setter.Value> -->
+    <!--     </Setter> -->
+    <!-- </Style> -->
+    <!-- -->
+    <!-- <Style x:Key="SliderThumb" TargetType="Thumb"> -->
+    <!--     <Setter Property="SnapsToDevicePixels" Value="true" /> -->
+    <!--     <Setter Property="OverridesDefaultStyle" Value="true" /> -->
+    <!--     <Setter Property="Template"> -->
+    <!--         <Setter.Value> -->
+    <!--             <ControlTemplate TargetType="Thumb"> -->
+    <!--                 <Border x:Name="Ellipse" Height="15" Width="10" CornerRadius="5" Background="#6496F0"/> -->
+    <!--                 <ControlTemplate.Triggers> -->
+    <!--                     <Trigger Property="IsMouseOver" Value="true"> -->
+    <!--                         <Setter TargetName="Ellipse" Property="Background" Value="#4E7BFF"></Setter> -->
+    <!--                     </Trigger> -->
+    <!--                 </ControlTemplate.Triggers> -->
+    <!--             </ControlTemplate> -->
+    <!--         </Setter.Value> -->
+    <!--     </Setter> -->
+    <!-- </Style> -->
+    <!-- -->
+    <!-- <ControlTemplate x:Key="Slider" TargetType="Slider"> -->
+    <!--     <Grid> -->
+    <!--         <Grid.RowDefinitions> -->
+    <!--             <RowDefinition Height="Auto" /> -->
+    <!--             <RowDefinition Height="Auto" MinHeight="{TemplateBinding MinHeight}" /> -->
+    <!--             <RowDefinition Height="Auto" /> -->
+    <!--         </Grid.RowDefinitions> -->
+    <!--         <Track Grid.Row="1" x:Name="PART_Track"> -->
+    <!--             <Track.DecreaseRepeatButton> -->
+    <!--                 <RepeatButton Style="{StaticResource SliderRepeatButton1}" Command="Slider.DecreaseLarge"/> -->
+    <!--             </Track.DecreaseRepeatButton> -->
+    <!--             <Track.Thumb> -->
+    <!--                 <Thumb Style="{StaticResource SliderThumb}"/> -->
+    <!--             </Track.Thumb> -->
+    <!--             <Track.IncreaseRepeatButton> -->
+    <!--                 <RepeatButton Style="{StaticResource SliderRepeatButton}" Command="Slider.IncreaseLarge"/> -->
+    <!--             </Track.IncreaseRepeatButton> -->
+    <!--         </Track> -->
+    <!--     </Grid>             -->
+    <!-- </ControlTemplate> -->
+    <!-- -->
+    <!-- <Style x:Key="Horizontal_Slider" TargetType="Slider"> -->
+    <!--     <Style.Triggers> -->
+    <!--         <Trigger Property="Orientation" Value="Horizontal"> -->
+    <!--             <Setter Property="Template" Value="{StaticResource Slider}"/> -->
+    <!--         </Trigger> -->
+    <!--     </Style.Triggers> -->
+    <!--     ~1~ <Setter Property="Focusable" Value="False"/> @1@ -->
+    <!--     ~1~ <Setter Property="SnapsToDevicePixels" Value="true"/> @1@ -->
+    <!--     ~1~ <Setter Property="OverridesDefaultStyle" Value="true"/> @1@ -->
+    <!--     ~1~ <Style.Triggers> @1@ -->
+    <!--     ~1~     <Trigger Property="Orientation" Value="Horizontal"> @1@ -->
+    <!--     ~1~         <Setter Property="MinHeight" Value="21"/> @1@ -->
+    <!--     ~1~         <Setter Property="MinWidth" Value="104"/> @1@ -->
+    <!--     ~1~         <Setter Property="Template" Value="{StaticResource Slider}"/> @1@ -->
+    <!--     ~1~     </Trigger> @1@ -->
+    <!--     ~1~ </Style.Triggers> @1@ -->
+    <!-- </Style> -->
     </Window.Resources>
     <Grid>
         <Border Background="#646464" CornerRadius="0 0 10 10" Width="202" Margin="0 26 0 0" HorizontalAlignment="Left"/>
@@ -283,19 +483,20 @@
         <Button Name="SwitchPage" Content="SETS" Command="{Binding SwitchPageCommand}" CommandParameter="{Binding ElementName=SwitchPage}" Background="#8233D4" Style="{StaticResource SwitchButton}"/>
         
         <Grid Visibility="{Binding MainPageVisibility}">
-            <ComboBox IsEnabled="{Binding FollowApp, Converter={StaticResource InverseBooleanConverter}}" ItemsSource="{Binding Hooks, UpdateSourceTrigger=PropertyChanged, BindsDirectlyToSource=True}" SelectedItem="{Binding HookModel, UpdateSourceTrigger=PropertyChanged}" IsEditable="False"  Margin="5 30 0 0">
+            <ComboBox IsEnabled="{Binding FollowApp, Converter={StaticResource InverseBooleanConverter}}" ItemsSource="{Binding Hooks, UpdateSourceTrigger=PropertyChanged, BindsDirectlyToSource=True}" SelectedItem="{Binding HookModel, UpdateSourceTrigger=PropertyChanged}" IsEditable="False" Margin="5 30 0 0" FocusVisualStyle="{x:Null}">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding Id}" TextAlignment="Center"/>
                             <TextBlock Text=" | " TextAlignment="Center"/>
                             <TextBlock Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" TextAlignment="Center"/>
+                            <CheckBox Margin="0 0 0 0" IsChecked="{Binding IsBot}" HorizontalAlignment="Right" Command="{Binding IsBotChangedCommand}" CommandParameter="{RelativeSource Self}"/>
                         </StackPanel>
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
             
-            <CheckBox Content="Follow" IsChecked="{Binding FollowApp, UpdateSourceTrigger=PropertyChanged}" Margin="130 55" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+            <CheckBox Content="Follow" IsChecked="{Binding FollowApp, UpdateSourceTrigger=PropertyChanged}" Width="72" Margin="130 55" HorizontalAlignment="Left" VerticalAlignment="Top"/>
             
             <StackPanel Margin="5, 55, 0, 0">
                 <TextBox Text="{Binding SkipValue, StringFormat={}{0:0.0}, UpdateSourceTrigger=PropertyChanged}"/>
@@ -310,13 +511,6 @@
                 <CheckBox IsChecked="{Binding JumpCheck, UpdateSourceTrigger=PropertyChanged}">Superjump</CheckBox>
             </StackPanel>
             <StackPanel Margin="5 130 0 0">
-                <!-- <ComboBox ItemsSource="{Binding SpeedList}" SelectedItem="{Binding CurrentSpeed}" Width="55" Height="22.5" FontSize="14.5" FontFamily="Consolas"> -->
-                <!--     <ComboBox.ItemTemplate> -->
-                <!--         <DataTemplate> -->
-                <!--             <TextBlock Text="{Binding Display}" TextAlignment="Center"/> -->
-                <!--         </DataTemplate> -->
-                <!--     </ComboBox.ItemTemplate> -->
-                <!-- </ComboBox> -->
                 <TextBox Text="{Binding SpeedHackValue, StringFormat={}{0:0}, UpdateSourceTrigger=PropertyChanged}"/>
                 <CheckBox IsChecked="{Binding SpeedCheck, UpdateSourceTrigger=PropertyChanged}">SpeedHack</CheckBox>
             </StackPanel>
@@ -332,6 +526,8 @@
             <CheckBox Name="FovCheck" Content="Fov Hack" IsChecked="{Binding FovCheck}" Command="{Binding FovCheckCommand}" CommandParameter="{Binding ElementName=FovCheck}" Margin="65 233 0 0"/>
             <CheckBox Name="ChamsCheck" Content="Chams Monster" IsChecked="{Binding ChamsCheck}" Command="{Binding ChamsCheckCommand}" CommandParameter="{Binding ElementName=ChamsCheck}" Margin="65 258 0 0"/>
             <CheckBox Name="MiningCheck" Content="Insta-Mining" IsChecked="{Binding MiningCheck}" Command="{Binding MiningCheckCommand}" CommandParameter="{Binding ElementName=MiningCheck}" Margin="65 283 0 0"/>
+            <CheckBox Content="No Graphics" IsChecked="{Binding NoGraphics}" Margin="65 308 0 0"/>
+            <CheckBox Content="Anti-AFK" IsChecked="{Binding AntiAfkCheck}" Margin="65 333 0 0"/>
             
             <Path Stroke="#1E1E1E" StrokeThickness="2" Fill="#1E1E1E">
                 <Path.Data>
@@ -346,8 +542,14 @@
                     </PathGeometry>
                 </Path.Data>
             </Path>
+            
+            <!-- <StackPanel Orientation="Vertical" Margin="65 308 0 0"> -->
+            <!--     <CheckBox Content="Draw Dist" IsChecked="{Binding NoDrawDistance}"/> -->
+            <!--     <Slider Value="{Binding SettingsSliderValue}" Style="{StaticResource Horizontal_Slider}" Height="20" Minimum="0" Maximum="210" Width="160" Margin="0 0 0 0" HorizontalAlignment="Left" VerticalAlignment="Top"/> -->
+            <!-- </StackPanel> -->
         </Grid>
-        
+
+        <!--<StackPanel Margin="0 31 0 0" Visibility="Hidden" Orientation="Vertical">-->
         <StackPanel Margin="0 31 0 0" Visibility="{Binding SettingsPageVisibility}" Orientation="Vertical">
             <StackPanel>
                 <TextBox Text="{Binding LocalPlayerOffset, UpdateSourceTrigger=PropertyChanged}" Width="105" Margin="2 0 0 0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
@@ -357,60 +559,62 @@
             <StackPanel Orientation="Vertical" Margin="0 5">
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Skip" Width="105"/>
-                    <Button Name="SkipButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SkipButton}" Content="{Binding SkipButton}"/>
+                    <Button Name="SkipButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SkipButton}" Content="{Binding SkipButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Sprint" Width="105"/>
-                    <Button Name="SprintButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SprintButton}" Content="{Binding SprintButton}"/>
+                    <Button Name="SprintButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SprintButton}" Content="{Binding SprintButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Sprint toggle" Width="105"/>
-                    <Button Name="SprintToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SprintToggleButton}" Content="{Binding SprintToggleButton}"/>
+                    <Button Name="SprintToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SprintToggleButton}" Content="{Binding SprintToggleButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Jump" Width="105"/>
-                    <Button Name="JumpButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=JumpButton}" Content="{Binding JumpButton}"/>
+                    <Button Name="JumpButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=JumpButton}" Content="{Binding JumpButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Jump toggle" Width="105"/>
-                    <Button Name="JumpToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=JumpToggleButton}" Content="{Binding JumpToggleButton}"/>
+                    <Button Name="JumpToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=JumpToggleButton}" Content="{Binding JumpToggleButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="SH toggle" Width="105"/>
-                    <Button Name="SpeedHackToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SpeedHackToggleButton}" Content="{Binding SpeedHackToggleButton}"/>
+                    <Button Name="SpeedHackToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=SpeedHackToggleButton}" Content="{Binding SpeedHackToggleButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Bots NoClip" Width="105"/>
-                    <Button Name="BotsNoClipToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=BotsNoClipToggleButton}" Content="{Binding BotsNoClipToggleButton}"/>
+                    <Button Name="BotsNoClipToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=BotsNoClipToggleButton}" Content="{Binding BotsNoClipToggleButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Insta-Mining" Width="105"/>
-                    <Button Name="MiningToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=MiningToggleButton}" Content="{Binding MiningToggleButton}"/>
+                    <Button Name="MiningToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=MiningToggleButton}" Content="{Binding MiningToggleButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Follow Bots" Width="105"/>
-                    <Button Name="FollowBotsToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=FollowBotsToggleButton}" Content="{Binding FollowBotsToggleButton}"/>
+                    <Button Name="FollowBotsToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=FollowBotsToggleButton}" Content="{Binding FollowBotsToggleButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
             </StackPanel>
         </StackPanel>
-        
+
+        <!--<StackPanel Margin="2 25 0 0" Orientation="Vertical" Visibility="Hidden">-->
         <StackPanel Margin="2 25 0 0" Orientation="Vertical" Visibility="{Binding BotsSettingsPageVisibility}">
-            <Label Margin="7 -5 0 0" Content="Stop" Width="45" Style="{StaticResource LabelStandard}" HorizontalAlignment="Center" HorizontalContentAlignment="Center"/>
+            <CheckBox Content="Auto set bot" Margin="5 3 0 0" IsChecked="{Binding BotsSettings.AutoSetBot}"/>
+            <Label Margin="7 -10 0 0" Content="Stop" Width="45" Style="{StaticResource LabelStandard}" HorizontalAlignment="Center" HorizontalContentAlignment="Center"/>
             <StackPanel Margin="10 0 0 0" Orientation="Vertical">
                 <StackPanel Margin="0 -5 0 0" Style="{StaticResource NormalizedPanel}">
                     <Label Content="Distance" Width="80"/>
-                    <TextBox Text="{Binding Path=BotsStopDistance, StringFormat={}{0:0.0}, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Text="{Binding Path=BotsSettings.StopDistance, StringFormat={}{0:0.0}, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
                 <StackPanel Margin="0 -12 0 0" Style="{StaticResource NormalizedPanel}">
                     <Label Content="Type" Width="80"/>
                     <StackPanel Margin="0 8 0 0" Orientation="Vertical" Style="{StaticResource RadioButtonsPanel}">
-                        <RadioButton IsChecked="{Binding FullStopState}" Content="Full stop" Command="{Binding BotsStopTypeSwitchCommand}" CommandParameter="0"/>
-                        <RadioButton IsChecked="{Binding SlowStopState}" Content="Slow" Command="{Binding BotsStopTypeSwitchCommand}" CommandParameter="1"/>
+                        <RadioButton IsChecked="{Binding BotsSettings.StopType, Converter={StaticResource ComparisonConverter}, ConverterParameter={x:Static local:StopType.Slow}}" Content="Slow"/>
+                        <RadioButton IsChecked="{Binding BotsSettings.StopType, Converter={StaticResource ComparisonConverter}, ConverterParameter={x:Static local:StopType.FullStop}}" Content="FullStop"/>
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Power" Width="80"/>
-                    <TextBox Margin="0 5 0 0" Text="{Binding Path=BotsStopPower, StringFormat={}{0:0.0}, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Margin="0 5 0 0" Text="{Binding Path=BotsSettings.StopPower, StringFormat={}{0:0.0}, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
             </StackPanel>
             <Path Margin="0 -122 0 0" Stroke="#1E1E1E" StrokeThickness="2" Fill="#1E1E1E">
@@ -433,17 +637,19 @@
             <Label Margin="7 -10 0 0" Content="Warning" Width="80" Style="{StaticResource LabelStandard}" HorizontalAlignment="Center" HorizontalContentAlignment="Center"/>
             <StackPanel Margin="10 0 0 0" Orientation="Vertical">
                 <StackPanel Margin="0 -12 0 0" Style="{StaticResource NormalizedPanel}">
-                    <Label Content="Status" Width="80"/>
-                    <StackPanel Margin="0 8 0 0" Orientation="Vertical" Style="{StaticResource RadioButtonsPanel}">
-                        <RadioButton IsChecked="{Binding BotsWarnOff}" Content="Off" Command="{Binding BotsWarnStatusSwitchCommand}" CommandParameter="0"/>
-                        <RadioButton IsChecked="{Binding BotsWarnOn}" Content="On" Command="{Binding BotsWarnStatusSwitchCommand}" CommandParameter="1"/>
-                    </StackPanel>
+                    <Label Content="Enabled" Width="80"/>
+                    <CheckBox IsChecked="{Binding BotsSettings.WarnEnabled}" Margin="-2 8 0 0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                    <!-- <StackPanel Margin="0 8 0 0" Orientation="Vertical" Style="{StaticResource RadioButtonsPanel}"> -->
+                    <!--     <RadioButton IsChecked="{Binding BotsSettings.WarnEnabled}" Content="Off" Command="{Binding BotsWarnStatusSwitchCommand}" CommandParameter="0"/> -->
+                    <!--     <RadioButton IsChecked="{Binding BotsSettings.WarnEnabled}" Content="On" Command="{Binding BotsWarnStatusSwitchCommand}" CommandParameter="1"/> -->
+                    <!-- </StackPanel> -->
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Distance" Width="80"/>
-                    <TextBox Margin="0 5 0 0" Text="{Binding Path=BotsWarnDistance, StringFormat={}{0:0.0}, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Margin="0 5 0 0" Text="{Binding Path=BotsSettings.WarnDistance, StringFormat={}{0:0.0}, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
             </StackPanel>
+            
             <Path Margin="0 -95 0 0" Stroke="#1E1E1E" StrokeThickness="2" Fill="#1E1E1E">
                 <Path.Data>
                     <PathGeometry>
@@ -466,13 +672,17 @@
                 <StackPanel Margin="0 -12 0 0" Style="{StaticResource NormalizedPanel}">
                     <Label Content="Type" Width="80"/>
                     <StackPanel Margin="-25 8 0 0" Orientation="Vertical" Style="{StaticResource RadioButtonsPanel}">
-                        <RadioButton IsChecked="{Binding BotsFollowLocal}" Content="Local" Command="{Binding BotsFollowTypeSwitchCommand}" CommandParameter="0"/>
-                        <RadioButton IsChecked="{Binding BotsFollowTarget}" Content="Target" Command="{Binding BotsFollowTypeSwitchCommand}" CommandParameter="1"/>
+                        <RadioButton IsChecked="{Binding Path=BotsSettings.FollowType,
+                         Converter={StaticResource ComparisonConverter},ConverterParameter={x:Static local:FollowType.Local},
+                          UpdateSourceTrigger=PropertyChanged}" Content="Local"/>
+                        <RadioButton IsChecked="{Binding Path=BotsSettings.FollowType,
+                         Converter={StaticResource ComparisonConverter}, ConverterParameter={x:Static local:FollowType.Target},
+                          UpdateSourceTrigger=PropertyChanged}" Content="Target"/>
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Margin="0 -5 0 0" Style="{StaticResource NormalizedPanel}">
                     <Label Content="Name" Width="80"/>
-                    <TextBox Width="120" IsEnabled="{Binding BotsFollowLocal, Converter={StaticResource InverseBooleanConverter}}" Margin="-25 5 0 0" Text="{Binding Path=BotsFollowTargetName, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox IsEnabled="{Binding BotsSettings.FollowType, Converter={StaticResource ComparisonConverter}, ConverterParameter={x:Static local:FollowType.Target}, UpdateSourceTrigger=PropertyChanged}" Width="120" Margin="-25 5 0 0" Text="{Binding Path=BotsFollowTargetName, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
             </StackPanel>
             <Path Margin="0 -95 0 0" Stroke="#1E1E1E" StrokeThickness="2" Fill="#1E1E1E">
@@ -525,6 +735,15 @@
             <TextBox Text="{Binding XCoordinate, UpdateSourceTrigger=PropertyChanged}" Margin="75 24.5 0 0" Width="72" Height="22" HorizontalAlignment="Left" VerticalAlignment="Top" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
             <TextBox Text="{Binding WorldId, UpdateSourceTrigger=PropertyChanged}" Margin="75 48.5 0 0" Width="72" Height="22" HorizontalAlignment="Left" VerticalAlignment="Top" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
             <Button Command="{Binding FindAddressCommand}" Style="{StaticResource FindKey}"/>
+        </Grid>
+
+        <!-- <Grid Visibility="Hidden"> -->
+        <Grid Visibility="{Binding BlockShitVisibility}">
+            <Border CornerRadius="0 0 10 10" Background="#5B5B5B" Width="202" Height="348" Margin="0 26 0 0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+            <Grid Visibility="{Binding ConnectionGridVisibility}">
+                <Border CornerRadius="0 0 10 10" Background="#80000000" Width="202" Height="348" Margin="0 26 0 0" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+            </Grid>
+            <TextBlock Width="160" Margin="21 50 0 0" Foreground="Black" FontSize="18" FontFamily="Lucida Sans" Text="{Binding BlockText}" TextAlignment="Center" HorizontalAlignment="Left" VerticalAlignment="Top"/>
         </Grid>
     </Grid>
 </Window>

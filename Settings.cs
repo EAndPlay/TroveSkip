@@ -36,6 +36,9 @@ namespace TroveSkip
         public int SpeedHackValue;
         public float FollowSpeedValue;
 
+        public bool NoGraphics;
+        public bool AntiAfk;
+
         public bool FollowApp;
 
         public BotsSettings BotsSettings;

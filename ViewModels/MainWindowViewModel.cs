@@ -4,7 +4,10 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Net;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -14,6 +17,8 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Microsoft.Win32;
+using TroveSkip.Memory;
 using TroveSkip.Models;
 using TroveSkip.Properties;
 
@@ -22,9 +27,54 @@ namespace TroveSkip.ViewModels
     
     public partial class MainWindowViewModel : INotifyPropertyChanged, INotifyCollectionChanged
     {
+        public static MainWindowViewModel Instance { get; }
+        private const int VectorSize = sizeof(float) * 3;
+        private const int FloatVectorSize = 3;
         //TODO: d3d hook
+        
+        private static readonly SettingOffset[] SettingsToSave = {SettingOffset.DrawDistance, SettingOffset.Grama, SettingOffset.ObjectsDrawDistance, SettingOffset.ShaderDetail};
+
+        private bool _authorized;
+
+        public bool Authorized
+        {
+            get => _authorized;
+            set
+            {
+                if (_authorized != value)
+                {
+                    if (value)
+                    {
+                        BlockShitVisibility = Visibility.Hidden;
+                        StartBackground();
+                    }
+                    else
+                    {
+                        BlockShitVisibility = Visibility.Visible;
+                        _activityHook.KeyDown -= OnKeyDown;
+                    }
+                }
+                _authorized = value;
+            }
+        }
+
+        private Visibility _findButtonVisibility;
+
+        public Visibility FindButtonVisibility
+        {
+            get => _findButtonVisibility;
+            set
+            {
+                _findButtonVisibility = value;
+                OnPropertyChanged();
+            }
+        }
+        
+
         private readonly Dispatcher _dispatcher;
 
+        private bool[] _userAccesses = new bool[(int)UserAccess.Count];
+        
         public ObservableCollectionEx<HookModel> Hooks { get; } = new();
         
         private HookModel _hookModel;
@@ -45,48 +95,53 @@ namespace TroveSkip.ViewModels
                         OverwriteBytes(_noClip, _noClipEnabled);
                         WriteFloatToLocalPlayer(GravityOffsets, 0);
                     }
+                    if (NoGraphics)
+                        ChangeGraphics(_hookModel, true);
                 }
 
                 if (value != null)
                 {
-                    try
+                    // try
+                    // {
+                    _hookModel = value;
+                    _handle = _hookModel.Handle;
+                    _currentModulePointer = value.ModuleAddress;
+
+                    _currentLocalPlayerPointer = _currentModulePointer + _localPlayerOffset;
+                    // _currentSettingsPointer = _currentModulePointer + _settingsOffset;
+                    // _currentGameGlobalsPointer = _currentModulePointer + _gameGlobalsOffset;
+                    // _currentWorldPointer = _currentModulePointer + _worldOffset;
+                    _currentChatStatePointer = ReadInt(_currentModulePointer + _chatOffset) + ChatOpenedOffsets[0];
+
+                    _encryptionKey = ReadUInt(_currentLocalPlayerPointer, StatsEncryptionKeyOffsets);
+                    if (_encryptionKey != 0)
                     {
-                        _hookModel = value;
-                        _handle = _hookModel.Handle;
-                        _currentModulePointer = value.ModuleAddress;
-
-                        _currentLocalPlayerPointer = _currentModulePointer + _localPlayerOffset;
-                        // _currentSettingsPointer = _currentModulePointer + _settingsOffset;
-                        // _currentGameGlobalsPointer = _currentModulePointer + _gameGlobalsOffset;
-                        // _currentWorldPointer = _currentModulePointer + _worldOffset;
-                        _currentChatStatePointer = ReadInt(_currentModulePointer + _chatOffset) + ChatOpenedOffsets[0];
-
-                        _encryptionKey = ReadUInt(_currentLocalPlayerPointer, StatsEncryptionKeyOffsets);
-                        if (_encryptionKey != 0)
-                        {
-                            var bytes = BitConverter.GetBytes((float) SpeedHackValue);
-                            _encryptedSpeed = BitConverter.ToUInt32(bytes, 0) ^ _encryptionKey;
-                        }
-
-                        // MapCheck = _hookModel.MapCheck;
-                        // ZoomCheck = _hookModel.ZoomCheck;
-                        // FovCheck = _hookModel.FovCheck;
-                        // ChamsCheck = _hookModel.ChamsCheck;
-                        // MiningCheck = _hookModel.MiningCheck;
-                        _hookModel.IsPrimary = true;
-                        if (FollowBotsToggle && !_botsNoClipCheck && _botsFollowType == 0)
-                        {
-                            //OverwriteBytes(_hookModel, _noClipEnabled, _noClip);
-                            // _hookModel.NoClipEnabled = false;
-                            OverwriteBytes(_noClipEnabled, _noClip);
-                            WriteFloatToLocalPlayer(GravityOffsets, DefaultGravity);
-                        }
+                        var bytes = BitConverter.GetBytes((float) SpeedHackValue);
+                        _encryptedSpeed = BitConverter.ToUInt32(bytes, 0) ^ _encryptionKey;
                     }
-                    catch (Exception e)
+
+                    // MapCheck = _hookModel.MapCheck;
+                    // ZoomCheck = _hookModel.ZoomCheck;
+                    // FovCheck = _hookModel.FovCheck;
+                    // ChamsCheck = _hookModel.ChamsCheck;
+                    // MiningCheck = _hookModel.MiningCheck;
+                    _hookModel.IsPrimary = true;
+                    if (FollowBotsToggle && !_botsNoClipCheck && BotsSettings.FollowType == FollowType.Local)
                     {
-                        _hookModel = null;
-                        MessageBox.Show(e.Message + "\n" + e.StackTrace, "HookModel");
+                        //OverwriteBytes(_hookModel, _noClipEnabled, _noClip);
+                        // _hookModel.NoClipEnabled = false;
+                        OverwriteBytes(_noClipEnabled, _noClip);
+                        WriteFloatToLocalPlayer(GravityOffsets, DefaultGravity);
                     }
+                    if (NoGraphics)
+                        ChangeGraphics(_hookModel, false);
+
+                    // }
+                    // catch (Exception e)
+                    // {
+                    //     _hookModel = null;
+                    //     MessageBox.Show(e.Message + "\n" + e.StackTrace, "HookModel");
+                    // }
                 }
                 else
                 {
@@ -116,6 +171,8 @@ namespace TroveSkip.ViewModels
         private Settings _settings;
         private readonly UserActivityHook _activityHook = new(false, true);
 
+        private string _blockText;
+
         private string _currentButton;
         private Button _currentButtonElement;
 
@@ -134,13 +191,16 @@ namespace TroveSkip.ViewModels
         private int _currentChatStatePointer;
 
         private BotsSettings _botsSettings;
-        private float _botsStopDistance;
-        private byte _botsStopType;
-        private float _botsStopPower; // with StopType == 1 (Slow)
-        private byte _botsWarnStatus;
-        private uint _botsWarnDistance;
-        private byte _botsFollowType;
-        private byte _botsTargetCheckType;
+
+        public BotsSettings BotsSettings
+        {
+            get => _botsSettings;
+            set
+            {
+                _botsSettings = value;
+                OnPropertyChanged();
+            }
+        }
         private string _botsFollowTargetName;
         private int _botsFollowTargetNameLength;
 
@@ -154,6 +214,8 @@ namespace TroveSkip.ViewModels
         private bool _sprintCheck;
         private bool _speedCheck;
         private bool _jumpCheck;
+        private bool _noGraphicsCheck;
+        private bool _antiAfkCheck;
 
         private uint _lastSpeed;
         private int _speedHackValue;
@@ -187,6 +249,8 @@ namespace TroveSkip.ViewModels
         private Visibility _mainPageVisibility;
         private Visibility _settingsPageVisibility;
         private Visibility _botsSettingsPageVisibility;
+        private Visibility _blockShitVisibility;
+        private Visibility _connectionGridVisibility;
 
         private DelegateCommand<CheckBox> _mapCheckCommand;
         private DelegateCommand<CheckBox> _zoomCheckCommand;
@@ -195,14 +259,43 @@ namespace TroveSkip.ViewModels
         private DelegateCommand<CheckBox> _miningCheckCommand;
         private DelegateCommand<Button> _bindClickCommand;
         private DelegateCommand<Button> _switchPageCommand;
-        private DelegateCommand<string> _botsStopTypeSwitchCommand;
-        private DelegateCommand<string> _botsWarnStatusSwitchCommand;
-        private DelegateCommand<string> _botsFollowTypeSwitchCommand;
+        private DelegateCommand<HookModel> _isBotChangedCommand;
         private DelegateCommand _invokeSearchWindowCommand;
         private DelegateCommand _findAddressCommand;
         private DelegateCommand _hideWindowCommand;
         private DelegateCommand _closeWindowCommand;
         // private DelegateCommand _clickComboBox;
+
+        public string BlockText
+        {
+            get => _blockText;
+            set
+            {
+                _blockText = value; 
+                OnPropertyChanged();
+            }
+        }
+
+        // public int SettingsSliderValue
+        // {
+        //     get => _settingsSliderValue;
+        //     set
+        //     {
+        //         _settingsSliderValue = value;
+        //         if (CustomDrawDistance)
+        //         {
+        //             Hooks.ForEachBot(hook =>
+        //             {
+        //                 if (_botsFollowType != 0 || !hook.IsPrimary)
+        //                 {
+        //                     ApplySettings(hook);
+        //                 }
+        //             });
+        //         }
+        //
+        //         OnPropertyChanged();
+        //     }
+        // }
 
         public string LocalPlayerOffset
         {
@@ -523,6 +616,50 @@ namespace TroveSkip.ViewModels
             }
         }
         
+        public bool NoGraphics
+        {
+            get => _noGraphicsCheck;
+            set
+            {
+                _noGraphicsCheck = value;
+                foreach (var hook in Hooks)
+                {
+                    if (hook.IsBot && !hook.IsPrimary)
+                        ChangeGraphics(hook, value);
+                }
+
+                // if (value)
+                // {
+                //     Hooks.ForEachBot(hook =>
+                //     {
+                //         _lastSettings.Add(hook, ReadDrawDistance(hook));
+                //     });
+                // }
+                // else
+                // {
+                //     foreach (var pair in _lastSettings)
+                //     {
+                //         WriteSettings(pair.Key, pair.Value);
+                //     }
+                //     _lastSettings.Clear();
+                // }
+                OnPropertyChanged();
+            }
+        }
+
+        public bool AntiAfkCheck
+        {
+            get => _antiAfkCheck;
+            set
+            {
+                _antiAfkCheck = value;
+                if (value)
+                    foreach (var hook in Hooks)
+                        EnableAntiAfk(hook);
+                OnPropertyChanged();
+            }
+        }
+
         // public bool FollowPrimary
         // {
         //     get => _followPrimary;
@@ -568,10 +705,10 @@ namespace TroveSkip.ViewModels
                 {
                     foreach (var hook in Hooks)
                     {
-                        if (_botsFollowType == 0 && hook.IsPrimary) continue;
+                        if (BotsSettings.FollowType == FollowType.Local && hook.IsPrimary || !hook.IsBot) continue;
 
                         //OverwriteBytes(handle, hook.NoClipAddress, _noClipEnabled);
-                        if (_botsNoClipCheck && _botsFollowType == 0)
+                        if (_botsNoClipCheck)
                             OverwriteBytes(hook, _noClip, _noClipEnabled);
                         WriteFloatToLocalPlayer(hook.Handle, GravityOffsets, 0);
                     }
@@ -581,7 +718,7 @@ namespace TroveSkip.ViewModels
                     foreach (var hook in Hooks)
                     {
                         //OverwriteBytes(handle, hook.NoClipAddress, _noClip);
-                        if (_botsNoClipCheck && _botsFollowType == 0)
+                        if (_botsNoClipCheck && BotsSettings.FollowType == FollowType.Local)
                             OverwriteBytes(hook, _noClipEnabled, _noClip);
                         WriteFloatToLocalPlayer(hook.Handle, GravityOffsets, DefaultGravity);
                     }
@@ -602,7 +739,7 @@ namespace TroveSkip.ViewModels
                 {
                     foreach (var hook in Hooks)
                     {
-                        if (hook.IsPrimary && _botsFollowType == 0) continue;
+                        if (hook.IsPrimary && BotsSettings.FollowType == FollowType.Local || !hook.IsBot) continue;
 
                         //OverwriteBytes(handle, hook.NoClipAddress, _noClipEnabled);
                         OverwriteBytes(hook, _noClip, _noClipEnabled);
@@ -617,142 +754,6 @@ namespace TroveSkip.ViewModels
                 }
             }
         }
-
-        public float BotsStopDistance
-        {
-            get => _botsStopDistance;
-            set
-            {
-                _botsStopDistance = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public byte BotsStopType
-        {
-            get => _botsStopType;
-            set
-            {
-                _botsStopType = value;
-                OnPropertyChanged();
-            }
-        }
-        
-        #region Trash
-        //TODO: Rewrite
-
-        private bool _fullStopState;
-        private bool _slowStopState;
-
-        public bool FullStopState
-        {
-            get => _fullStopState;
-            set
-            {
-                _fullStopState = value;
-                OnPropertyChanged();
-            }
-        }
-        
-        public bool SlowStopState
-        {
-            get => _slowStopState;
-            set
-            {
-                _slowStopState = value;
-                OnPropertyChanged();
-            }
-        }
-
-        private bool _botsWarnOn;
-        private bool _botsWarnOff;
-        
-        public bool BotsWarnOn
-        {
-            get => _botsWarnOn;
-            set
-            {
-                _botsWarnOn = value;
-                OnPropertyChanged();
-            }
-        }
-        
-        public bool BotsWarnOff
-        {
-            get => _botsWarnOff;
-            set
-            {
-                _botsWarnOff = value;
-                OnPropertyChanged();
-            }
-        }
-        
-        private bool _botsFollowLocal;
-        private bool _botsFollowTarget;
-        
-        public bool BotsFollowLocal
-        {
-            get => _botsFollowLocal;
-            set
-            {
-                _botsFollowLocal = value;
-                OnPropertyChanged();
-            }
-        }
-        
-        public bool BotsFollowTarget
-        {
-            get => _botsFollowTarget;
-            set
-            {
-                _botsFollowTarget = value;
-                OnPropertyChanged();
-            }
-        }
-        
-        #endregion
-        
-        public float BotsStopPower
-        {
-            get => _botsStopPower;
-            set
-            {
-                if (value == 0)
-                    value = 1;
-                _botsStopPower = value;
-                OnPropertyChanged();
-            }
-        }
-        
-        public byte BotsWarnStatus
-        {
-            get => _botsWarnStatus;
-            set
-            {
-                _botsWarnStatus = value;
-                OnPropertyChanged();
-            }
-        }
-        
-        public uint BotsWarnDistance
-        {
-            get => _botsWarnDistance;
-            set
-            {
-                _botsWarnDistance = value;
-                OnPropertyChanged();
-            }
-        }
-        
-        public byte BotsFollowType
-        {
-            get => _botsFollowType;
-            set
-            {
-                _botsFollowType = value;
-                OnPropertyChanged();
-            }
-        }
         
         public string BotsFollowTargetName
         {
@@ -761,16 +762,6 @@ namespace TroveSkip.ViewModels
             {
                 _botsFollowTargetName = value;
                 _botsFollowTargetNameLength = value.Length;
-                OnPropertyChanged();
-            }
-        }
-        
-        public byte BotsTargetCheckType
-        {
-            get => _botsTargetCheckType;
-            set
-            {
-                _botsTargetCheckType = value;
                 OnPropertyChanged();
             }
         }
@@ -817,6 +808,26 @@ namespace TroveSkip.ViewModels
                 OnPropertyChanged();
             }
         }
+        
+        public Visibility BlockShitVisibility
+        {
+            get => _blockShitVisibility;
+            set
+            {
+                _blockShitVisibility = value;
+                OnPropertyChanged();
+            }
+        }
+        
+        public Visibility ConnectionGridVisibility
+        {
+            get => _connectionGridVisibility;
+            set
+            {
+                _connectionGridVisibility = value;
+                OnPropertyChanged();
+            }
+        }
 
         public ICommand MapCheckCommand => _mapCheckCommand ??= new(x => InjectCheckChanged(x, _mapHack, _mapHackEnabled));
         public ICommand ZoomCheckCommand => _zoomCheckCommand ??= new(x => InjectCheckChanged(x, _zoomHack, _zoomHackEnabled));
@@ -825,10 +836,11 @@ namespace TroveSkip.ViewModels
         public ICommand MiningCheckCommand => _miningCheckCommand ??= new(x => InjectCheckChanged(x, _miningSlow, _miningSlowEnabled));
         public ICommand BindClickCommand => _bindClickCommand ??= new(BindClick);
         public ICommand SwitchPageCommand => _switchPageCommand ??= new(SwitchPage);
-        public ICommand BotsStopTypeSwitchCommand => _botsStopTypeSwitchCommand ??= new(x => SwitchStopType(byte.Parse(x)));
-        public ICommand BotsWarnStatusSwitchCommand => _botsWarnStatusSwitchCommand ??= new(x => SwitchWarnStatus(byte.Parse(x)));
-        public ICommand BotsFollowTypeSwitchCommand => _botsFollowTypeSwitchCommand ??= new(x => SwitchFollowType(byte.Parse(x)));
-        public ICommand InvokeSearchWindowCommand => _invokeSearchWindowCommand ??= new(InvokeSearchWindow);
+        public ICommand IsBotChangedCommand => _isBotChangedCommand ??= new(x =>
+        {
+            MessageBox.Show(x.IsBot.ToString());
+        });
+        public ICommand InvokeSearchWindowCommand => _invokeSearchWindowCommand ??= new(() => SetSearchWindowState());
         public ICommand FindAddressCommand => _findAddressCommand ??= new(FindAddress);
         public ICommand HideWindowCommand => _hideWindowCommand ??= new(HideWindow);
         public ICommand CloseWindowCommand => _closeWindowCommand ??= new(CloseWindow);
@@ -844,19 +856,33 @@ namespace TroveSkip.ViewModels
             SearchWindowVisibility = Visibility.Hidden;
             MainPageVisibility = Visibility.Visible;
             BotsSettingsPageVisibility = Visibility.Hidden;
+            Authorized = true;
+            // var proc = Process.GetProcessById(22496);
+            // var handle = proc.Handle;
+            // var baseAddress = proc.MainModule.BaseAddress;
+            // unsafe
+            // {
+            //     var buffer = stackalloc byte[4];
+            //     for (int i = 0; i < 100_000_000; i++)
+            //     {
+            //         ReadProcessMemory(handle, i, buffer, 4, out _);
+            //         if (*(int*) buffer == 1620)
+            //         {
+            //             MessageBox.Show(i.ToString());
+            //             break;
+            //         }
+            //     }
+            // }
+            // return;
+            
             _dispatcher.ShutdownStarted += (_, _) => CloseWindow();
             _dispatcher.InvokeAsync(LoadSettings);
 
-            _activityHook.KeyDown += OnKeyDown;
             _activityHook.KeyUp += key => _pressedKeys[key] = false;
             //_activityHook.OnMouseActivity += MouseCheck;
-            
-            _dispatcher.InvokeAsync(ForceSprint);
-            _dispatcher.InvokeAsync(ForceSpeed);
-            _dispatcher.InvokeAsync(HooksUpdate);
-            _dispatcher.InvokeAsync(FollowUpdate);
+            //_dispatcher.InvokeAsync(StatusUpdate);
         }
-
+        
         private void HideWindow()
         {
             if (Application.Current.MainWindow != null)
@@ -870,7 +896,7 @@ namespace TroveSkip.ViewModels
                 IntPtr handle;
                 foreach (var hook in Hooks)
                 {
-                    if (hook.IsPrimary) continue;
+                    if (hook.IsPrimary || !hook.IsBot) continue;
 
                     handle = hook.Handle;
                     if (_botsNoClipCheck)
@@ -882,8 +908,133 @@ namespace TroveSkip.ViewModels
             Environment.Exit(0);
         }
 
+        // private bool IsUpdatingOrErrorCaused()
+        // {
+        //     var stringBuilder = new StringBuilder().AppendLine("Can't update:\n");
+        //     string str;
+        //     try
+        //     {
+        //         str = _webClient.DownloadString(UpdateUrl);
+        //     }
+        //     catch (Exception e)
+        //     {
+        //         stringBuilder.Append("Error on accessing server");
+        //         goto ErrorRaised;
+        //     }   
+        //
+        //     var updateSplit = str.Split(' ');
+        //
+        //     if (new Version(updateSplit[0]) > Assembly.GetExecutingAssembly().GetName().Version)
+        //     {
+        //         BlockText = "Downloading updater";
+        //         var tempFileName = Path.GetTempFileName();
+        //         try
+        //         {
+        //             _webClient.DownloadFile(updateSplit[1], tempFileName);
+        //         }
+        //         catch
+        //         {
+        //             stringBuilder.Append("File not available");
+        //             goto ErrorRaised;
+        //         }
+        //
+        //         BlockText = "Launching updater";
+        //         Process.Start(tempFileName, Environment.CurrentDirectory);
+        //     }
+        //     else
+        //     {
+        //         return false;
+        //     }
+        //
+        //     return false;
+        //     ErrorRaised:
+        //     BlockText = stringBuilder.ToString();
+        //     return true;
+        // }
+        //
+        // // rewrite this shit
+        // private bool IsAuthorized()
+        // {
+        //     var stringBuilder = new StringBuilder();
+        //     string db;
+        //     try
+        //     {
+        //         db = _webClient.DownloadString(DbUrl);
+        //     }
+        //     catch
+        //     {
+        //         BlockText = "Download failed: No access to server";
+        //         return false;
+        //     }
+        //     var id = (string)Registry.CurrentUser.GetValue(@"SOFTWARE\NCT\id");
+        //     if (id == null)
+        //     {
+        //         int newId;
+        //         var random = new Random();
+        //         do
+        //         {
+        //             newId = random.Next(100_000, 999_999);
+        //         } while (db.Contains(newId.ToString()));
+        //
+        //         id = newId.ToString();
+        //     }
+        //
+        //     DateTime GetDayTime(string date) //dd.MM.yyyy
+        //     {
+        //         var dateTimeSplit = date.Split('.').ToArray().Select(int.Parse).ToArray();
+        //         return new DateTime(dateTimeSplit[2], dateTimeSplit[1], dateTimeSplit[0]);
+        //     }
+        //     
+        //     TimeSpan GetExpirationTime(string time)
+        //     {
+        //         int GetFromRegex(string pattern)
+        //         {
+        //             var regex = new Regex(pattern);
+        //             var value = regex.Match(time).Groups[1].Value;
+        //             return value != string.Empty ? int.Parse(value) : 0;
+        //         }
+        //         
+        //         var months = GetFromRegex(@"(\d)M");
+        //         var days = GetFromRegex(@"(\d)d");
+        //         var hours = GetFromRegex(@"(\d)h");
+        //         var minutes = GetFromRegex(@"(\d)m");
+        //         var seconds = GetFromRegex(@"(\d)s");
+        //         return new TimeSpan(months * 30 + days, hours, minutes, seconds);
+        //     }
+        //     
+        //     foreach (var line in db.Split('\n'))
+        //     {
+        //         var split = line.Split(' ');
+        //         if (split[0] != id) continue;
+        //         stringBuilder.Append("Id :").AppendLine(id);
+        //         var datesSplit = split[1].Split('-');
+        //         var startDate = GetDayTime(datesSplit[0]);
+        //         var expirationTime = GetExpirationTime(datesSplit[1]);
+        //         var expirationDate = startDate + expirationTime + TimeSpan.FromDays(1);
+        //         if (DateTime.Now > expirationDate)
+        //         {
+        //             var daysAgoExpired = (DateTime.Now - expirationDate).Days + 1;
+        //             stringBuilder.Append("Expired ")
+        //                 .AppendLine(daysAgoExpired.ToString())
+        //                 .Append("day");
+        //             if (daysAgoExpired > 1)
+        //                 stringBuilder.Append("s");
+        //             stringBuilder.Append(" ago");
+        //             return false;
+        //         }
+        //         // var startDate = GetDayTime(datesSplit[0]); //just for nothing
+        //         // var expirationDate = GetDayTime(datesSplit[1]);
+        //         // var expirationPeriod;
+        //         // startDate + expirationDate
+        //         // if (DateTime.Now > expirationDate)
+        //         return true;
+        //     }
+        //     return false;
+        // }
+
         private void SwitchPage(ContentControl button)
         {
+            SetSearchWindowState(Visibility.Hidden);
             switch (button.Content)
             {
                 case "SETS":
@@ -902,28 +1053,6 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        //TODO: REWRITE!!!
-        private void SwitchStopType(byte type)
-        {
-            BotsStopType = type;
-            FullStopState = type == 0;
-            SlowStopState = type == 1;
-        }
-        
-        private void SwitchWarnStatus(byte type)
-        {
-            BotsWarnStatus = type;
-            BotsWarnOff = type == 0;
-            BotsWarnOn = type == 1;
-        }
-
-        private void SwitchFollowType(byte type)
-        {
-            BotsFollowType = type;
-            BotsFollowLocal = type == 0;
-            BotsFollowTarget = type == 1;
-        }
-        
         //----------------------------
 
         private void EnableAntiAfk(HookModel hook = null)
@@ -943,11 +1072,11 @@ namespace TroveSkip.ViewModels
                     handle, 
                     0, 
                     caveLength, 
-                    AllocationType.Commit,
+                    AllocationType.Commit, 
                     MemoryProtection.ExecuteRead);
 
-                WriteMemory(handle, caveAddress, AsmJump((ulong) address + 6, (ulong) caveAddress, _antiAfkCave));
-                WriteMemory(handle, address, AsmJump((ulong) caveAddress, (ulong) address));
+                WriteMemory(handle, caveAddress, AsmJumpOld((ulong) address + 6, (ulong) caveAddress, _antiAfkCave));
+                WriteMemory(handle, address, AsmJumpOld((ulong) caveAddress, (ulong) address));
             });
         }
 
@@ -974,9 +1103,16 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        private void InvokeSearchWindow()
+        private void SetSearchWindowState(Visibility visibility = Visibility.Collapsed)
         {
-            SearchWindowVisibility = SearchWindowVisibility == Visibility.Visible ? Visibility.Hidden : Visibility.Visible;
+            if (visibility == Visibility.Collapsed)
+            {
+                SearchWindowVisibility = SearchWindowVisibility == Visibility.Visible ? Visibility.Hidden : Visibility.Visible;
+            }
+            else
+            {
+                SearchWindowVisibility = visibility;
+            }
             if (SearchWindowVisibility == Visibility.Hidden)
                 XCoordinate = 0;
         }
@@ -1004,7 +1140,8 @@ namespace TroveSkip.ViewModels
             for (int i = MinimalModuleOffset; i < MaximalModuleOffset; i++)
             {
                 var found = false;
-                _dispatcher.Invoke(() => { found = FindBaseAddresses(i); });
+                var i1 = i;
+                _dispatcher.Invoke(() => { found = FindBaseAddresses(i1); });
                 
                 if (found)
                     break;
@@ -1048,8 +1185,11 @@ namespace TroveSkip.ViewModels
             SpeedHackValue = _settings.SpeedHackValue;
             FollowSpeedValue = _settings.FollowSpeedValue;
             FollowApp = _settings.FollowApp;
-            
-            _botsSettings = _settings.BotsSettings;
+
+            NoGraphics = _settings.NoGraphics;
+            AntiAfkCheck = _settings.AntiAfk;
+
+            BotsSettings = _settings.BotsSettings;
             
             //TODO: make Button class
             {
@@ -1074,17 +1214,7 @@ namespace TroveSkip.ViewModels
                 BotsNoClipToggleButton = GetKey(nameof(BotsNoClipToggleButton)).ToString();
             }
             
-            BotsStopDistance = _botsSettings.StopDistance;
-            //BotsStopType = _botsSettings.StopType;
-            SwitchStopType(_botsSettings.StopType);
-            BotsStopPower = _botsSettings.StopPower;
-            //BotsNotifyState = _botsSettings.NotifyState;
-            SwitchWarnStatus(_botsSettings.WarnStatus);
-            BotsWarnDistance = _botsSettings.WarnDistance;
-            SwitchFollowType(_botsSettings.FollowType);
             BotsFollowTargetName = _botsSettings.FollowTargetName;
-            BotsNoClipCheck = _botsSettings.NoClip;
-            BotsTargetCheckType = _botsSettings.TargetCheckType;
         }
         
         private void SaveSettings()
@@ -1100,6 +1230,9 @@ namespace TroveSkip.ViewModels
             _settings.JumpForceValue = JumpForceValue;
             _settings.SpeedHackValue = SpeedHackValue;
             _settings.FollowSpeedValue = FollowSpeedValue;
+
+            _settings.NoGraphics = NoGraphics;
+            _settings.AntiAfk = AntiAfkCheck;
             
             _settings.SkipButton = _binds[nameof(SkipButton)].ToString();
             _settings.SprintButton = _binds[nameof(SprintButton)].ToString();
@@ -1111,27 +1244,47 @@ namespace TroveSkip.ViewModels
             _settings.FollowBotsToggleButton = _binds[nameof(FollowBotsToggleButton)].ToString();
             
             _settings.FollowApp = FollowApp;
-            _botsSettings.StopDistance = BotsStopDistance;
-            _botsSettings.StopType = BotsStopType;
-            _botsSettings.StopPower = BotsStopPower;
-            _botsSettings.WarnStatus = BotsWarnStatus;
-            _botsSettings.WarnDistance = BotsWarnDistance;
-            _botsSettings.FollowType = BotsFollowType;
             _botsSettings.FollowTargetName = BotsFollowTargetName;
-            _botsSettings.TargetCheckType = BotsTargetCheckType;
-            _botsSettings.NoClip = BotsNoClipCheck;
             
             _settings.Save();
         }
 
-        private void Skip()
+        private static byte[] local_SkipValuesBuffer = new byte[VectorSize];
+        private static byte[] local_SkipPositionBuffer = new byte[VectorSize];
+        private unsafe void Skip()
         {
             var xPositionAddress = GetAddressFromLocalPlayer(LocalXPosition);
             var xCameraRotationAddress = GetAddressFromLocalPlayer(XView);
 
-            WriteFloat(xPositionAddress, ReadFloat(xCameraRotationAddress) * _skipValue + ReadFloat(xPositionAddress));
-            WriteFloat(xPositionAddress + sizeof(int), ReadFloat(xCameraRotationAddress + sizeof(int)) * _skipValue + ReadFloat(xPositionAddress + sizeof(int)));
-            WriteFloat(xPositionAddress + 2 * sizeof(int), ReadFloat(xCameraRotationAddress + 2 * sizeof(int)) * _skipValue + ReadFloat(xPositionAddress + 2 * sizeof(int)));
+            // var valuesBuffer = GetBuffer(xCameraRotationAddress, VectorSize);
+            // var positionBuffer = GetBuffer(xPositionAddress, VectorSize);
+            //var valuesBuffer = stackalloc byte[VectorSize];
+            //var positionBuffer = stackalloc byte[VectorSize];
+            ReadProcessMemory(_handle, xCameraRotationAddress, local_SkipValuesBuffer, VectorSize, out _);
+            ReadProcessMemory(_handle, xPositionAddress, local_SkipPositionBuffer, VectorSize, out _);
+            unsafe
+            {
+                fixed (byte* valuesBuffer = local_SkipValuesBuffer,
+                    positionBuffer = local_SkipPositionBuffer)
+                {
+                    var valueFloatPtr = (float*) valuesBuffer;
+                    var positionFloatPtr = (float*) positionBuffer;
+                    float* tempPtr;
+                    for (byte i = 0; i < FloatVectorSize; i++)
+                    {
+                        tempPtr = valueFloatPtr + i;
+                        *tempPtr = *tempPtr * _skipValue + *(positionFloatPtr + i);
+                    }
+                }
+            }
+
+            //MessageBox.Show(BitConverter.ToSingle(valuesBuffer, 0) + " " + BitConverter.ToSingle(valuesBuffer, 4) + " " + BitConverter.ToSingle(valuesBuffer, 8));
+            //WriteMemory(xPositionAddress, valuesBuffer);
+            WriteProcessMemory(_handle, xPositionAddress, local_SkipValuesBuffer, VectorSize, out _);
+
+            // WriteFloat(xPositionAddress, ReadFloat(xCameraRotationAddress) * _skipValue + ReadFloat(xPositionAddress));
+            // WriteFloat(xPositionAddress + sizeof(float), ReadFloat(xCameraRotationAddress + sizeof(float)) * _skipValue + ReadFloat(xPositionAddress + sizeof(float)));
+            // WriteFloat(xPositionAddress + 2 * sizeof(float), ReadFloat(xCameraRotationAddress + 2 * sizeof(float)) * _skipValue + ReadFloat(xPositionAddress + 2 * sizeof(float)));
         }
 
         private void SuperJump()
@@ -1142,7 +1295,8 @@ namespace TroveSkip.ViewModels
         
         private async void ForceSprint()
         {
-            while (true)
+            var valuesBuffer = new byte[VectorSize];
+            while (Authorized)
             {
                 await Task.Delay(10);
                 while (!_sprintCheck || !IsPressed(_binds[nameof(SprintButton)]) || NotFocused())
@@ -1150,16 +1304,32 @@ namespace TroveSkip.ViewModels
 
                 var xviewAdd = GetAddressFromLocalPlayer(XView);
                 var velocityAdd = GetAddressFromLocalPlayer(LocalXVelocity);
-                
-                WriteFloat(velocityAdd, ReadFloat(xviewAdd) * _sprintValue);
-                WriteFloat(velocityAdd + 4, ReadFloat(xviewAdd + 4) * _sprintValue);
-                WriteFloat(velocityAdd + 8, ReadFloat(xviewAdd + 8) * _sprintValue);
+
+                //var valuesBuffer = GetBuffer(xviewAdd, VectorSize);
+                ReadProcessMemory(_handle, xviewAdd, valuesBuffer, VectorSize, out _);
+                unsafe
+                {
+                    fixed (byte* bufferPtr = valuesBuffer)
+                    {
+                        var floatPtr = (float*) bufferPtr;
+                        for (byte i = 0; i < 3; i++)
+                        {
+                            *(floatPtr + i) = *(floatPtr + i) * _sprintValue;
+                        }
+                    }
+                }
+                //WriteMemory(velocityAdd, valuesBuffer);
+                WriteProcessMemory(_handle, velocityAdd, valuesBuffer, VectorSize, out _);
+
+                // WriteFloat(velocityAdd, ReadFloat(xviewAdd) * _sprintValue);
+                // WriteFloat(velocityAdd + 4, ReadFloat(xviewAdd + 4) * _sprintValue);
+                // WriteFloat(velocityAdd + 8, ReadFloat(xviewAdd + 8) * _sprintValue);
             }
         }
 
         private async void ForceSpeed()
         {
-            while (true)
+            while (Authorized)
             {
                 await Task.Delay(10);
                 while (!_speedCheck || NotHooked() || _followApp && NotFocused() || ChatOpened())
@@ -1171,45 +1341,58 @@ namespace TroveSkip.ViewModels
         private void AddHook(HookModel hook)
         {
             Hooks.Add(hook);
+            if (BotsSettings.AutoSetBot)
+                hook.IsBot = true;
+            
             _dispatcher.InvokeAsync(() =>
-            {
-                if (MapCheck)
                 {
-                    OverwriteBytes(hook, _mapHack, _mapHack);
-                }
+                    if (MapCheck)
+                    {
+                        OverwriteBytes(hook, _mapHack, _mapHack);
+                    }
 
-                if (ZoomCheck)
-                {
-                    OverwriteBytes(hook, _zoomHack, _zoomHackEnabled);
-                }
+                    if (ZoomCheck)
+                    {
+                        OverwriteBytes(hook, _zoomHack, _zoomHackEnabled);
+                    }
 
-                if (FovCheck)
-                {
-                    OverwriteBytes(hook, _fovHack, _fovHackEnabled);
-                }
+                    if (FovCheck)
+                    {
+                        OverwriteBytes(hook, _fovHack, _fovHackEnabled);
+                    }
 
-                if (ChamsCheck)
-                {
-                    OverwriteBytes(hook, _chamsMonsters, _chamsMonstersEnabled);
-                }
+                    if (ChamsCheck)
+                    {
+                        OverwriteBytes(hook, _chamsMonsters, _chamsMonstersEnabled);
+                    }
 
-                if (MiningCheck)
-                {
-                    OverwriteBytes(hook, _geodeTool, _geodeToolEnabled);
-                    OverwriteBytes(hook, _miningSlow, _miningSlowEnabled);
+                    if (MiningCheck)
+                    {
+                        OverwriteBytes(hook, _geodeTool, _geodeToolEnabled);
+                        OverwriteBytes(hook, _miningSlow, _miningSlowEnabled);
+                    }
+
+                    if (AntiAfkCheck)
+                        EnableAntiAfk(hook);
                 }
-            });
+            );
 
             // if (HookModel == null)
             //     HookModel = hook;
             UpdateHookAddresses(hook);
+            // if (NoGraphics)
+            //     _lastSettings.Add(hook, GetGraphicsSettings(hook));
+            // if (NoGraphics && hook.IsBot)
+            // {
+            //     SetGraphicsSettings(hook);
+            // }
+            if (NoGraphics && hook.IsBot)
+                ChangeGraphics(hook, true);
             // hook.Process.Exited += (_, _) =>
             // {
             //     Hooks.Remove(Hooks.First(x => x.Id == hook.Id));
             //     _antiAfkList.Remove(hook.Id);
             // }; 
-            if (!_antiAfkList.Contains(hook.Id))
-                EnableAntiAfk(hook);
         }
 
         private void UpdateHookAddresses(HookModel hook)
@@ -1218,6 +1401,7 @@ namespace TroveSkip.ViewModels
             var moduleAddress = hook.ModuleAddress;
             hook.WorldPointer = moduleAddress + _worldOffset;
             hook.LocalPlayerPointer = moduleAddress + _localPlayerOffset;
+            hook.SettingsPointer = moduleAddress + _settingsOffset;
         }
 
         private async void HooksUpdate()
@@ -1238,7 +1422,7 @@ namespace TroveSkip.ViewModels
                 }
                 
                 var processes = Process.GetProcessesByName("Trove");
-                
+
                 foreach (var hook in Hooks.ToArray())
                 {
                     if (processes.All(x => x.Id != hook.Id))
@@ -1304,10 +1488,9 @@ namespace TroveSkip.ViewModels
                 {
                     foreach (var hook in Hooks)
                     {
-                        var handle = hook.Handle;
-                        var gravity = hook.IsPrimary && _botsFollowType == 0 ? DefaultGravity : 0;
-                        WriteFloat(handle, hook.LocalPlayerPointer, GravityOffsets, gravity);
-                        hook.WorldId = ReadInt(handle, hook.WorldPointer, WorldIdOffsets);
+                        var gravity = hook.IsPrimary && BotsSettings.FollowType == FollowType.Local || !hook.IsBot ? DefaultGravity : 0;
+                        WriteFloat(hook.Handle, hook.LocalPlayerPointer, GravityOffsets, gravity);
+                        hook.WorldId = ReadInt(hook.Handle, hook.WorldPointer, WorldIdOffsets);
                     }
                 }
             }
@@ -1315,16 +1498,24 @@ namespace TroveSkip.ViewModels
 
         private bool NotHooked() => HookModel == null;
 
+        private static IntPtr local_NotFocusedHandle;
         private bool NotFocused()
         {
-            var handle = GetForegroundWindow();
-            if (handle == IntPtr.Zero) return true;
+            local_NotFocusedHandle = GetForegroundWindow();
+            if (local_NotFocusedHandle == IntPtr.Zero) return true;
 
-            GetWindowThreadProcessId(handle, out var procId);
+            GetWindowThreadProcessId(local_NotFocusedHandle, out var procId);
             return (HookModel?.Id ?? 0) != procId;
         }
 
-        private bool ChatOpened() => ReadBool(_currentChatStatePointer);
+        private static byte[] local_ChatOpenedBuffer = new byte[1];
+        private unsafe bool ChatOpened()
+        {
+            //ReadBool(_currentChatStatePointer);
+            //var buffer = stackalloc byte[sizeof(bool)];
+            ReadProcessMemory(_handle, _currentChatStatePointer, local_ChatOpenedBuffer, sizeof(bool), out _);
+            return local_ChatOpenedBuffer[0] == 1;
+        }
         // {
         //     //var @byte = stackalloc byte[1];
         //     //ReadProcessMemory(_handle, _currentChatStatePointer, @byte, 1, out _);
@@ -1376,17 +1567,22 @@ namespace TroveSkip.ViewModels
             _pressedKeys[key] = true;
         }
         
+        // TODO: optimize
         private async void FollowUpdate()
         {
             var worldId = 0;
-            float sourceX = 0, sourceY = 0, sourceZ = 0;
+            //float sourceX = 0, sourceY = 0, sourceZ = 0;
+            byte[] sourceBuffer = new byte[VectorSize], velocityBuffer = new byte[VectorSize];
+            float tempLength;
+            IntPtr handle;
+            int xVelAdd, xPosAdd;
 
             var offsets = (int[]) PlayersArray.Clone();
             
-            while (true)
+            while (Authorized)
             {
                 await Task.Delay(1);
-                while (!_followBotsToggle || _botsFollowType == 0 && (Hooks.Count < 2 || HookModel == null) || _botsFollowType == 1 && Hooks.Count == 0)
+                while (!_followBotsToggle || _botsSettings.FollowType == FollowType.Local && (Hooks.Count < 2 || HookModel == null) || _botsSettings.FollowType == FollowType.Target && Hooks.Count == 0)
                 {
                     await Task.Delay(50);
                 }
@@ -1404,7 +1600,7 @@ namespace TroveSkip.ViewModels
                 // var sourceY = ReadFloat(xPosAdd + 4) + yVelocity / length;
                 // var sourceZ = ReadFloat(xPosAdd + 8) + zVelocity / length;
 
-                int xPosAdd;
+                // int xPosAdd; last
 
                 bool GetSourcePositionsFromTarget(HookModel hook)
                 {
@@ -1420,10 +1616,12 @@ namespace TroveSkip.ViewModels
 
                         xPosAdd = GetAddress(handle, hook.WorldPointer,
                             offsets.Join(CharacterPositionX));
-                        
-                        sourceX = ReadFloat(handle, xPosAdd);
-                        sourceY = ReadFloat(handle, xPosAdd + sizeof(int));
-                        sourceZ = ReadFloat(handle, xPosAdd + 2 * sizeof(int));
+
+                        //sourceBuffer = GetBuffer(handle, xPosAdd, VectorSize);
+                        ReadProcessMemory(handle, xPosAdd, sourceBuffer, VectorSize, out _);
+                        // sourceX = ReadFloat(handle, xPosAdd);
+                        // sourceY = ReadFloat(handle, xPosAdd + sizeof(int));
+                        // sourceZ = ReadFloat(handle, xPosAdd + 2 * sizeof(int));
 
                         worldId = hook.WorldId;
 
@@ -1433,15 +1631,17 @@ namespace TroveSkip.ViewModels
                     return false;
                 }
 
-                if (_botsFollowLocal)
+                if (_botsSettings.FollowType == FollowType.Local)
                 {
                     xPosAdd = GetAddressFromLocalPlayer(LocalXPosition);
-                    sourceX = ReadFloat(xPosAdd);
-                    sourceY = ReadFloat(xPosAdd + sizeof(int));
-                    sourceZ = ReadFloat(xPosAdd + 2 * sizeof(int));
+                    //sourceBuffer = GetBuffer(xPosAdd, VectorSize);
+                    ReadProcessMemory(_handle, xPosAdd, sourceBuffer, VectorSize, out _);
+                    // sourceX = ReadFloat(xPosAdd);
+                    // sourceY = ReadFloat(xPosAdd + sizeof(int));
+                    // sourceZ = ReadFloat(xPosAdd + 2 * sizeof(int));
                     worldId = _hookModel.WorldId;
                 }
-                else if (_botsTargetCheckType == 0)
+                else if (_botsSettings.TargetCheckType == TargetCheckType.AllToLeaderToTarget)
                 {
                     foreach (var hook in Hooks)
                     {
@@ -1452,7 +1652,8 @@ namespace TroveSkip.ViewModels
 
                 foreach (var hook in Hooks)
                 {
-                    if (_botsFollowLocal)
+                    if (!hook.IsBot) continue;
+                    if (_botsSettings.FollowType == FollowType.Local)
                     {
                         if (hook.IsPrimary || worldId != hook.WorldId)
                             continue;
@@ -1471,71 +1672,297 @@ namespace TroveSkip.ViewModels
                     // }
                     // else if (_botsFollowLocal && (hook.IsPrimary || worldId != hook.WorldId)) continue;
                     
-                    var handle = hook.Handle;
+                    handle = hook.Handle;
                     xPosAdd = GetAddress(handle, hook.LocalPlayerPointer, LocalXPosition);
                     //xPosAdd = GetAddressFromLocalPlayer(handle, LocalXPosition);
-                    var xDiff = sourceX - ReadFloat(handle, xPosAdd);
-                    var yDiff = sourceY - ReadFloat(handle, xPosAdd + sizeof(int));
-                    var zDiff = sourceZ - ReadFloat(handle, xPosAdd + 2 * sizeof(int));
-
-                    var xVelAdd = GetAddress(handle, hook.LocalPlayerPointer, LocalXVelocity);
-                    //var xVelAdd = GetAddressFromLocalPlayer(handle, LocalXVelocity);
+                    // var floats = ReadFloats(handle, xPosAdd, 3);
+                    // var xDiff = sourceX - floats[0];
+                    // var yDiff = sourceY - floats[1];
+                    // var zDiff = sourceZ - floats[2];
+                    // xDiff = sourceX - ReadFloat(handle, xPosAdd);
+                    // yDiff = sourceY - ReadFloat(handle, xPosAdd + sizeof(uint));
+                    // zDiff = sourceZ - ReadFloat(handle, xPosAdd + 2 * sizeof(uint));
+                    
+                    //velocityBuffer = GetBuffer(handle, xPosAdd, VectorSize);
+                    ReadProcessMemory(handle, xPosAdd, velocityBuffer, VectorSize, out _);
+                    
                     float length = 1;
-                    if (Math.Abs(xDiff) < _botsStopDistance &&
-                        Math.Abs(yDiff) < _botsStopDistance &&
-                        Math.Abs(zDiff) < _botsStopDistance)
+                    tempLength = 0;
+                    var isClose = true;
+                    unsafe
                     {
-                        if (_botsStopType == 0) //BotsStopType.FullStop
+
+                        fixed (byte* sourcePtr = sourceBuffer, velocityPtr = velocityBuffer)
                         {
-                            WriteFloat(handle, xVelAdd, 0);
-                            WriteFloat(handle, xVelAdd + 4, 0);
-                            WriteFloat(handle, xVelAdd + 8, 0);
+                            // try
+                            // {
+                            float* sourceFloatPtr = (float*) sourcePtr,
+                                velocityFloatPtr = (float*) velocityPtr;
+                            int i;
+                            for (i = 0; i < FloatVectorSize; i++)
+                            {
+                                var currentPtr = velocityFloatPtr + i;
+                                *currentPtr = *(sourceFloatPtr + i) - *currentPtr;
+                                tempLength += *currentPtr * *currentPtr;
+                                isClose &= *currentPtr < _botsSettings.StopDistance;
+                            }
+
+                            if (isClose)
+                                length *= _botsSettings.StopPower;
+
+                            length *= Math.Max((float) Math.Sqrt(tempLength), 1) / _followSpeedValue;
+                            for (i = 0; i < FloatVectorSize; i++)
+                            {
+                                *(velocityFloatPtr + i) /= length;
+                            }
+
+                            //MessageBox.Show(BitConverter.ToSingle(velocityBuffer, 0) + " " + BitConverter.ToSingle(velocityBuffer, 4) + " " + BitConverter.ToSingle(velocityBuffer, 8));
+                            // }
+                            // catch (Exception e)
+                            // {
+                            //     MessageBox.Show(e.Message + "\n" + e.StackTrace);
+                            // }
+                        }
+                    }
+
+                    /*var*/ xVelAdd = GetAddress(handle, hook.LocalPlayerPointer, LocalXVelocity);
+                    // var isCloseNew = new []{xDiff, yDiff, zDiff}.Select(Math.Abs).All(x => x < BotsSettings.StopDistance);
+                    //var xVelAdd = GetAddressFromLocalPlayer(handle, LocalXVelocity);
+                    // if (Math.Abs(xDiff) < BotsSettings.StopDistance &&
+                    //     Math.Abs(yDiff) < BotsSettings.StopDistance &&
+                    //     Math.Abs(zDiff) < BotsSettings.StopDistance)
+                    if (isClose)
+                    // if (isCloseNew)
+                    {
+                        if (BotsSettings.StopType == StopType.FullStop)
+                        {
+                            var nullBuffer = new byte[12];
+                            WriteMemory(handle, xVelAdd, nullBuffer);
                             continue;
                         }
 
-                        length *= _botsStopPower;
+                        // length *= _botsSettings.StopPower;
                     }
-                    else
+                    if (_botsSettings.WarnEnabled)
                     {
-                        if (_botsWarnStatus == 1)
+                        // if (Math.Abs(xDiff) < BotsSettings.StopDistance &&
+                        //     Math.Abs(yDiff) < BotsSettings.StopDistance &&
+                        //     Math.Abs(zDiff) < BotsSettings.StopDistance)
+                        if (hook.Notified)
                         {
-                            if (Math.Abs(xDiff) < _botsWarnDistance &&
-                                Math.Abs(yDiff) < _botsWarnDistance &&
-                                Math.Abs(zDiff) < _botsWarnDistance)
-                            {
-                                if (hook.Notified)
-                                    hook.Notified = false;
-                            }
-                            else if (!hook.Notified)
-                            {
-                                hook.Notified = true;
-                                MessageBox.Show(new StringBuilder("Name: ").Append(hook.Name)
-                                        .Append("\nX: ").Append((int) ReadFloat(handle, xPosAdd))
-                                        .Append("\nY: ").Append((int) ReadFloat(handle, xPosAdd + 4))
-                                        .Append("\nZ: ").Append((int) ReadFloat(handle, xPosAdd + 8))
-                                        .Append("\nDistance: ")
-                                        .Append((int) Math.Sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff))
-                                        .ToString(),
-                                    hook.Name);
-                            }
+                            if (isClose)
+                                hook.Notified = false;
+                        }
+                        else// if (!hook.Notified)
+                        {
+                            var floats = ReadFloats(handle, xPosAdd, 3);
+                            var xDiff = BitConverter.ToSingle(sourceBuffer!, 0) - floats[0];
+                            var yDiff = BitConverter.ToSingle(sourceBuffer!, 4) - floats[1];
+                            var zDiff = BitConverter.ToSingle(sourceBuffer!, 8) - floats[2];
+                            hook.Notified = true;
+                            MessageBox.Show(new StringBuilder("Name: ").Append(hook.Name)
+                                    .Append("\nX: ").Append((int) ReadFloat(handle, xPosAdd))
+                                    .Append("\nY: ").Append((int) ReadFloat(handle, xPosAdd + 4))
+                                    .Append("\nZ: ").Append((int) ReadFloat(handle, xPosAdd + 8))
+                                    .Append("\nDistance: ")
+                                    .Append((int) Math.Sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff))
+                                    .ToString(),
+                                hook.Name);
                         }
                     }
 
-                    length *= Math.Max((float) Math.Sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff), 1)
-                        / _followSpeedValue;
+                    // length *= Math.Max((float) Math.Sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff), 1)
+                    //           / _followSpeedValue;
 
-                    WriteFloat(handle, xVelAdd, xDiff / length);
-                    WriteFloat(handle, xVelAdd + 4, yDiff / length);
-                    WriteFloat(handle, xVelAdd + 8, zDiff / length);
+                    // length *= Math.Max((float) Math.Sqrt(tempLength), 1) / _followSpeedValue;
+                    
+                    // unsafe
+                    // {
+                    //     fixed (byte* velocityPtr = velocityBuffer)
+                    //     {
+                    //         var velocityFloatPtr = (float*) velocityPtr;
+                    //         for (byte i = 0; i < FloatVectorSize; i++)
+                    //         {
+                    //             *(velocityFloatPtr + i) /= length;
+                    //         }
+                    //     }
+                    // }
+
+                    //WriteMemory(handle, xVelAdd, velocityBuffer);
+                    WriteProcessMemory(handle, xVelAdd, velocityBuffer, VectorSize, out _);
+                    // WriteFloat(handle, xVelAdd, xDiff / length);
+                    // WriteFloat(handle, xVelAdd + 4, yDiff / length);
+                    // WriteFloat(handle, xVelAdd + 8, zDiff / length);
                 }
             }
         }
+
+        private void StartBackground()
+        {
+            _activityHook.KeyDown += OnKeyDown;
+            _dispatcher.InvokeAsync(ForceSprint);
+            _dispatcher.InvokeAsync(ForceSpeed);
+            _dispatcher.InvokeAsync(HooksUpdate);
+            _dispatcher.InvokeAsync(FollowUpdate);
+        }
         
-        private string GetName(IntPtr handle, int address, int[] offsets)
+        private async void StatusUpdate()
+        {
+            BlockText = "Connecting...";
+            var stringBuilder = new StringBuilder();
+            void OutputText() => BlockText = stringBuilder.ToString();
+            
+            var webClient = new WebClient();
+            //webClient.Headers.Add(HttpRequestHeader.UserAgent, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
+            
+            async Task<bool> IsConnected()
+            {
+                const string connectionUrl = "http://google.com";
+                //const string connectionUrl = "http://licensesp.exitgames.com/";
+                try
+                {
+                    //using var stream = webClient.OpenRead(connectionUrl);
+                    //webClient.DownloadString(connectionUrl);
+                    await webClient.DownloadDataTaskAsync(connectionUrl);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            async Task WaitForConnection()
+            {
+                const int connectionCheckTime = 1000;
+                if (!await IsConnected())
+                {
+                    // if (block)
+                    // {
+                    //     Authorized = false;
+                    //     BlockText = "Waiting for\ninternet connection";
+                    //     BlockShitVisibility = Visibility.Visible;
+                    // }
+                    ConnectionGridVisibility = Visibility.Visible;
+
+                    await Task.Delay(connectionCheckTime);
+                    while (!await IsConnected())
+                    {
+                        //MessageBox.Show("no connection");
+                        await Task.Delay(connectionCheckTime);
+                    }
+                }
+
+                ConnectionGridVisibility = Visibility.Hidden;
+            }
+            
+            var tempFileName = (string) null;
+            {
+                const string updateUrl = "https://pastebin.com/raw/ALTsfWjv";
+                try
+                {
+                    await WaitForConnection();
+                    var updateText = await webClient.DownloadStringTaskAsync(updateUrl);
+                    updateText = updateText.Split('\n')[0];
+                    var spaceSplit = updateText.Split(' ');
+                    var serverVersion = new Version(spaceSplit[0]);
+                    
+                    if (serverVersion > Assembly.GetExecutingAssembly().GetName().Version)
+                    {
+                        var updateLink = spaceSplit[1];
+                        tempFileName = Path.GetTempFileName();
+                        webClient.DownloadFile(updateLink, tempFileName);
+                    }
+                }
+                catch (Exception e)
+                {
+                    stringBuilder.AppendLine("Error on update download:")
+                        .Append(e.Message)
+                        .AppendLine("Try relaunch application and report error");
+                    OutputText();
+                    if (tempFileName != null)
+                    {
+                        File.Delete(tempFileName);
+                    }
+                    return;
+                }
+            }
+            tempFileName = null;
+
+            async Task<string> GetDatabaseText()
+            {
+                const string dbUrl = "https://pastebin.com/raw/rjyuQQyv";
+                try
+                {
+                    return await webClient.DownloadStringTaskAsync(dbUrl);
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            }
+            
+            const int authUpdateTime = 6000;
+            const int authWaitTime = 2000;
+
+            int? userId;
+            {
+                const string folderPath = @"SOFTWARE\\NCT";
+                const string idKey = "Id";
+                var notACheatForTroveFolder = Registry.CurrentUser.OpenSubKey(folderPath, true) 
+                                              ?? Registry.CurrentUser.CreateSubKey(folderPath, true);
+
+                userId = (int?) notACheatForTroveFolder.GetValue(idKey);
+                if (userId == null)
+                {
+                    await WaitForConnection();
+                    var dbText = await GetDatabaseText();
+                    int newId;
+                    var random = new Random();
+                    do
+                    {
+                        newId = random.Next(100_000, 1_000_000);
+                    } while (dbText.Contains(newId.ToString()));
+
+                    userId = newId;
+                    notACheatForTroveFolder.SetValue(idKey, userId, RegistryValueKind.DWord);
+                }
+            }
+            
+            var idString = userId.ToString();
+            var idText = "Id: " + idString;
+            
+            StringBuilder ResetText() => stringBuilder.Clear().AppendLine(idText);
+            ResetText();
+            while (true)
+            {
+                await WaitForConnection();
+                var userFound = false;
+                var dbText = await GetDatabaseText();
+                foreach (var line in dbText.Split('\n'))
+                {
+                    var spaceSplit = line.Split(' ');
+                    var id = int.Parse(spaceSplit[0]);
+                    if (id != userId) continue;
+                    userFound = true;
+                }
+
+                if (!userFound)
+                    Authorized = false;
+                Authorized = dbText.Contains(idString);
+                if (!Authorized)
+                {
+                    BlockText = ResetText().Append("Not authorized").ToString();
+                }
+                await Task.Delay(Authorized ? authUpdateTime : authWaitTime);
+            }
+        }
+        
+        private string GetName(IntPtr handle, int baseAddress, params int[] offsets)
         {
             try
             {
-                return ReadString(handle, GetAddress(handle, address, offsets), (byte) _botsFollowTargetNameLength,
+                return ReadString(handle, GetAddress(handle, baseAddress, offsets), (byte) _botsFollowTargetNameLength,
                     Encoding.ASCII);
             }
             catch
@@ -1579,9 +2006,9 @@ namespace TroveSkip.ViewModels
             return _pressedKeys[key];
         }
 
-        private unsafe (float, float, float) ReadSettings(int baseAddress)
+        private unsafe float ReadSettings(int baseAddress)
         {
-            var buffer = stackalloc byte[4];
+            var buffer = stackalloc byte[sizeof(float)];
             var intBuffer = (int*) buffer;
             var floatBuffer = (float*) buffer;
             ReadMemory(baseAddress, buffer);
@@ -1591,40 +2018,99 @@ namespace TroveSkip.ViewModels
             ReadMemory(address, buffer);
             var idkObject = *floatBuffer;
             
-            if (idkObject == DefaultObjectValue)
+            if (Math.Abs(idkObject - DefaultObjectsDistance) < 2)
             {
-                address = baseAddress + DrawDistance[0];
+                address = baseAddress + DrawDistanceOffsets[0];
                 ReadMemory(address, buffer);
                 var drawDistance = *floatBuffer;
                 
                 if (drawDistance >= MinimalDrawDistance && drawDistance <= MaximalDrawDistance)
                 {
-                    address = baseAddress + HalfDrawDistanceOffsets[0];
-                    ReadMemory(address, buffer);
-                    var halfDrawDistance = *floatBuffer;
-                    
-                    if (halfDrawDistance == Math.Min(96, drawDistance / 2))
-                    {
-                        return (drawDistance, halfDrawDistance, idkObject);
-                    }
+                    return drawDistance;
+                    // address = baseAddress + HalfDrawDistanceOffsets[0];
+                    // ReadMemory(address, buffer);
+                    // var halfDrawDistance = *floatBuffer;
+                    //
+                    // if (halfDrawDistance == Math.Min(96, drawDistance / 2))
+                    // {
+                    //     return (drawDistance, halfDrawDistance, idkObject);
+                    // }
                 }
 
             }
 
-            return (0, 0, 0);
+            return 0;
         }
-        private void WriteSettings(ref HookModel hook, (float, float, float) settings)
+
+        private int GetGraphicsSettings(HookModel hook) => (int)ReadFloat(hook.Handle, hook.SettingsPointer, DrawDistanceOffsets);
+
+        private void ChangeGraphics(HookModel hook, bool noGraphics)
         {
-            var handle = hook.Handle;
-            var halfDrawDistanceAdd = GetAddressFromLocalPlayer(handle, HalfDrawDistanceOffsets);
-            WriteFloat(handle, halfDrawDistanceAdd, settings.Item2);
-            WriteFloat(handle, halfDrawDistanceAdd + 4, settings.Item3);
-            WriteFloat(handle, halfDrawDistanceAdd + 0x24, settings.Item1);
+            if (noGraphics)
+            {
+                int address;
+
+                float GetFloat(SettingOffset offset)
+                {
+                    address = GetAddress(hook.Handle, hook.SettingsPointer, (int) offset);
+                    return ReadFloat(hook.Handle, address);
+                }
+
+                foreach (var offset in SettingsToSave)
+                {
+                    hook.Settings.Add(offset, GetFloat(offset));
+                    WriteFloat(hook.Handle, address, 0);
+                }
+            }
+            else
+            {
+                foreach (var pair in hook.Settings)
+                {
+                    WriteFloat(hook.Handle, hook.SettingsPointer, new[] {(int) pair.Key}, pair.Value);
+                }
+                hook.Settings.Clear();
+            }
         }
+
+        private void ApplyGraphics()
+        {
+            if (NoGraphics)
+            {
+                foreach (var hook in Hooks)
+                {
+                    ChangeGraphics(hook, true);
+                }
+            }
+            else
+            {
+                foreach (var hook in Hooks)
+                {
+                    ChangeGraphics(hook, false);
+                }
+            }
+        }
+
+        // private void SetGraphicsSettings(HookModel hook, int value = NoGraphicsValue)
+        // {
+        //     var handle = hook.Handle;
+        //     var halfDrawDistanceAdd = GetAddress(handle, hook.SettingsPointer, HalfDrawDistanceOffsets);
+        //     if (value == NoGraphicsValue)
+        //     {
+        //         WriteFloat(handle, halfDrawDistanceAdd, value);
+        //         WriteFloat(handle, halfDrawDistanceAdd + SettingOffset.ObjectsDrawDistance - SettingOffset.Grama, value);
+        //         WriteFloat(handle, halfDrawDistanceAdd + SettingOffset.DrawDistance - SettingOffset.Grama, value);
+        //     }
+        //     else
+        //     {
+        //         WriteFloat(handle, halfDrawDistanceAdd, Math.Min(MaxGrama, value / 2));
+        //         WriteFloat(handle, halfDrawDistanceAdd + SettingOffset.ObjectsDrawDistance - SettingOffset.Grama, DefaultObjectsDistance);//Math.Min(DefaultObjectValue, value));
+        //         WriteFloat(handle, halfDrawDistanceAdd + SettingOffset.DrawDistance - SettingOffset.Grama, value);
+        //     }
+        // }
 
         private unsafe bool FindBaseAddresses(int i)
         {
-            var buffer = stackalloc byte[4];
+            var buffer = stackalloc byte[sizeof(int)];
             var intBuffer = (int*) buffer;
             var address = _currentModulePointer + i;
             ReadMemory(address, buffer);
@@ -1632,8 +2118,7 @@ namespace TroveSkip.ViewModels
             
             if (_settingsOffset == 0)
             {
-                var settings = ReadSettings(address);
-                if (settings.Item1 != 0)
+                if (ReadSettings(address) != 0)
                 {
                     SettingsOffset = i.ToString("X8");
                     return _localPlayerOffset != 0 && _worldOffset != 0 && _chatOffset != 0;
@@ -1743,7 +2228,7 @@ namespace TroveSkip.ViewModels
 
         private void WindowMouseDown(object sender, EventArgs args) => WindowDeactivated(sender, args);
 
-        public void BindKeyDown(Key key)
+        private void BindKeyDown(Key key)
         {
             if (_currentButton == null) return;
             _binds[_currentButton] = key;
@@ -1755,6 +2240,7 @@ namespace TroveSkip.ViewModels
         
         public void WindowDeactivated(object _, EventArgs __)
         {
+            SetSearchWindowState(Visibility.Hidden);
             if (_currentButton == null) return;
             _binds[_currentButton] = Key.None;
             _currentButtonElement.Content = GetKey(_currentButton);
@@ -1763,7 +2249,7 @@ namespace TroveSkip.ViewModels
             _activityHook.KeyDown -= BindKeyDown;
         }
         
-        public void BindClick(Button button)
+        private void BindClick(Button button)
         {
             var name = button.Name;
 
@@ -1785,11 +2271,11 @@ namespace TroveSkip.ViewModels
             _activityHook.KeyDown += BindKeyDown;
         }
 
-        private void PreviewTextBoxInput(TextBox sender, TextCompositionEventArgs e)
-        {
-            Regex regex = sender.Text.Contains(".") ? new("^[a-zA-Z-.]+$") : new("^[a-zA-Z]+$");
-            e.Handled = regex.IsMatch(e.Text);
-        }
+        // private void PreviewTextBoxInput(TextBox sender, TextCompositionEventArgs e)
+        // {
+        //     Regex regex = sender.Text.Contains(".") ? new("^[a-zA-Z-.]+$") : new("^[a-zA-Z]+$");
+        //     e.Handled = regex.IsMatch(e.Text);
+        // }
 
         public event PropertyChangedEventHandler PropertyChanged;
 

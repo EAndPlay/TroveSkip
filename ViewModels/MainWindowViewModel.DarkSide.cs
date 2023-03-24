@@ -1,4 +1,5 @@
 using System;
+using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
@@ -19,9 +20,11 @@ namespace TroveSkip.ViewModels
 
         // IsOnFeet (get/set) CharacterOffset + [84 + 208] | [9C + 68]
 
-        private const int MinimalDrawDistance = 32;
-        private const int MaximalDrawDistance = 210;
-        private const int DefaultObjectValue = 150;
+        private const int MinimalDrawDistance = 31;
+        private const int MaximalDrawDistance = 211;
+        private const int MaxGrama = 96;
+        private const int DefaultObjectsDistance = 150;
+        private const int NoGraphicsValue = 0;
         
         private const int MinimalModuleOffset = 16_200_000;
         private const int MaximalModuleOffset = 19_000_000;
@@ -113,7 +116,7 @@ namespace TroveSkip.ViewModels
         
         private static readonly int[] HalfDrawDistanceOffsets = { (int) SettingOffset.Grama };
         private static readonly int[] IdkObject = { (int) SettingOffset.ObjectsDrawDistance };
-        private static readonly int[] DrawDistance = { (int) SettingOffset.DrawDistance };
+        private static readonly int[] DrawDistanceOffsets = { (int) SettingOffset.DrawDistance };
 
         //private readonly int[] MaxCamDist = { 0x4, 0x3C };
         //private readonly int[] MinCamDist = { 0x4, 0x38 };
@@ -234,19 +237,19 @@ namespace TroveSkip.ViewModels
         
         private unsafe string ReadStringToEnd(IntPtr handle, int address, Encoding encoding, int maxLength = MaxStringLength)
         {
-                var bytesInChar = encoding.GetMaxByteCount(0);
-                var buffer = stackalloc byte[1];
-                for (short i = 0; i < maxLength; i++)
-                {
-                    if (!ReadMemory(handle, address + i * bytesInChar, buffer, 1))
-                        break;
-                    if (*buffer != 0)
-                        continue;
+            var bytesInChar = encoding.GetMaxByteCount(0);
+            var buffer = stackalloc byte[1];
+            for (short i = 0; i < maxLength; i++)
+            {
+                if (!ReadMemory(handle, address + i * bytesInChar, buffer, 1))
+                    break;
+                if (*buffer != 0)
+                    continue;
 
-                    return i == 0 ? null : encoding.GetString(GetBuffer(handle, address, (byte) (i * bytesInChar)));
-                }
+                return i == 0 ? null : encoding.GetString(GetBuffer(handle, address, (byte) (i * bytesInChar)));
+            }
 
-                return null;
+            return null;
         }
 
         private string ReadString(int address, byte length, Encoding encoding) =>
@@ -292,29 +295,38 @@ namespace TroveSkip.ViewModels
         
         #region Read
         
-        private byte ReadByte(int baseAddress, int[] offsets) => 
+        private byte ReadByte(int baseAddress, params int[] offsets) => 
             ReadByte(GetAddress(baseAddress, offsets));
         private byte ReadByte(int address) => 
             ReadByte(_handle, address);
-        private byte ReadByte(IntPtr handle, int baseAddress, int[] offsets) =>
+        private byte ReadByte(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadByte(handle, GetAddress(handle, baseAddress, offsets));
         private byte ReadByte(IntPtr handle, int address) => 
             GetBuffer(handle, address, sizeof(byte))[0];
         
-        private bool ReadBool(int baseAddress, int[] offsets) => 
+        private bool ReadBool(int baseAddress, params int[] offsets) => 
             ReadBool(GetAddress(baseAddress, offsets));
         private bool ReadBool(int address) => 
             ReadBool(_handle, address);
-        private bool ReadBool(IntPtr handle, int baseAddress, int[] offsets) =>
+        private bool ReadBool(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadBool(handle, GetAddress(handle, baseAddress, offsets));
-        private bool ReadBool(IntPtr handle, int address) => 
-            GetBuffer(handle, address, sizeof(byte))[0] == 1;
+        private bool ReadBool(IntPtr handle, int address) =>
+            ReadByte(handle, address) == 1; //GetBuffer(handle, address, sizeof(byte))[0] == 1;
 
-        private short ReadShort(int baseAddress, int[] offsets) => 
+        private byte ReadBytes(int baseAddress, params int[] offsets) => 
+            ReadBytes(GetAddress(baseAddress, offsets));
+        private byte ReadBytes(int address) => 
+            ReadBytes(_handle, address);
+        private byte ReadBytes(IntPtr handle, int baseAddress, params int[] offsets) =>
+            ReadBytes(handle, GetAddress(handle, baseAddress, offsets));
+        private byte ReadBytes(IntPtr handle, int address) => 
+            GetBuffer(handle, address, sizeof(byte))[0];
+        
+        private short ReadShort(int baseAddress, params int[] offsets) => 
             ReadShort(GetAddress(baseAddress, offsets));
         private short ReadShort(int address) => 
             ReadShort(_handle, address);
-        private short ReadShort(IntPtr handle, int baseAddress, int[] offsets) =>
+        private short ReadShort(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadShort(handle, GetAddress(handle, baseAddress, offsets));
         private unsafe short ReadShort(IntPtr handle, int address)
         {
@@ -324,11 +336,11 @@ namespace TroveSkip.ViewModels
             }
         }
         
-        private ushort ReadUShort(int baseAddress, int[] offsets) => 
+        private ushort ReadUShort(int baseAddress, params int[] offsets) => 
             ReadUShort(GetAddress(baseAddress, offsets));
         private ushort ReadUShort(int address) => 
             ReadUShort(_handle, address);
-        private ushort ReadUShort(IntPtr handle, int baseAddress, int[] offsets) =>
+        private ushort ReadUShort(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadUShort(handle, GetAddress(handle, baseAddress, offsets));
         private unsafe ushort ReadUShort(IntPtr handle, int address)
         {
@@ -338,11 +350,11 @@ namespace TroveSkip.ViewModels
             }
         }
         
-        private int ReadInt(int baseAddress, int[] offsets) => 
+        private int ReadInt(int baseAddress, params int[] offsets) => 
             ReadInt(GetAddress(baseAddress, offsets));
         private int ReadInt(int address) => 
             ReadInt(_handle, address);
-        private int ReadInt(IntPtr handle, int baseAddress, int[] offsets) =>
+        private int ReadInt(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadInt(handle, GetAddress(handle, baseAddress, offsets));
         private unsafe int ReadInt(IntPtr handle, int address)
         {
@@ -352,11 +364,11 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        private uint ReadUInt(int baseAddress, int[] offsets) => 
+        private uint ReadUInt(int baseAddress, params int[] offsets) => 
             ReadUInt(GetAddress(baseAddress, offsets));
         private uint ReadUInt(int address) => 
             ReadUInt(_handle, address);
-        private uint ReadUInt(IntPtr handle, int baseAddress, int[] offsets) =>
+        private uint ReadUInt(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadUInt(handle, GetAddress(handle, baseAddress, offsets));
         private unsafe uint ReadUInt(IntPtr handle, int address)
         {
@@ -366,11 +378,11 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        private float ReadFloat(int baseAddress, int[] offsets) => 
+        private float ReadFloat(int baseAddress, params int[] offsets) => 
             ReadFloat(GetAddress(baseAddress, offsets));
         private float ReadFloat(int address) => 
             ReadFloat(_handle, address);
-        private float ReadFloat(IntPtr handle, int baseAddress, int[] offsets) =>
+        private float ReadFloat(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadFloat(handle, GetAddress(handle, baseAddress, offsets));
         private unsafe float ReadFloat(IntPtr handle, int address)
         {
@@ -379,12 +391,20 @@ namespace TroveSkip.ViewModels
                 return *(float*) pointer;
             }
         }
+        private float[] ReadFloats(IntPtr handle, int address, int count)
+        {
+            var buffer = GetBuffer(handle, address, count * sizeof(float));
+            var floats = new float[count];
+            for (short i = 0; i < count; i++)
+                floats[i] = BitConverter.ToSingle(buffer, i * sizeof(float));
+            return floats;
+        }
 
-        private double ReadDouble(int baseAddress, int[] offsets) => 
+        private double ReadDouble(int baseAddress, params int[] offsets) => 
             ReadDouble(GetAddress(baseAddress, offsets));
         private double ReadDouble(int address) => 
             ReadDouble(_handle, address);
-        private double ReadDouble(IntPtr handle, int baseAddress, int[] offsets) =>
+        private double ReadDouble(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadDouble(handle, GetAddress(handle, baseAddress, offsets));
         private unsafe double ReadDouble(IntPtr handle, int address)
         {
@@ -394,11 +414,11 @@ namespace TroveSkip.ViewModels
             }
         }
         
-        private long ReadLong(int baseAddress, int[] offsets) => 
+        private long ReadLong(int baseAddress, params int[] offsets) => 
             ReadLong(GetAddress(baseAddress, offsets));
         private long ReadLong(int address) => 
             ReadLong(_handle, address);
-        private long ReadLong(IntPtr handle, int baseAddress, int[] offsets) =>
+        private long ReadLong(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadLong(handle, GetAddress(handle, baseAddress, offsets));
         private unsafe long ReadLong(IntPtr handle, int address)
         {
@@ -408,11 +428,11 @@ namespace TroveSkip.ViewModels
             }
         }
         
-        private ulong ReadULong(int baseAddress, int[] offsets) => 
+        private ulong ReadULong(int baseAddress, params int[] offsets) => 
             ReadULong(GetAddress(baseAddress, offsets));
         private ulong ReadULong(int address) => 
             ReadULong(_handle, address);
-        private ulong ReadULong(IntPtr handle, int baseAddress, int[] offsets) =>
+        private ulong ReadULong(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadULong(handle, GetAddress(handle, baseAddress, offsets));
         private unsafe ulong ReadULong(IntPtr handle, int address)
         {
@@ -422,15 +442,15 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        private T ReadStructure<T>(int address, byte size = 0) => 
-            ReadStructure<T>(_handle, address, size);
-        private T ReadStructure<T>(int baseAddress, int[] offsets, byte size = 0) => 
-            ReadStructure<T>(_handle, baseAddress, offsets, size);
-        private T ReadStructure<T>(IntPtr handle, int baseAddress, int[] offsets, byte size = 0) =>
-            ReadStructure<T>(handle, GetAddress(handle, baseAddress, offsets), size);
-        private unsafe T ReadStructure<T>(IntPtr handle, int address, byte size = 0)
+        private T ReadStructure<T>(int address) => 
+            ReadStructure<T>(_handle, address);
+        private T ReadStructure<T>(int baseAddress, params int[] offsets) => 
+            ReadStructure<T>(_handle, baseAddress, offsets);
+        private T ReadStructure<T>(IntPtr handle, int baseAddress, params int[] offsets) =>
+            ReadStructure<T>(handle, GetAddress(handle, baseAddress, offsets));
+        private unsafe T ReadStructure<T>(IntPtr handle, int address)
         {
-            fixed (byte* pointer = GetBuffer(handle, address, size == 0 ? (byte) Marshal.SizeOf(default(T)) : size))
+            fixed (byte* pointer = GetBuffer(handle, address, Marshal.SizeOf(default(T))))
             {
                 return Marshal.PtrToStructure<T>((IntPtr) pointer);
             }
@@ -447,18 +467,26 @@ namespace TroveSkip.ViewModels
         private void WriteByte(IntPtr handle, int baseAddress, int[] offsets, byte value) =>
             WriteByte(handle, GetAddress(handle, baseAddress, offsets), value);
         private void WriteByte(IntPtr handle, int address, byte value) =>
-            WriteMemory(handle, address, new[] { value });
+            WriteMemory(handle, address, new[] {value});
 
-        // TODO: convert Byte <-> SByte
-        // private void WriteSByte(int baseAddress, int[] offsets, sbyte value) =>
-        //     WriteSByte(GetAddress(baseAddress, offsets), value);
-        // private void WriteSByte(int address, sbyte value) =>
-        //     WriteSByte(_handle, address, value);
-        // private void WriteSByte(IntPtr handle, int baseAddress, int[] offsets, sbyte value) =>
-        //     WriteSByte(handle, GetAddress(handle, baseAddress, offsets), value);
-        // private void WriteSByte(IntPtr handle, int address, sbyte value) =>
-        //     WriteMemory(handle, address, Convert.ToSByte((byte)value));
+        private void WriteSByte(int baseAddress, int[] offsets, sbyte value) =>
+            WriteSByte(GetAddress(baseAddress, offsets), value);
+        private void WriteSByte(int address, sbyte value) =>
+            WriteSByte(_handle, address, value);
+        private void WriteSByte(IntPtr handle, int baseAddress, int[] offsets, sbyte value) =>
+            WriteSByte(handle, GetAddress(handle, baseAddress, offsets), value);
+        private void WriteSByte(IntPtr handle, int address, sbyte value) => 
+            WriteMemory(handle, address, new[] {(byte)value});
         
+        private void WriteBool(int baseAddress, int[] offsets, bool value) =>
+            WriteBool(GetAddress(baseAddress, offsets), value);
+        private void WriteBool(int address, bool value) =>
+            WriteBool(_handle, address, value);
+        private void WriteBool(IntPtr handle, int baseAddress, int[] offsets, bool value) =>
+            WriteBool(handle, GetAddress(handle, baseAddress, offsets), value);
+        private void WriteBool(IntPtr handle, int address, bool value) =>
+            WriteByte(handle, address, (byte)(value ? 1 : 0));
+
         private void WriteShort(int baseAddress, int[] offsets, short value) =>
             WriteShort(GetAddress(baseAddress, offsets), value);
         private void WriteShort(int address, short value) =>
@@ -662,19 +690,37 @@ namespace TroveSkip.ViewModels
         private unsafe bool ReadMemory(IntPtr handle, int address, byte* buffer, int size = 4) => ReadProcessMemory(handle, address, buffer, size, out _);
         
         private void WriteMemory(int address, byte[] buffer) => WriteProcessMemory(_handle, address, buffer, buffer.Length, out _);
+        private void WriteMemory(int address, byte[] buffer, int size) => WriteProcessMemory(_handle, address, buffer, size, out _);
         private void WriteMemory(IntPtr handle, int address, byte[] buffer) => WriteProcessMemory(handle, address, buffer, buffer.Length, out _);
+        private void WriteMemory(IntPtr handle, int address, byte[] buffer, int size) => WriteProcessMemory(handle, address, buffer, size, out _);
+
+        private int AllocateMemory(IntPtr handle, int size, MemoryProtection protection = MemoryProtection.ExecuteRead, int specificAddress = 0) =>
+            VirtualAllocEx(handle, specificAddress, size, AllocationType.Commit, protection);
+
+        /// <summary>
+        /// Allocates memory and put jmp to <paramref name="returnAddress"/> at the end if not 0
+        /// </summary>
+        /// <param name="handle"></param>
+        /// <param name="size"></param>
+        /// <param name="returnAddress"></param>
+        private int CreateCave(IntPtr handle, int size, int returnAddress = 0)
+        {
+            var caveAddress = AllocateMemory(handle, size + 5);
+            
+            return caveAddress;
+        }
         
         // TODO: remove
         private int GetAddressFromLocalPlayer(int[] offsets) => GetAddress(_currentLocalPlayerPointer, offsets);
         private int GetAddressFromLocalPlayer(IntPtr handle, int[] offsets) => GetAddress(handle, _currentLocalPlayerPointer, offsets);
         
-        private byte[] GetBuffer(int baseAddress, int[] offsets, byte size = 4) => 
+        private byte[] GetBuffer(int baseAddress, int[] offsets, int size = 4) => 
             GetBuffer(GetAddress(baseAddress, offsets), size);
-        private byte[] GetBuffer(int address, byte size = 4) => 
+        private byte[] GetBuffer(int address, int size = 4) => 
             GetBuffer(_handle, address, size);
         private byte[] GetBuffer(IntPtr handle, int baseAddress, int[] offsets, byte size = 4) => 
             GetBuffer(handle, GetAddress(handle, baseAddress, offsets), size);
-        private byte[] GetBuffer(IntPtr handle, int address, byte size = 4)
+        private byte[] GetBuffer(IntPtr handle, int address, int size = 4)
         {
             var bytes = new byte[size];
             ReadMemory(handle, address, bytes);
@@ -683,9 +729,9 @@ namespace TroveSkip.ViewModels
             //return ReadMemory(handle, address, bytes) ? bytes : null;
         }
 
-        private int GetAddress(int baseAddress, int[] offsets) => GetAddress(_handle, baseAddress, offsets);
+        private int GetAddress(int baseAddress, params int[] offsets) => GetAddress(_handle, baseAddress, offsets);
         
-        private unsafe int GetAddress(IntPtr handle, int baseAddress, int[] offsets)
+        private unsafe int GetAddress(IntPtr handle, int baseAddress, params int[] offsets)
         {
             var bytes = stackalloc byte[4];
             var num = (int*) bytes;
@@ -699,7 +745,26 @@ namespace TroveSkip.ViewModels
             return baseAddress;
         }
 
-        private static byte[] AsmJump(ulong destination, ulong origin, byte[] cave = null)
+        private static byte[] AsmJump(ulong destination, ulong origin)
+        {
+            var jumpStart = destination - origin - CaveOffset;
+            var bytes = new byte[sizeof(ulong) + 1];
+            bytes[0] = (byte)Instructions.JmpRM32;
+            var address = BitConverter.GetBytes(jumpStart);
+            // idk why size - 1
+            Array.Copy(address, 0, bytes, 1, sizeof(ulong) - 1);
+            int newLength;
+            for (newLength = bytes.Length - 1; newLength > 0; newLength--)
+            {
+                if (bytes[newLength] != 0)
+                    break;
+            }
+            Array.Resize(ref bytes, newLength + 1);
+
+            return bytes;
+        }
+        
+        private static byte[] AsmJumpOld(ulong destination, ulong origin, byte[] cave = null)
         {
             var jumpStart = destination - origin - CaveOffset;
             var bytes = new byte[4];
@@ -723,7 +788,204 @@ namespace TroveSkip.ViewModels
             return bytes;
         }
         
-        #region Dlls
+        public enum Instructions : byte
+        {
+            MovRM8R8 = 0x88,
+            MovRM16R16 = 0x89,
+            MovRM32R32 = 0x89,
+            MovR8RM8 = 0x8A,
+            MovR16RM16 = 0x8B,
+            MovR32RM32 = 0x8B,
+            MovEaxI16 = 0xB8,
+            MovEaxI32 = 0xB8,
+            MovEcxI16 = 0xB9,
+            MovEcxI32 = 0xB9,
+            MovEdxI16 = 0xBA,
+            MovEdxI32 = 0xBA,
+            MovEbxI16 = 0xBB,
+            MovEbxI32 = 0xBB,
+            MovEspI16 = 0xBC,
+            MovEspI32 = 0xBC,
+            MovEbpI16 = 0xBD,
+            MovEbpI32 = 0xBD,
+            MovEsiI16 = 0xBE,
+            MovEsiI32 = 0xBE,
+            MovEdiI16 = 0xBF,
+            MovEdiI32 = 0xBF,
+            
+            ShlRM8 = 0xD0,
+            ShlRM16 = 0xD1,
+            ShlRM32 = 0xD1,
+            // ShrRM8 = 0xD0,
+            
+            IncRM8 = 0xFE,
+            IncRM16 = 0xFF,
+            IncRM32 = 0xFF,
+            
+            
+            AddRM8R8 = 0x00,
+            AddRM16R16 = 0x01,
+            AddRM32R32 = 0x01,
+            AddR8RM8 = 0x02,
+            AddR16RM16 = 0x03,
+            AddR32RM32 = 0x03,
+            
+            SubRM8R8 = 0x28,
+            SubRM16R16 = 0x29,
+            SubRM32R32 = 0x29,
+            SubR8RM8 = 0x2A,
+            SubR16RM16 = 0x2B,
+            SubR32RM32 = 0x2B,
+            
+            MulRM8 = 0xF6,
+            MulRM16 = 0xF7,
+            MulRM32 = 0xF7,
+            
+            AndRM8R8 = 0x20,
+            AndRM16R16 = 0x21,
+            AndRM32R32 = 0x21,
+            AndR8RM8 = 0x22,
+            AndR16RM16 = 0x23,
+            AndR32RM32 = 0x23,
+
+            CmpRM8R8 = 0x38,
+            CmpRM16R16 = 0x39,
+            CmpRM32R32 = 0x39,
+            CmpR8RM8 = 0x3A,
+            CmpR16RM16 = 0x3B,
+            CmpR32RM32 = 0x3B,
+            
+            JmpRM16 = 0xE9,
+            JmpRM32 = 0xE9,
+            
+            CallRM16 = 0xFF,
+            CallRM32 = 0xFF,
+            
+            PushRM16 = 0xFF,
+            PushRM32 = 0xFF,
+            PushEax = 0x50,
+            PushEcx = 0x51,
+            PushEdx = 0x52,
+            PushEbx = 0x53,
+            PushEsp = 0x54,
+            PushEbp = 0x55,
+            PushEsi = 0x56,
+            PushEdi = 0x57,
+            
+            PopRM16 = 0x8F,
+            PopRM32 = 0x8F,
+            PopEax = 0x58,
+            PopEcx = 0x59,
+            PopEdx = 0x5A,
+            PopEbx = 0x5B,
+            PopEsp = 0x5C,
+            PopEbp = 0x5D,
+            PopEsi = 0x5E,
+            PopEdi = 0x5F,
+            
+            XorRM8R8 = 0x30,
+            XorRM16R16 = 0x31,
+            XorRM32R32 = 0x31,
+            XorR8RM8 = 0x32,
+            XorR16RM16 = 0x33,
+            XorR32RM32 = 0x33,
+            
+            
+
+            Or = 0x08,
+            Xor = 0x30,
+            Inc = 0x40,
+            Dec = 0x48,
+            Test = 0x84,
+            Nop = 0x90,
+            RetN = 0xC3, //0xC2
+            RetF = 0xCA, //0xCB
+            Call = 0x9A, // 0xE8, 0xFF/2, 0xFF/3
+            Mul = 0xF7,
+        }
+        
+        /*
+         * 31 C0 = xor eax,eax
+         * 33 00 = xor eax,[eax] | xor [eax],eax
+         * 
+         */
+        
+        public enum RegisterOpcode : byte
+        {
+            EaxEax = 0xC0,
+            EaxEcx = 0xC8,
+            EaxEdx = 0xD0,
+            EaxEbx = 0xD8,
+            EaxEsp = 0xE0,
+            EaxEbp = 0xE8,
+            EaxEsi = 0xF0,
+            EaxEdi = 0xF8,
+            
+            EcxEax = 0xC1,
+            EcxEcx = 0xC9,
+            EcxEdx = 0xD1,
+            EcxEbx = 0xD9,
+            EcxEsp = 0xE1,
+            EcxEbp = 0xE9,
+            EcxEsi = 0xF1,
+            EcxEdi = 0xF9,
+            
+            EdxEax = 0xC2,
+            EdxEcx = 0xCA,
+            EdxEdx = 0xD2,
+            EdxEbx = 0xDA,
+            EdxEsp = 0xE2,
+            EdxEbp = 0xEA,
+            EdxEsi = 0xF2,
+            EdxEdi = 0xFA,
+            
+            EbxEax = 0xC3,
+            EbxEcx = 0xCB,
+            EbxEdx = 0xD3,
+            EbxEbx = 0xDB,
+            EbxEsp = 0xE3,
+            EbxEbp = 0xEB,
+            EbxEsi = 0xF3,
+            EbxEdi = 0xFB,
+            
+            EspEax = 0xC4,
+            EspEcx = 0xCC,
+            EspEdx = 0xD4,
+            EspEbx = 0xDC,
+            EspEsp = 0xE4,
+            EspEbp = 0xEC,
+            EspEsi = 0xF4,
+            EspEdi = 0xFC,
+            
+            EbpEax = 0xC5,
+            EbpEcx = 0xCD,
+            EbpEdx = 0xD5,
+            EbpEbx = 0xDD,
+            EbpEsp = 0xE5,
+            EbpEbp = 0xED,
+            EbpEsi = 0xF5,
+            EbpEdi = 0xFD,
+            
+            EsiEax = 0xC6,
+            EsiEcx = 0xCE,
+            EsiEdx = 0xD6,
+            EsiEbx = 0xDE,
+            EsiEsp = 0xE6,
+            EsiEbp = 0xEE,
+            EsiEsi = 0xF6,
+            EsiEdi = 0xFE,
+            
+            EdiEax = 0xC7,
+            EdiEcx = 0xCF,
+            EdiEdx = 0xD7,
+            EdiEbx = 0xDF,
+            EdiEsp = 0xE7,
+            EdiEbp = 0xEF,
+            EdiEsi = 0xF7,
+            EdiEdi = 0xFF,
+        }
+        
+        #region Native
         
         #region Kernel
         
@@ -841,6 +1103,14 @@ namespace TroveSkip.ViewModels
           byte[] buffer,
           int size,
           out IntPtr numberOfBytesWritten);
+        
+        [DllImport("kernel32.dll")]
+        private static extern unsafe bool WriteProcessMemory(
+            IntPtr handle,
+            int address,
+            byte* buffer,
+            int size,
+            out IntPtr numberOfBytesWritten);
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
@@ -900,6 +1170,14 @@ namespace TroveSkip.ViewModels
             DspText = 0x81
         }
         
+        public enum KeyMappingType
+        {
+            VirtualKeyToScanCode = 0,
+            ScanCodeToVirtualKey = 1,
+            VirtualKeyToChar = 2,
+            ScanCodeToVirtualKeyEx = 3
+        }
+        
         [DllImport("user32.dll")]
         private static extern int GetWindowThreadProcessId(
             IntPtr handle,
@@ -938,6 +1216,7 @@ namespace TroveSkip.ViewModels
         private delegate void TimerProc(IntPtr windowHandle, uint uMsg, IntPtr nIDEvent, uint dwTime);
         
         #endregion
+        
         #endregion
     }
 }

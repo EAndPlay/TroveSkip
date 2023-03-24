@@ -7,38 +7,59 @@ using TroveSkip.Properties;
 
 namespace TroveSkip
 {
-    public enum BotsStopType : byte
+    public enum StopType : byte
     {
         FullStop,
         Slow
     }
 
-    public enum OnOff : byte
+    public enum FollowType : byte
     {
-        On, Off
+        Local,
+        Target
     }
     
+    public enum TargetCheckType : byte
+    {
+        AllToLeaderToTarget,
+        AllToTarget
+    }
+
     [Serializable]
     public class BotsSettings : INotifyPropertyChanged
     {
-        public float StopDistance;
-        public byte StopType;
-        public float StopPower;
-        public string NoClipToggleButton;
-        public byte WarnStatus;
-        public uint WarnDistance;
-        public byte FollowType;
-        public byte TargetCheckType;
-        public string FollowTargetName;
-        public bool NoClip;
+        public float StopDistance { get; set; }
+        public StopType StopType { get; set; }
+        public float StopPower { get; set; }
+        public string NoClipToggleButton { get; set; }
+        public bool WarnEnabled { get; set; }
+        public uint WarnDistance { get; set; }
+        private FollowType _followType;
+
+        public FollowType FollowType
+        {
+            get => _followType;
+            set
+            {
+                _followType = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public TargetCheckType TargetCheckType { get; set; }
+        public string FollowTargetName { get; set; }
+        public bool NoClip { get; set; }
+        public bool AutoSetBot { get; set; }
 
         public BotsSettings()
         {
             StopDistance = 2;
-            StopType = (byte) BotsStopType.Slow;
+            StopType = StopType.Slow;
             StopPower = 5;
             NoClipToggleButton = Key.V.ToString();
-            WarnStatus = FollowType = TargetCheckType = 0;
+            WarnEnabled = false;
+            FollowType = FollowType.Local;
+            TargetCheckType = TargetCheckType.AllToLeaderToTarget;
             WarnDistance = 15;
             FollowTargetName = string.Empty;
             NoClip = false;
