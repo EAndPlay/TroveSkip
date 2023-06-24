@@ -56,7 +56,7 @@ namespace TroveSkip
             StopDistance = 2;
             StopType = StopType.Slow;
             StopPower = 5;
-            NoClipToggleButton = Key.V.ToString();
+            NoClipToggleButton = Key.None.ToString();
             WarnEnabled = false;
             FollowType = FollowType.Local;
             TargetCheckType = TargetCheckType.AllToLeaderToTarget;

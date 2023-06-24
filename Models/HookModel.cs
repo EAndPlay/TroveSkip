@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Windows;
 using System.Windows.Input;
 using TroveSkip.Memory;
 using TroveSkip.Properties;
@@ -12,20 +14,28 @@ namespace TroveSkip.Models
 {
     public class HookModel : INotifyPropertyChanged
     {
+        private const MainWindowViewModel.ProcessAccessFlags HookAccess =
+            MainWindowViewModel.ProcessAccessFlags.CreateThread |
+            MainWindowViewModel.ProcessAccessFlags.VirtualMemoryOperation |
+            MainWindowViewModel.ProcessAccessFlags.VirtualMemoryRead |
+            MainWindowViewModel.ProcessAccessFlags.VirtualMemoryWrite;
+        
         public int Id { get; }
         public Process Process { get; } //was readonly @field
         public IntPtr Handle { get; }
         public IntPtr WindowHandle { get; }
         public ProcessModule Module { get; }
         public int ModuleAddress { get; }
-        public bool IsPrimary { get; set; }
-        public int WorldId { get; set; }
+        public bool IsPrimary;
+
+        public int WorldId;
         // public int NoClipAddress { get; set; }
         // public bool NoClipEnabled { get; set; }
-        public bool Notified { get; set; }
-        public int LocalPlayerPointer { get; set; }
-        public int WorldPointer { get; set; }
-        public int SettingsPointer { get; set; }
+        public bool Notified;
+        public int LocalPlayerPointer;
+        public int WorldPointer;
+        public int SettingsPointer;
+        public uint StatsEncryptionKey;
         public Dictionary<SettingOffset, float> Settings { get; }
 
         // public bool MapCheck;
@@ -59,14 +69,15 @@ namespace TroveSkip.Models
             }
         }
 
-        public ICommand IsBotChangedCommand => MainWindowViewModel.Instance.IsBotChangedCommand;
+        //public ICommand IsBotChangedCommand => MainWindowViewModel.Instance.IsBotChangedCommand;
 
         public HookModel(Process process, string name)
         {
             Process = process;
             Name = name ?? string.Empty;
             Id = process.Id;
-            Handle = process.Handle;
+            Handle = OpenProcess(HookAccess, false, Id);
+            //Handle = process.Handle;
             WindowHandle = process.MainWindowHandle;
             ModuleAddress = 0;
             try
@@ -82,6 +93,10 @@ namespace TroveSkip.Models
             Settings = new();
         }
 
+        ~HookModel()
+        {
+            CloseHandle(Handle);
+        }
         // public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name) {}
         // public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name)
         // {
@@ -91,6 +106,16 @@ namespace TroveSkip.Models
         //     ChamsCheck = hookModel.ChamsCheck;
         //     MiningCheck = hookModel.MiningCheck;
         // }
+        
+        [DllImport("kernel32.dll")]
+        private static extern bool CloseHandle(IntPtr handle);
+        
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr OpenProcess(
+            MainWindowViewModel.ProcessAccessFlags processAccess,
+            bool bInheritHandle,
+            int processId
+        );
         
         public event PropertyChangedEventHandler PropertyChanged;
 

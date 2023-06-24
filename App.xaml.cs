@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Threading;
 
 namespace TroveSkip
@@ -22,7 +16,8 @@ namespace TroveSkip
             if (e.Args.Length > 0)
                 //Settings.path = e.Args[0] + "/" + Settings.path;
             {
-                File.Delete(e.Args[0]);
+                MessageBox.Show(e.Args[0]);
+                //File.Delete(e.Args[0]);
             }
         }
 

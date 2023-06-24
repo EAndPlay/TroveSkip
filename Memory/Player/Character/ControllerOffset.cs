@@ -9,5 +9,7 @@
         VelocityY = 0x94,
         VelocityZ = 0x98,
         Gravity = 0xB8
+        //1c4 smth with turn
+        //1D0 blocks turning
     }
 }

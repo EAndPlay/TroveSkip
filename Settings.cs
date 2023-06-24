@@ -29,6 +29,7 @@ namespace TroveSkip
         public string SpeedHackToggleButton;
         public string MiningToggleButton;
         public string FollowBotsToggleButton;
+        public string RotateCameraToggleButton;
 
         public float SkipValue;
         public float SprintValue;
@@ -54,6 +55,7 @@ namespace TroveSkip
             SpeedHackToggleButton = Key.None.ToString();
             MiningToggleButton = Key.None.ToString();
             FollowBotsToggleButton = Key.None.ToString();
+            RotateCameraToggleButton = Key.None.ToString();
 
             SkipValue = 4;
             SprintValue = FollowSpeedValue = 40;
