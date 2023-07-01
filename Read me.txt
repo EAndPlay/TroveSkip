@@ -1,7 +1,0 @@
-To find base address:
-1) Click button "SETS" (shortcut from Settings)
-2) Button "Find"
-3) Type your X coordinate and press Find
-4) Open chat and press OK
-5) Wait and don't close chat until appear message with base address and chat base address
-6) Enjoy being fast
