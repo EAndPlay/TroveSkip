@@ -22,10 +22,10 @@ namespace TroveSkip.Models
         
         public int Id { get; }
         public Process Process { get; } //was readonly @field
-        public IntPtr Handle { get; }
-        public IntPtr WindowHandle { get; }
+        public IntPtr Handle;
+        public IntPtr WindowHandle;
         public ProcessModule Module { get; }
-        public int ModuleAddress { get; }
+        public int ModuleAddress;
         public bool IsPrimary;
 
         public int WorldId;
@@ -36,7 +36,7 @@ namespace TroveSkip.Models
         public int WorldPointer;
         public int SettingsPointer;
         public uint StatsEncryptionKey;
-        public Dictionary<SettingOffset, float> Settings { get; }
+        public Dictionary<SettingOffset, float> Settings;
 
         // public bool MapCheck;
         // public bool ZoomCheck;

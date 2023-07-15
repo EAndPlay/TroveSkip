@@ -37,8 +37,9 @@ namespace TroveSkip
         public int SpeedHackValue;
         public float FollowSpeedValue;
 
-        public bool NoGraphics;
+        //public bool NoGraphics;
         public bool AntiAfk;
+        public bool StopIfNoMove;
 
         public bool FollowApp;
 
@@ -107,7 +108,7 @@ namespace TroveSkip
             catch
             {
                 var settings = new Settings();
-                MessageBox.Show("Loaded settings file are broken. Some settings could switch to default");
+                MessageBox.Show("Loaded settings file are broken. Some settings could be switched to default");
                 foreach (var line in File.ReadLines(path))
                 {
                     //// var it = typeof(Settings);

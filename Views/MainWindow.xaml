@@ -578,14 +578,15 @@
             <!-- <CheckBox Name="MapCheck" Content="Map Hack" IsChecked="{Binding MapCheck}" Command="{Binding MapCheckCommand}" CommandParameter="{Binding ElementName=MapCheck}" Style="{StaticResource AnimatedSwitch}" Margin="65 183 0 0"/> -->
             <CheckBox Name="MapCheck" Content="Map Hack" IsChecked="{Binding MapCheck}" Command="{Binding MapCheckCommand}" CommandParameter="{Binding ElementName=MapCheck}" Margin="65 183 0 0"/>
             <CheckBox Name="ZoomCheck" Content="Zoom Hack" IsChecked="{Binding ZoomCheck}" Command="{Binding ZoomCheckCommand}" CommandParameter="{Binding ElementName=ZoomCheck}" Margin="65 208 0 0"/>
-            <CheckBox Name="FovCheck" Content="Fov Hack" IsChecked="{Binding FovCheck}" Command="{Binding FovCheckCommand}" CommandParameter="{Binding ElementName=FovCheck}" Margin="65 233 0 0"/>
+            <!-- <CheckBox Name="FovCheck" Content="Fov Hack" IsChecked="{Binding FovCheck}" Command="{Binding FovCheckCommand}" CommandParameter="{Binding ElementName=FovCheck}" Margin="65 233 0 0"/> -->
             <!-- <CheckBox Name="ChamsCheck" Content="Chams Monster" IsChecked="{Binding ChamsCheck}" Command="{Binding ChamsCheckCommand}" CommandParameter="{Binding ElementName=ChamsCheck}" Margin="65 258 0 0"/> -->
-            <CheckBox Name="MiningCheck" Content="Insta-Mining" IsChecked="{Binding MiningCheck}" Command="{Binding MiningCheckCommand}" CommandParameter="{Binding ElementName=MiningCheck}" Margin="65 258 0 0"/>
-            <CheckBox Content="No Graphics" IsChecked="{Binding NoGraphics}" Margin="65 283 0 0"/>
+            <CheckBox Name="MiningCheck" Content="Insta-Mining" IsChecked="{Binding MiningCheck}" Command="{Binding MiningCheckCommand}" CommandParameter="{Binding ElementName=MiningCheck}" Margin="65 233 0 0"/>
+            <CheckBox Content="No Graphics" IsChecked="{Binding NoGraphics}" Margin="65 258 0 0"/>
             <!-- <CheckBox Content="Anti-AFK" IsChecked="{Binding AntiAfkCheck}" Margin="65 333 0 0"/> -->
-            <CheckBox Name="AutoLoot" Content="Auto-Loot" IsChecked="{Binding AutoLootCheck}" Command="{Binding AutoLootCheckCommand}" CommandParameter="{Binding ElementName=AutoLoot}" Margin="65 308 0 0"/>
-            <CheckBox Content="Follow Camera" IsChecked="{Binding FollowCamera}" Margin="65 333 0 0"/>
-            <CheckBox Content="Auto Pot" IsChecked="{Binding AutoPotCheck}" Margin="65 358 0 0"/>
+            <CheckBox Name="AutoLoot" Content="Auto-Loot" IsChecked="{Binding AutoLootCheck}" Command="{Binding AutoLootCheckCommand}" CommandParameter="{Binding ElementName=AutoLoot}" Margin="65 283 0 0"/>
+            <CheckBox Content="Follow Camera" IsChecked="{Binding FollowCamera}" Margin="65 308 0 0"/>
+            <CheckBox Content="Auto Pot" IsChecked="{Binding AutoPotCheck}" Margin="65 333 0 0"/>
+            <CheckBox Name="AutoAttack" Content="Auto Attack" IsChecked="{Binding AutoAttackCheck}" Command="{Binding AutoAttackCheckCommand}" CommandParameter="{Binding ElementName=AutoAttack}" Margin="65 358 0 0"/>
             
             <Path Stroke="#1E1E1E" StrokeThickness="2" Fill="#1E1E1E">
                 <Path.Data>

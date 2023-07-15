@@ -33,11 +33,15 @@ namespace TroveSkip.ViewModels
         public static MainWindowViewModel Instance { get; }
         private const int VectorSize = sizeof(float) * 3;
         private const int FloatVectorSize = 3;
-        private const int CameraRotationSize = 8;
         //TODO: d3d hook
 
         private static readonly SettingOffset[] SettingsToSave =
             {SettingOffset.DrawDistance, SettingOffset.Grama, SettingOffset.ObjectsDrawDistance, SettingOffset.ShaderDetail};
+
+        private static readonly Key[] WASDKeys =
+        {
+            Key.W, Key.A, Key.S, Key.D
+        };
 
         private bool _authorized;
 
@@ -95,11 +99,13 @@ namespace TroveSkip.ViewModels
                     {
                         //OverwriteBytes(_handle, _hookModel.NoClipAddress, _noClipEnabled);
                         //_hookModel.NoClipEnabled = true;
-                        OverwriteBytes(_noClip, _noClipEnabled);
+                        OverwriteBytes(NoClip, NoClipEnabled);
                         WriteFloatToLocalPlayer(GravityOffsets, 0);
                     }
                     if (NoGraphics)
                         ChangeGraphics(_hookModel, true);
+                    if (AutoAttackCheck)
+                        OverwriteBytes(AutoAttackSignature, AutoAttackEnabledSignature);
                 }
 
                 if (value != null)
@@ -133,11 +139,13 @@ namespace TroveSkip.ViewModels
                     {
                         //OverwriteBytes(_hookModel, _noClipEnabled, _noClip);
                         // _hookModel.NoClipEnabled = false;
-                        OverwriteBytes(_noClipEnabled, _noClip);
+                        OverwriteBytes(NoClipEnabled, NoClip);
                         WriteFloatToLocalPlayer(GravityOffsets, DefaultGravity);
                     }
                     if (NoGraphics)
                         ChangeGraphics(_hookModel, false);
+                    if (AutoAttackCheck)
+                        OverwriteBytes(AutoAttackEnabledSignature, AutoAttackSignature);
 
                     // }
                     // catch (Exception e)
@@ -221,6 +229,8 @@ namespace TroveSkip.ViewModels
         private bool _followCamera;
         private bool _rotateCamera;
         private bool _autoPotCheck;
+        private bool _autoAttackCheck;
+        private bool _stopIfNoMove;
         private bool _antiAfkCheck;
 
         private uint _lastSpeed;
@@ -266,6 +276,7 @@ namespace TroveSkip.ViewModels
         private DelegateCommand<CheckBox> _chamsCheckCommand;
         private DelegateCommand<CheckBox> _miningCheckCommand;
         private DelegateCommand<CheckBox> _autoLootCheckCommand;
+        private DelegateCommand<CheckBox> _autoAttackCheckCommand;
         private DelegateCommand<Button> _bindClickCommand;
         private DelegateCommand<Button> _switchPageCommand;
         private DelegateCommand<HookModel> _isBotChangedCommand;
@@ -428,6 +439,8 @@ namespace TroveSkip.ViewModels
             set
             {
                 _speedCheck = value;
+                if (_speedCheck)
+                    _dispatcher.InvokeAsync(ForceSpeedAsync);
                 OnPropertyChanged();
             }
         }
@@ -681,7 +694,8 @@ namespace TroveSkip.ViewModels
             set
             {
                 _followCamera = value;
-                _dispatcher.InvokeAsync(FollowCameraAsync);
+                if (value)
+                    _dispatcher.InvokeAsync(FollowCameraAsync);
                 OnPropertyChanged();
             }
         }
@@ -692,18 +706,42 @@ namespace TroveSkip.ViewModels
             set
             {
                 _autoPotCheck = value;
-                _dispatcher.InvokeAsync(AutoPotAsync);
+                if (value)
+                    _dispatcher.InvokeAsync(AutoPotAsync);
                 OnPropertyChanged();
             }
         }
         
+        public bool AutoAttackCheck
+        {
+            get => _autoAttackCheck;
+            set
+            {
+                _autoAttackCheck = value;
+                OnPropertyChanged();
+            }
+        }
+        
+        public bool StopIfNoMove
+        {
+            get => _stopIfNoMove;
+            set
+            {
+                _stopIfNoMove = value;
+                if (value)
+                    _dispatcher.InvokeAsync(StopIfNoMoveAsync);
+                OnPropertyChanged();
+            }
+        }
+
         public bool RotateCamera
         {
             get => _rotateCamera;
             set
             {
                 _rotateCamera = value;
-                _dispatcher.InvokeAsync(RotateCameraAsync);
+                if (value)
+                    _dispatcher.InvokeAsync(RotateCameraAsync);
                 OnPropertyChanged();
             }
         }
@@ -770,7 +808,7 @@ namespace TroveSkip.ViewModels
 
                         //OverwriteBytes(handle, hook.NoClipAddress, _noClipEnabled);
                         if (_botsNoClipCheck)
-                            OverwriteBytes(hook, _noClip, _noClipEnabled);
+                            OverwriteBytes(hook, NoClip, NoClipEnabled);
                         WriteFloatToLocalPlayer(hook.Handle, GravityOffsets, 0);
                     }
                 }
@@ -780,7 +818,7 @@ namespace TroveSkip.ViewModels
                     {
                         //OverwriteBytes(handle, hook.NoClipAddress, _noClip);
                         if (_botsNoClipCheck && BotsSettings.FollowType == FollowType.Local)
-                            OverwriteBytes(hook, _noClipEnabled, _noClip);
+                            OverwriteBytes(hook, NoClipEnabled, NoClip);
                         WriteFloatToLocalPlayer(hook.Handle, GravityOffsets, DefaultGravity);
                     }
                 }
@@ -803,14 +841,14 @@ namespace TroveSkip.ViewModels
                         if (hook.IsPrimary && BotsSettings.FollowType == FollowType.Local || !hook.IsBot) continue;
 
                         //OverwriteBytes(handle, hook.NoClipAddress, _noClipEnabled);
-                        OverwriteBytes(hook, _noClip, _noClipEnabled);
+                        OverwriteBytes(hook, NoClip, NoClipEnabled);
                     }
                 }
                 else
                 {
                     foreach (var hook in Hooks)
                     {
-                        OverwriteBytes(hook, _noClipEnabled, _noClip);
+                        OverwriteBytes(hook, NoClipEnabled, NoClip);
                     }
                 }
             }
@@ -890,12 +928,13 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        public ICommand MapCheckCommand => _mapCheckCommand ??= new(x => InjectCheckChanged(x, _mapHack, _mapHackEnabled));
-        public ICommand ZoomCheckCommand => _zoomCheckCommand ??= new(x => InjectCheckChanged(x, _zoomHack, _zoomHackEnabled));
-        public ICommand FovCheckCommand => _fovCheckCommand ??= new(x => InjectCheckChanged(x, _fovHack, _fovHackEnabled));
-        public ICommand ChamsCheckCommand => _chamsCheckCommand ??= new(x => InjectCheckChanged(x, _chamsMonsters, _chamsMonstersEnabled));
-        public ICommand MiningCheckCommand => _miningCheckCommand ??= new(x => InjectCheckChanged(x, _miningSlow, _miningSlowEnabled));
+        public ICommand MapCheckCommand => _mapCheckCommand ??= new(x => InjectCheckChanged(x, MapHackSignature, MapHackEnabledSignature));
+        public ICommand ZoomCheckCommand => _zoomCheckCommand ??= new(x => InjectCheckChanged(x, ZoomHackSignature, ZoomHackEnabledSignature));
+        public ICommand FovCheckCommand => _fovCheckCommand ??= new(x => InjectCheckChanged(x, FovHackSignature, FovHackEnabledSignature));
+        public ICommand ChamsCheckCommand => _chamsCheckCommand ??= new(x => InjectCheckChanged(x, ChamsMonsters, ChamsMonstersEnabled));
+        public ICommand MiningCheckCommand => _miningCheckCommand ??= new(x => InjectCheckChanged(x, MiningSlowSignature, MiningSlowEnabledSignature));
         public ICommand AutoLootCheckCommand => _autoLootCheckCommand ??= new(x => InjectCheckChanged(x, AutoLootSignature, AutoLootEnabledSignature));
+        public ICommand AutoAttackCheckCommand => _autoAttackCheckCommand ??= new(x => InjectCheckChanged(x, AutoAttackSignature, AutoAttackEnabledSignature));
         public ICommand BindClickCommand => _bindClickCommand ??= new(BindClick);
         public ICommand SwitchPageCommand => _switchPageCommand ??= new(SwitchPage);
         public ICommand IsBotChangedCommand => _isBotChangedCommand ??= new(x =>
@@ -954,7 +993,12 @@ namespace TroveSkip.ViewModels
             _dispatcher.InvokeAsync(LoadSettings);
 
             _activityHook.KeyUp += key => _pressedKeys[key] = false;
-            
+            //TODO: mouse buttons holding states
+            //_activityHook.OnMouseActivity += (ref MouseButtonEventArgs args) =>
+            //{
+            //    args.ChangedButton 
+            //};
+
             //_activityHook.OnMouseActivity += MouseCheck;
             //_dispatcher.InvokeAsync(StatusUpdate);
         }
@@ -995,7 +1039,7 @@ namespace TroveSkip.ViewModels
 
                     handle = hook.Handle;
                     if (_botsNoClipCheck)
-                        OverwriteBytes(hook, _noClipEnabled, _noClip);
+                        OverwriteBytes(hook, NoClipEnabled, NoClip);
                     WriteFloatToLocalPlayer(handle, GravityOffsets, DefaultGravity);
                 }
             }
@@ -1159,11 +1203,11 @@ namespace TroveSkip.ViewModels
                 var id = hook.Id;
                 if (_antiAfkList.Contains(id)) return;
                 _antiAfkList.Add(id);
-                var address = FindSignatureAddress(_antiAfk, hook);
+                var address = FindSignatureAddress(AntiAfkSignature, hook);
                 if (address == 0) return;
 
                 var handle = hook.Handle;
-                var caveLength = _antiAfkCave.Length + 5; //5 = jmp byte + 4 bytes for address
+                var caveLength = AntiAfkCaveSignature.Length + 5; //5 = jmp byte + 4 bytes for address
                 var caveAddress = VirtualAllocEx(
                     handle, 
                     0, 
@@ -1171,7 +1215,7 @@ namespace TroveSkip.ViewModels
                     AllocationType.Commit, 
                     MemoryProtection.ExecuteRead);
 
-                WriteMemory(handle, caveAddress, AsmJumpOld((ulong) address + 6, (ulong) caveAddress, _antiAfkCave));
+                WriteMemory(handle, caveAddress, AsmJumpOld((ulong) address + 6, (ulong) caveAddress, AntiAfkCaveSignature));
                 WriteMemory(handle, address, AsmJumpOld((ulong) caveAddress, (ulong) address));
             });
         }
@@ -1182,8 +1226,8 @@ namespace TroveSkip.ViewModels
             int[] from, to;
             if (checkBox.Name == "MiningCheck")
             {
-                from = isChecked ? _geodeTool : _geodeToolEnabled;
-                to = isChecked ? _geodeToolEnabled : _geodeTool;
+                from = isChecked ? GeodeToolSignature : GeodeToolEnabledSignature;
+                to = isChecked ? GeodeToolEnabledSignature : GeodeToolSignature;
                 foreach (var hook in Hooks)
                 {
                     OverwriteBytes(hook, from, to);
@@ -1195,6 +1239,7 @@ namespace TroveSkip.ViewModels
 
             foreach (var hook in Hooks)
             {
+                if (checkBox.Name == "AutoAttack" && hook.IsPrimary) continue;
                 OverwriteBytes(hook, from, to);
             }
         }
@@ -1305,8 +1350,9 @@ namespace TroveSkip.ViewModels
             FollowSpeedValue = _settings.FollowSpeedValue;
             FollowApp = _settings.FollowApp;
 
-            NoGraphics = _settings.NoGraphics;
+            //NoGraphics = _settings.NoGraphics;
             AntiAfkCheck = _settings.AntiAfk;
+            StopIfNoMove = _settings.StopIfNoMove;
 
             BotsSettings = _settings.BotsSettings;
             
@@ -1352,7 +1398,7 @@ namespace TroveSkip.ViewModels
             _settings.SpeedHackValue = SpeedHackValue;
             _settings.FollowSpeedValue = FollowSpeedValue;
 
-            _settings.NoGraphics = NoGraphics;
+            //_settings.NoGraphics = NoGraphics;
             _settings.AntiAfk = AntiAfkCheck;
             
             _settings.SkipButton = _binds[nameof(SkipButton)].ToString();
@@ -1419,17 +1465,17 @@ namespace TroveSkip.ViewModels
         private async void ForceSprintAsync()
         {
             var valuesBuffer = new byte[VectorSize];
-            while (Authorized)
+            int xViewAdd, velocityAddress;
+            while (IsPressed(_binds[nameof(SprintButton)]) && !NotFocused() && _sprintCheck)
             {
-                await Task.Delay(10);
-                while (!_sprintCheck || !IsPressed(_binds[nameof(SprintButton)]) || NotFocused())
-                    await Task.Delay(10);
+                // while (!_sprintCheck || !IsPressed(_binds[nameof(SprintButton)]) || NotFocused())
+                //     await Task.Delay(10);
 
-                var xviewAdd = GetAddressFromLocalPlayer(XView);
-                var velocityAdd = GetAddressFromLocalPlayer(LocalXVelocity);
+                xViewAdd = GetAddressFromLocalPlayer(XView);
+                velocityAddress = GetAddressFromLocalPlayer(LocalXVelocity);
 
                 //var valuesBuffer = GetBuffer(xviewAdd, VectorSize);
-                ReadProcessMemory(_handle, xviewAdd, valuesBuffer, VectorSize, out _);
+                ReadProcessMemory(_handle, xViewAdd, valuesBuffer, VectorSize, out _);
                 unsafe
                 {
                     fixed (byte* bufferPtr = valuesBuffer)
@@ -1442,8 +1488,9 @@ namespace TroveSkip.ViewModels
                     }
                 }
                 //WriteMemory(velocityAdd, valuesBuffer);
-                WriteProcessMemory(_handle, velocityAdd, valuesBuffer, VectorSize, out _);
+                WriteProcessMemory(_handle, velocityAddress, valuesBuffer, VectorSize, out _);
 
+                await Task.Delay(10);
                 // WriteFloat(velocityAdd, ReadFloat(xviewAdd) * _sprintValue);
                 // WriteFloat(velocityAdd + 4, ReadFloat(xviewAdd + 4) * _sprintValue);
                 // WriteFloat(velocityAdd + 8, ReadFloat(xviewAdd + 8) * _sprintValue);
@@ -1452,12 +1499,17 @@ namespace TroveSkip.ViewModels
 
         private async void ForceSpeedAsync()
         {
-            while (Authorized)
+            while (_speedCheck)
             {
-                await Task.Delay(10);
-                while (!_speedCheck || NotHooked() || _followApp && NotFocused() || ChatOpened())
+                if (NotHooked() || _followApp && NotFocused())
+                {
                     await Task.Delay(100);
-                WriteUIntToLocalPlayer(SpeedOffsets, _encryptedSpeed);
+                    continue;
+                }
+                // while (!_speedCheck || NotHooked() || _followApp && NotFocused() || ChatOpened())
+                //     await Task.Delay(100);
+                WriteUIntToLocalPlayer(SpeedOffsets, _encryptedSpeed); 
+                await Task.Delay(10);
             }
         }
 
@@ -1473,33 +1525,38 @@ namespace TroveSkip.ViewModels
                     //TODO: rewrite
                     if (MapCheck)
                     {
-                        OverwriteBytes(hook, _mapHack, _mapHack);
+                        OverwriteBytes(hook, MapHackSignature, MapHackSignature);
                     }
 
                     if (ZoomCheck)
                     {
-                        OverwriteBytes(hook, _zoomHack, _zoomHackEnabled);
+                        OverwriteBytes(hook, ZoomHackSignature, ZoomHackEnabledSignature);
                     }
 
                     if (FovCheck)
                     {
-                        OverwriteBytes(hook, _fovHack, _fovHackEnabled);
+                        OverwriteBytes(hook, FovHackSignature, FovHackEnabledSignature);
                     }
 
                     if (ChamsCheck)
                     {
-                        OverwriteBytes(hook, _chamsMonsters, _chamsMonstersEnabled);
+                        OverwriteBytes(hook, ChamsMonsters, ChamsMonstersEnabled);
                     }
 
                     if (MiningCheck)
                     {
-                        OverwriteBytes(hook, _geodeTool, _geodeToolEnabled);
-                        OverwriteBytes(hook, _miningSlow, _miningSlowEnabled);
+                        OverwriteBytes(hook, GeodeToolSignature, GeodeToolEnabledSignature);
+                        OverwriteBytes(hook, MiningSlowSignature, MiningSlowEnabledSignature);
                     }
                     
                     if (AutoLootCheck)
                     {
                         OverwriteBytes(hook, AutoLootSignature, AutoLootEnabledSignature);
+                    }
+                    
+                    if (AutoAttackCheck)
+                    {
+                        OverwriteBytes(hook, AutoAttackSignature, AutoAttackEnabledSignature);
                     }
 
                     // if (AntiAfkCheck)
@@ -1543,32 +1600,33 @@ namespace TroveSkip.ViewModels
 
         private async void HooksUpdateAsync()
         {
-            while (Authorized)
+            const int maxNameLength = 15;
+            while (true)
             {
-                const int hooksUpdateTime = 50;
-                const int maxNameLength = 15;
-                await Task.Delay(hooksUpdateTime);
-                
+                await Task.Delay(50);
+
                 if (FollowApp && HookModel != null)
                 {
                     // var handle = GetForegroundWindow();
                     // GetWindowThreadProcessId(handle, out var procId);
-                    
+
                     if (HookModel.Id != GetForegroundWindowProcessId()) //== procId
                         HookModel = null;
                 }
-                
-                var processes = Process.GetProcessesByName("Trove");
 
-                foreach (var hook in Hooks.ToArray())
+                var processes = Process.GetProcessesByName("Trove");
+                foreach (var hookCopy in Hooks.ToArray())
                 {
-                    if (processes.All(x => x.Id != hook.Id))
+                    if (processes.All(x => x.Id != hookCopy.Id))
                     {
-                        Hooks.Remove(hook);
-                        _antiAfkList.Remove(hook.Id);
+                        Hooks.Remove(hookCopy);
+                        _antiAfkList.Remove(hookCopy.Id);
                     }
                 }
-                
+
+                HookModel[] hooksCopy;
+                HookModel hook;
+                string name;
                 foreach (var process in processes)
                 {
                     int baseAddress;
@@ -1585,19 +1643,21 @@ namespace TroveSkip.ViewModels
                         continue;
                     }
 
-                    var hooksCopy = Hooks.ToList();
-                    var hook = hooksCopy.FirstOrDefault(x => x.Id == process.Id);
-                    string name;
+                    hooksCopy = Hooks.ToArray();
+                    hook = hooksCopy.FirstOrDefault(x => x.Id == process.Id);
 
                     string FormattedName()
                     {
                         if (name == null) return null;
-                        
+
                         var nameLength = name.Length;
-                        return nameLength <= maxNameLength ? name : new StringBuilder(name.Substring(0, maxNameLength - 3)) //Math.Min(nameLength, maxNameLength - 3)
+                        return nameLength <= maxNameLength
+                            ? name
+                            : new StringBuilder(name.Substring(0,
+                                    maxNameLength - 3)) //Math.Min(nameLength, maxNameLength - 3)
                                 .Append("...").ToString();
                     }
-                    
+
                     if (hook == null)
                     {
                         name = GetName(process.Handle, baseAddress);
@@ -1613,47 +1673,52 @@ namespace TroveSkip.ViewModels
                         if (name != null)
                             hook.Name = FormattedName();
                     }
-                    
+
                     if (HookModel == null)
                     {
-                        if (!FollowApp ||
-                            FollowApp && GetForegroundWindowProcessId() == hook.Id)
+                        if (!FollowApp || FollowApp && GetForegroundWindowProcessId() == hook.Id)
                             HookModel = hook;
                     }
                 }
 
                 if (FollowBotsToggle)
                 {
-                    foreach (var hook in Hooks)
+                    foreach (var botHook in Hooks)
                     {
-                        var gravity = hook.IsPrimary && BotsSettings.FollowType == FollowType.Local || !hook.IsBot ? DefaultGravity : 0;
-                        WriteFloat(hook.Handle, hook.LocalPlayerPointer, GravityOffsets, gravity);
-                        hook.WorldId = ReadInt(hook.Handle, hook.WorldPointer, WorldIdOffsets);
+                        var gravity = botHook.IsPrimary && BotsSettings.FollowType == FollowType.Local || !botHook.IsBot
+                            ? DefaultGravity
+                            : 0;
+                        WriteFloat(botHook.Handle, botHook.LocalPlayerPointer, GravityOffsets, gravity);
+                        botHook.WorldId = ReadInt(botHook.Handle, botHook.WorldPointer, WorldIdOffsets);
                     }
                 }
             }
-            Hooks.Clear();
+
+            //if unauthorized
+            //Hooks.Clear();
         }
 
         private bool NotHooked() => HookModel == null;
 
-        private static IntPtr local_NotFocusedHandle;
+        //private static IntPtr local_NotFocusedHandle;
         private bool NotFocused()
         {
-            local_NotFocusedHandle = GetForegroundWindow();
-            if (local_NotFocusedHandle == IntPtr.Zero) return true;
-
-            GetWindowThreadProcessId(local_NotFocusedHandle, out var procId);
+            var handle = GetForegroundWindow();
+            if (handle == IntPtr.Zero) return true;
+            //return _hookModel != null && handle == _hookModel.WindowHandle;
+            
+            GetWindowThreadProcessId(handle, out var procId);
             return (HookModel?.Id ?? 0) != procId;
         }
 
-        private static byte[] local_ChatOpenedBuffer = new byte[1];
+        //private static byte[] local_ChatOpenedBuffer = new byte[1];
         private unsafe bool ChatOpened()
         {
             //ReadBool(_currentChatStatePointer);
             //var buffer = stackalloc byte[sizeof(bool)];
-            ReadProcessMemory(_handle, _currentChatStatePointer, local_ChatOpenedBuffer, sizeof(bool), out _);
-            return local_ChatOpenedBuffer[0] == 1;
+            var boolByte = stackalloc byte[1];
+            ReadProcessMemory(_handle, _currentChatStatePointer, boolByte, sizeof(bool), out _);
+            return *boolByte == 1;
         }
         // {
         //     //var @byte = stackalloc byte[1];
@@ -1670,9 +1735,11 @@ namespace TroveSkip.ViewModels
 
             if (key == _binds[nameof(SkipButton)] && !IsPressed(key))
                 _dispatcher.InvokeAsync(Skip);
-            
+            else if (key == _binds[nameof(SprintButton)] && !IsPressed(key))
+                _dispatcher.InvokeAsync(ForceSprintAsync);
+
             //TODO: abstract to Key.Handle
-            if (!IsPressed(key))
+            else if (!IsPressed(key))
             {
                 if (key == _binds[nameof(JumpButton)])
                     _dispatcher.InvokeAsync(SuperJump);
@@ -1688,29 +1755,36 @@ namespace TroveSkip.ViewModels
                     SpeedCheck = !SpeedCheck;
                     var speed = ReadUInt(_currentLocalPlayerPointer, SpeedOffsets);
                     if (SpeedCheck)
+                    {
                         _lastSpeed = speed;
+                    }
                     else
+                    {
                         WriteUIntToLocalPlayer(SpeedOffsets, _lastSpeed);
+                    }
                 }
-                
+
                 else if (key == _binds[nameof(BotsNoClipToggleButton)] && FollowBotsToggle)
                     BotsNoClipCheck = !BotsNoClipCheck;
                 
                 else if (key == _binds[nameof(MiningToggleButton)])
-                    InjectCheckChanged(new ToggleButton {Name = "MiningCheck", IsChecked = MiningCheck = !MiningCheck}, _miningSlow, _miningSlowEnabled);
+                    InjectCheckChanged(new ToggleButton {Name = "MiningCheck", IsChecked = MiningCheck = !MiningCheck}, MiningSlowSignature, MiningSlowEnabledSignature);
                 
                 else if (key == _binds[nameof(FollowBotsToggleButton)])
                     FollowBotsToggle = !FollowBotsToggle;
                 
                 else if (key == _binds[nameof(RotateCameraToggleButton)])
                     RotateCamera = !RotateCamera;
+
+                //else if (key == Key.F10)
+                //    SpamTeleport = !SpamTeleport;
             }
 
             _pressedKeys[key] = true;
         }
         
         // TODO: optimize
-        private async void FollowUpdateAsync()
+        private async void FollowBotsAsync()
         {
             var worldId = 0;
             //float sourceX = 0, sourceY = 0, sourceZ = 0;
@@ -1851,7 +1925,7 @@ namespace TroveSkip.ViewModels
                                 tempLength += *currentPtr * *currentPtr;
                                 isClose &= *currentPtr < _botsSettings.StopDistance;
                             }
-
+                            
                             if (isClose)
                                 length *= _botsSettings.StopPower;
 
@@ -1943,8 +2017,9 @@ namespace TroveSkip.ViewModels
         }
 
         private async void FollowCameraAsync()
-        {
-            var cameraRotationBuffer = new byte[8];
+        { 
+            const int cameraRotationSize = 8;
+            var cameraRotationBuffer = new byte[cameraRotationSize];
             int cameraRotationAddress;
             int hookCameraRotationAddress;
             while (_followCamera)
@@ -1954,25 +2029,33 @@ namespace TroveSkip.ViewModels
                     await Task.Delay(50);
                 
                 cameraRotationAddress = GetAddress(_currentLocalPlayerPointer, CameraVerticalRotationOffsets);
-                ReadProcessMemory(_hookModel.Handle, cameraRotationAddress, cameraRotationBuffer, CameraRotationSize, out _);
-                
+                ReadProcessMemory(_hookModel.Handle, cameraRotationAddress, cameraRotationBuffer, cameraRotationSize, out _);
+
                 foreach (var hook in Hooks)
                 {
                     if (hook.IsPrimary) continue;
+                    hookCameraRotationAddress = GetAddress(hook.Handle, hook.LocalPlayerPointer, CameraVerticalRotationOffsets);
                     if (_rotateCamera)
                     {
-                        var charId = ReadInt(hook.Handle, hook.LocalPlayerPointer, CharacterIdOffsets);
-                        if (charId == (int) CharacterId.Revenant)
-                            continue;
+                        //var charId = ReadInt(hook.Handle, hook.LocalPlayerPointer, CharacterIdOffsets);
+                        //if (charId == (int) CharacterId.Revenant)
+                        if (IsRotatable(hook))
+                        {
+                            WriteProcessMemory(hook.Handle, hookCameraRotationAddress, cameraRotationBuffer,
+                                cameraRotationSize - sizeof(int), out _);
+                        }
+
+                        continue;
                     }
-                    if (!hook.IsPrimary)
-                    {
-                        hookCameraRotationAddress = GetAddress(hook.Handle, hook.LocalPlayerPointer, CameraVerticalRotationOffsets);
-                        WriteProcessMemory(hook.Handle, hookCameraRotationAddress, cameraRotationBuffer, CameraRotationSize, out _);
-                    }
+
+                    WriteProcessMemory(hook.Handle, hookCameraRotationAddress, cameraRotationBuffer, cameraRotationSize, out _);
                 }
             }
         }
+
+        private static CharacterId[] NonRotatableCharacters = { CharacterId.ShadowHunter };
+        
+        private bool IsRotatable(HookModel hook) => !NonRotatableCharacters.Contains((CharacterId) ReadInt(hook.Handle, hook.LocalPlayerPointer, CharacterIdOffsets));
 
         private async void RotateCameraAsync()
         {
@@ -1989,8 +2072,9 @@ namespace TroveSkip.ViewModels
                 {
                     if (hook.IsPrimary) continue;
 
-                    var charId = ReadInt(hook.Handle, hook.LocalPlayerPointer, CharacterIdOffsets);
-                    if (charId == (int) CharacterId.Revenant)
+                    //var charId = ReadInt(hook.Handle, hook.LocalPlayerPointer, CharacterIdOffsets);
+                    //if (charId == (int) CharacterId.Revenant || charId == (int) CharacterId.Knight)
+                    if (IsRotatable(hook))
                     {
                         alts.Add(hook);
                     }
@@ -2005,22 +2089,25 @@ namespace TroveSkip.ViewModels
 
                 var cameraDifference = cameraFullXCircle / altsCount;
 
+                HookModel altHook;
                 for (int i = 0; i < altsCount; i++)
                 {
-                    var hook = alts[i];
-                    WriteFloat(hook.Handle, hook.LocalPlayerPointer, CameraHorizontalRotationOffsets,
+                    altHook = alts[i];
+                    WriteFloat(altHook.Handle, altHook.LocalPlayerPointer, CameraHorizontalRotationOffsets,
                         cameraDifference * i);
                 }
 
+                int cameraXAddress;
+                float cameraX;
                 for (int i = 0; i < circlesPerSecond; i++)
                 {
                     for (int j = 0; j < stepsForFullCircle; j++)
                     {
                         foreach (var alt in alts)
                         {
-                            var cameraXAddress = GetAddress(alt.Handle, alt.LocalPlayerPointer,
+                            cameraXAddress = GetAddress(alt.Handle, alt.LocalPlayerPointer,
                                 CameraHorizontalRotationOffsets);
-                            var cameraX = ReadFloat(alt.Handle, cameraXAddress);
+                            cameraX = ReadFloat(alt.Handle, cameraXAddress);
                             WriteFloat(alt.Handle, cameraXAddress, cameraX + cameraFullXCircle / stepsForFullCircle);
                         }
 
@@ -2029,8 +2116,9 @@ namespace TroveSkip.ViewModels
 
                     foreach (var alt in alts.ToArray())
                     {
-                        var charId = ReadInt(alt.Handle, alt.LocalPlayerPointer, CharacterIdOffsets);
-                        if (charId != (int) CharacterId.Revenant)
+                        //var charId = ReadInt(alt.Handle, alt.LocalPlayerPointer, CharacterIdOffsets);
+                        //if (charId != (int) CharacterId.Revenant && charId != (int) CharacterId.Knight)
+                        if (!IsRotatable(alt))
                         {
                             alts.Remove(alt);
                         }
@@ -2046,6 +2134,9 @@ namespace TroveSkip.ViewModels
 
         private async void AutoPotAsync()
         {
+            IntPtr handle;
+            int currentHealth;
+            float maxHealth;
             while (_autoPotCheck)
             {
                 await Task.Delay(50);
@@ -2053,9 +2144,9 @@ namespace TroveSkip.ViewModels
                 {
                     if (hook.IsPrimary) continue;
 
-                    var handle = hook.Handle;
-                    var currentHealth = ReadInt(handle, hook.LocalPlayerPointer, CurrentHealthOffsets);
-                    var maxHealth = GetEncryptedFloat(hook, hook.LocalPlayerPointer, MaxHealthStatOffsets);
+                    handle = hook.Handle;
+                    currentHealth = ReadInt(handle, hook.LocalPlayerPointer, CurrentHealthOffsets);
+                    maxHealth = GetEncryptedFloat(hook, hook.LocalPlayerPointer, MaxHealthStatOffsets);
 
                     if (currentHealth / maxHealth < 0.5f)
                     {
@@ -2064,6 +2155,58 @@ namespace TroveSkip.ViewModels
                 }
             }
         }
+
+        private async void StopIfNoMoveAsync()
+        {
+            var valuesBuffer = new byte[sizeof(int)];
+            int velocityAddress;
+
+            bool NoWASD()
+            {
+                foreach (var key in WASDKeys)
+                    if (IsPressed(key))
+                        return false;
+                return true;
+            }
+
+            while (_stopIfNoMove)
+            {
+                await Task.Delay(50);
+                
+                if (IsPressed(_binds[nameof(SprintButton)]) && _sprintCheck || !NoWASD())
+                {
+                    continue;
+                }
+                
+                velocityAddress = GetAddressFromLocalPlayer(LocalXVelocity);
+                WriteInt(velocityAddress, 0);
+                WriteInt(velocityAddress + 8, 0);
+            }
+        }
+
+        // private bool _spamteleport;
+        //
+        // public bool SpamTeleport
+        // {
+        //     get => _spamteleport;
+        //     set
+        //     {
+        //         _spamteleport = value;
+        //         if (value)
+        //             spamteleport();
+        //     }
+        // }
+        //
+        // private async void spamteleport() //TODO: delete
+        // {
+        //     while (_spamteleport)
+        //     {
+        //         await Task.Delay(250);
+        //         //SendInput(MouseInputSettings)
+        //         MessageBox.Show("pressed");
+        //         break;
+        //     }
+        // }
         
         // private async void RotateCameraAsync1()
         // {
@@ -2141,10 +2284,9 @@ namespace TroveSkip.ViewModels
         private void StartBackground()
         {
             _activityHook.KeyDown += OnKeyDown;
-            _dispatcher.InvokeAsync(ForceSprintAsync);
             _dispatcher.InvokeAsync(ForceSpeedAsync);
             _dispatcher.InvokeAsync(HooksUpdateAsync);
-            _dispatcher.InvokeAsync(FollowUpdateAsync);
+            _dispatcher.InvokeAsync(FollowBotsAsync);
         }
         
         private async void StatusUpdate()
