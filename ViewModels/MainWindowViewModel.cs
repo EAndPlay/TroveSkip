@@ -104,7 +104,7 @@ namespace TroveSkip.ViewModels
                     }
                     if (NoGraphics)
                         ChangeGraphics(_hookModel, true);
-                    if (AutoAttackCheck)
+                    if (AutoAttackCheck && ReadIntFromLocalPlayer(CharacterIdOffsets) != (int)CharacterId.CandyBarbarian)
                         OverwriteBytes(AutoAttackSignature, AutoAttackEnabledSignature);
                 }
 
@@ -122,12 +122,18 @@ namespace TroveSkip.ViewModels
                     // _currentWorldPointer = _currentModulePointer + _worldOffset;
                     _currentChatStatePointer = ReadInt(_currentModulePointer + _chatOffset) + ChatOpenedOffsets[0];
 
-                    _encryptionKey = ReadUInt(_currentLocalPlayerPointer, StatsEncryptionKeyOffsets);
-                    if (_encryptionKey != 0)
+                    if (_encryptionKey == 0)
                     {
+                        var address = FindSignatureAddress(StatsEncryptionKeySignature) + 7;
+                        _encryptionKey = ReadUInt(address);
                         var bytes = BitConverter.GetBytes((float) SpeedHackValue);
                         _encryptedSpeed = BitConverter.ToUInt32(bytes, 0) ^ _encryptionKey;
                     }
+                    //_encryptionKey = ReadUInt(_currentLocalPlayerPointer, StatsEncryptionKeyOffsets);
+                    //if (_encryptionKey != 0)
+                    //{
+                        //var bytes (from upper)
+                    //}
 
                     // MapCheck = _hookModel.MapCheck;
                     // ZoomCheck = _hookModel.ZoomCheck;
@@ -463,8 +469,10 @@ namespace TroveSkip.ViewModels
                 _speedHackValue = value;
                 if (_encryptionKey != 0)
                 {
-                    _encryptedSpeed = BitConverter.ToUInt32(BitConverter.GetBytes((float)value), 0) ^ _encryptionKey;
+                    _encryptedSpeed = BitConverter.ToUInt32(BitConverter.GetBytes((float) value), 0) ^ _encryptionKey;
+                    //_encryptedSpeed = (uint) *(float*) value ^ _encryptionKey;
                 }
+
                 OnPropertyChanged();
             }
         }
@@ -1240,6 +1248,15 @@ namespace TroveSkip.ViewModels
             foreach (var hook in Hooks)
             {
                 if (checkBox.Name == "AutoAttack" && hook.IsPrimary) continue;
+                //if (ReadInt(hook.Handle, hook.LocalPlayerPointer, CharacterIdOffsets) == (int) CharacterId.CandyBarbarian)
+                //{
+                //    SendKeyboardKeyDown(hook.WindowHandle, Key.D1);
+                //}
+                if (checkBox.Name == "AutoAttack" && GetCharacterId(hook) == CharacterId.Revenant)
+                {
+                    continue;
+                }
+
                 OverwriteBytes(hook, from, to);
             }
         }
@@ -1579,7 +1596,7 @@ namespace TroveSkip.ViewModels
             // {
             //     SetGraphicsSettings(hook);
             // }
-            if (NoGraphics && hook.IsBot)
+            if (NoGraphics)
                 ChangeGraphics(hook, true);
             // hook.Process.Exited += (_, _) =>
             // {
@@ -1595,7 +1612,7 @@ namespace TroveSkip.ViewModels
             hook.WorldPointer = moduleAddress + _worldOffset;
             hook.LocalPlayerPointer = moduleAddress + _localPlayerOffset;
             hook.SettingsPointer = moduleAddress + _settingsOffset;
-            hook.StatsEncryptionKey = ReadUInt(hook.Handle, hook.LocalPlayerPointer, StatsEncryptionKeyOffsets);
+            //hook.StatsEncryptionKey = ReadUInt(hook.Handle, hook.LocalPlayerPointer, StatsEncryptionKeyOffsets);
         }
 
         private async void HooksUpdateAsync()
@@ -1733,15 +1750,21 @@ namespace TroveSkip.ViewModels
             if (!_pressedKeys.TryGetValue(key, out _))
                 _pressedKeys.Add(key, false);
 
-            if (key == _binds[nameof(SkipButton)] && !IsPressed(key))
-                _dispatcher.InvokeAsync(Skip);
-            else if (key == _binds[nameof(SprintButton)] && !IsPressed(key))
-                _dispatcher.InvokeAsync(ForceSprintAsync);
+            // if (key == _binds[nameof(SkipButton)] && !IsPressed(key))
+            //     _dispatcher.InvokeAsync(Skip);
+            // else if (key == _binds[nameof(SprintButton)] && !IsPressed(key))
+            //     _dispatcher.InvokeAsync(ForceSprintAsync);
 
             //TODO: abstract to Key.Handle
-            else if (!IsPressed(key))
+            if (!IsPressed(key))
             {
-                if (key == _binds[nameof(JumpButton)])
+                if (key == _binds[nameof(SkipButton)])
+                    _dispatcher.InvokeAsync(Skip);
+                
+                else if (key == _binds[nameof(SprintButton)])
+                    _dispatcher.InvokeAsync(ForceSprintAsync);
+                
+                else if (key == _binds[nameof(JumpButton)])
                     _dispatcher.InvokeAsync(SuperJump);
 
                 else if (key == _binds[nameof(SprintToggleButton)])
@@ -1775,7 +1798,27 @@ namespace TroveSkip.ViewModels
                 
                 else if (key == _binds[nameof(RotateCameraToggleButton)])
                     RotateCamera = !RotateCamera;
-
+                
+                else if (key == Key.F1)
+                {
+                    foreach (var hook in Hooks)
+                    {
+                        if (hook.IsPrimary || GetCharacterId(hook) != CharacterId.Revenant)
+                            continue;
+                        SendKeyboardKeyPress(hook.WindowHandle, Key.D1);
+                        SendKeyboardKeyDown(hook.WindowHandle, Key.W);
+                    }
+                }
+                else if (key == Key.F2)
+                {
+                    foreach (var hook in Hooks)
+                    {
+                        if (hook.IsPrimary || GetCharacterId(hook) != CharacterId.Revenant)
+                            continue;
+                        SendKeyboardKeyPress(hook.WindowHandle, Key.D1);
+                        SendKeyboardKeyUp(hook.WindowHandle, Key.W);
+                    }
+                }
                 //else if (key == Key.F10)
                 //    SpamTeleport = !SpamTeleport;
             }
@@ -2053,13 +2096,13 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        private static CharacterId[] NonRotatableCharacters = { CharacterId.ShadowHunter };
+        private static CharacterId[] NonRotatableCharacters = { CharacterId.ShadowHunter, CharacterId.CandyBarbarian, CharacterId.DinoTamer };
         
-        private bool IsRotatable(HookModel hook) => !NonRotatableCharacters.Contains((CharacterId) ReadInt(hook.Handle, hook.LocalPlayerPointer, CharacterIdOffsets));
+        private bool IsRotatable(HookModel hook) => !NonRotatableCharacters.Contains(GetCharacterId(hook));
 
         private async void RotateCameraAsync()
         {
-            const float cameraFullXCircle = 6.3f;
+            const float cameraFullXCircle = 6.3f; //game constant
             const int rotateDelay = 1000;
             const int circlesPerSecond = 4;
             const int stepsForFullCircle = 10;
@@ -2589,9 +2632,12 @@ namespace TroveSkip.ViewModels
         
         private string GetName(HookModel hook) => GetName(hook.Handle, hook.ModuleAddress);
 
+        private CharacterId GetCharacterId(HookModel hook) =>
+            (CharacterId) ReadInt(hook.Handle, hook.LocalPlayerPointer, CharacterIdOffsets);
+        
         private unsafe float GetEncryptedFloat(HookModel hook, int baseAddress, int[] offsets)
         {
-            fixed (byte* p = BitConverter.GetBytes(ReadUInt(hook.Handle, GetAddress(hook.Handle, baseAddress, offsets)) ^ hook.StatsEncryptionKey))
+            fixed (byte* p = BitConverter.GetBytes(ReadUInt(hook.Handle, GetAddress(hook.Handle, baseAddress, offsets)) ^ _encryptionKey))
             {
                 return *(float*)p;
             }
@@ -2678,24 +2724,6 @@ namespace TroveSkip.ViewModels
                     WriteFloat(hook.Handle, hook.SettingsPointer, new[] {(int) pair.Key}, pair.Value);
                 }
                 hook.Settings.Clear();
-            }
-        }
-
-        private void ApplyGraphics()
-        {
-            if (NoGraphics)
-            {
-                foreach (var hook in Hooks)
-                {
-                    ChangeGraphics(hook, true);
-                }
-            }
-            else
-            {
-                foreach (var hook in Hooks)
-                {
-                    ChangeGraphics(hook, false);
-                }
             }
         }
 

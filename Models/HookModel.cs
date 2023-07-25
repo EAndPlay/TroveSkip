@@ -35,7 +35,6 @@ namespace TroveSkip.Models
         public int LocalPlayerPointer;
         public int WorldPointer;
         public int SettingsPointer;
-        public uint StatsEncryptionKey;
         public Dictionary<SettingOffset, float> Settings;
 
         // public bool MapCheck;

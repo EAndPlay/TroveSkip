@@ -1,6 +1,6 @@
 autopress := False
 
-SetTimer teleport, 200
+SetTimer teleport, 250
 return
 
 F::
@@ -13,7 +13,7 @@ teleport:
 {
 	if (autopress)
 	{
-		Send, {y}
+		Send, {x}
 	}
 	Return
 }
