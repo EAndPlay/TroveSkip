@@ -141,6 +141,7 @@
     </ApplicationDefinition>
     <Compile Include="BotsSettings.cs" />
     <Compile Include="ComparisonConverter.cs" />
+    <Compile Include="DarkSide.cs" />
     <Compile Include="DelegateCommand.cs" />
     <Compile Include="DelegateCommandBase.cs" />
     <Compile Include="DelegateCommandT.cs" />
@@ -161,6 +162,10 @@
     <Compile Include="Memory\World\WorldOffset.cs" />
     <Compile Include="Models\HookModel.cs" />
     <Compile Include="ObservableCollectionEx.cs" />
+    <Compile Include="Offsets.cs" />
+    <Compile Include="Patch.cs" />
+    <Compile Include="PatchCollection.cs" />
+    <Compile Include="Patches.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="SettingsParsers\FloatParser.cs" />
@@ -168,6 +173,8 @@
     <Compile Include="SettingsParsers\ISettingParser.cs" />
     <Compile Include="SettingsParsers\StringParser.cs" />
     <Compile Include="Signature.cs" />
+    <Compile Include="PatchName.cs" />
+    <Compile Include="Signatures.cs" />
     <Compile Include="User.cs" />
     <Compile Include="UserAccess.cs" />
     <Compile Include="UserActivityHook.cs" />

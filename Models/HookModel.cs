@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using TroveSkip.Memory;
@@ -14,11 +15,11 @@ namespace TroveSkip.Models
 {
     public class HookModel : INotifyPropertyChanged
     {
-        private const MainWindowViewModel.ProcessAccessFlags HookAccess =
-            MainWindowViewModel.ProcessAccessFlags.CreateThread |
-            MainWindowViewModel.ProcessAccessFlags.VirtualMemoryOperation |
-            MainWindowViewModel.ProcessAccessFlags.VirtualMemoryRead |
-            MainWindowViewModel.ProcessAccessFlags.VirtualMemoryWrite;
+        private const DarkSide.ProcessAccessFlags HookAccess =
+            DarkSide.ProcessAccessFlags.CreateThread |
+            DarkSide.ProcessAccessFlags.VirtualMemoryOperation |
+            DarkSide.ProcessAccessFlags.VirtualMemoryRead |
+            DarkSide.ProcessAccessFlags.VirtualMemoryWrite;
         
         public int Id { get; }
         public Process Process { get; } //was readonly @field
@@ -35,7 +36,9 @@ namespace TroveSkip.Models
         public int LocalPlayerPointer;
         public int WorldPointer;
         public int SettingsPointer;
-        public Dictionary<SettingOffset, float> Settings;
+        public Dictionary<int, float> Settings;
+        //public Dictionary<PatchName, Patch> Patches;
+        public PatchCollection Patches;
 
         // public bool MapCheck;
         // public bool ZoomCheck;
@@ -75,9 +78,9 @@ namespace TroveSkip.Models
             Process = process;
             Name = name ?? string.Empty;
             Id = process.Id;
-            Handle = OpenProcess(HookAccess, false, Id);
+            Handle = DarkSide.OpenProcess(HookAccess, false, Id);
             //Handle = process.Handle;
-            WindowHandle = process.MainWindowHandle;
+            
             ModuleAddress = 0;
             try
             {
@@ -90,11 +93,27 @@ namespace TroveSkip.Models
             ModuleAddress = (int) Module.BaseAddress;
             IsPrimary = false;
             Settings = new();
+
+            Patches = new PatchCollection(this);
+            Patches.Add(TroveSkip.Patches.AutoLoot);
+            Patches.Add(TroveSkip.Patches.AutoAttack);
+            Patches.Add(TroveSkip.Patches.InstaMining);
+            Patches.Add(TroveSkip.Patches.NoClip);
+            Patches.Add(TroveSkip.Patches.MapHack);
+            Patches.Add(TroveSkip.Patches.ZoomHack);
+            Patches.Initialize();
+
+            Application.Current.Dispatcher.InvokeAsync(async () =>
+            {
+                while (!IsInWorld()) await Task.Delay(50);
+                
+                WindowHandle = process.MainWindowHandle;
+            });
         }
 
         ~HookModel()
         {
-            CloseHandle(Handle);
+            DarkSide.CloseHandle(Handle);
         }
         // public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name) {}
         // public HookModel(HookModel hookModel, string name) : this(hookModel.Process, name)
@@ -105,17 +124,10 @@ namespace TroveSkip.Models
         //     ChamsCheck = hookModel.ChamsCheck;
         //     MiningCheck = hookModel.MiningCheck;
         // }
-        
-        [DllImport("kernel32.dll")]
-        private static extern bool CloseHandle(IntPtr handle);
-        
-        [DllImport("kernel32.dll")]
-        private static extern IntPtr OpenProcess(
-            MainWindowViewModel.ProcessAccessFlags processAccess,
-            bool bInheritHandle,
-            int processId
-        );
-        
+
+        public bool IsInWorld() =>
+            DarkSide.GetAddress(Handle, LocalPlayerPointer, Offsets.LocalPlayer.CharacterSelf) != 0;
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         [NotifyPropertyChangedInvocator]

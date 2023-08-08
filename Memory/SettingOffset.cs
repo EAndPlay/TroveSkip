@@ -7,8 +7,8 @@ namespace TroveSkip.Memory
     {
         Grama = 0x4, // = min(96, DrawDistance / 2)
         ObjectsDrawDistance = 0x8,
-	AntiAliasing = 0xC, //boolean
-	DetailDistance = 0x14,
+	    AntiAliasing = 0xC, //boolean
+	    DetailDistance = 0x14,
         ShaderDetail = 0x1C,
         [Description("Not changable direct")]
         SuperSampling = 0x20,

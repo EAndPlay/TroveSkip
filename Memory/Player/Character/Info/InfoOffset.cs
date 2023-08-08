@@ -2,7 +2,7 @@
 {
 	public enum InfoOffset
 	{
-		MasteryRank = 0xC8,
+		MasteryRank = 0xAC,
 		MasteryPoints = 0xE4,
 		IsMasteryRankIncreased = 0xE8
 	}

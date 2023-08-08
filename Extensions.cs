@@ -19,6 +19,14 @@ namespace TroveSkip
             return output;
         }
         public static int[] Join(this int[] to, int from) => to.Join(new[] { from });
+        
+        public static int[] Join(this int to, params int[] from)
+        {
+            var output = new int[from.Length + 1];
+            output[0] = to;
+            from.CopyTo(output, 1);
+            return output;
+        }
         /// <summary>
         /// Записывает все элементы массива <paramref name="from"/> в выходной массив, после элементов <paramref name="to"/>.
         /// </summary>

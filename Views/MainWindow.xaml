@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TroveSkip"
         xmlns:viewModels="clr-namespace:TroveSkip.ViewModels"
+        xmlns:system="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="Not a cheat" Width="354" Height="380"
         WindowStyle="None"
@@ -447,7 +448,7 @@
                </Setter.Value>
             </Setter>
          </Style>
-        <!--     <Style x:Key="SliderRepeatButton" TargetType="RepeatButton"> -->
+        <!-- <Style x:Key="SliderRepeatButton" TargetType="RepeatButton"> -->
     <!--     <Setter Property="SnapsToDevicePixels" Value="true" /> -->
     <!--     <Setter Property="OverridesDefaultStyle" Value="true" /> -->
     <!--     <Setter Property="IsTabStop" Value="false" /> -->
@@ -576,17 +577,21 @@
             <!-- <TextBlock Margin="2 170 0 0" HorizontalAlignment="Left" VerticalAlignment="Top" Text="{Binding }"/> -->
             <!-- <CheckBox Checked="AfkChecked" Unchecked="AfkUnChecked" Margin="65 160 0 0">Anti-AFK</CheckBox> -->
             <!-- <CheckBox Name="MapCheck" Content="Map Hack" IsChecked="{Binding MapCheck}" Command="{Binding MapCheckCommand}" CommandParameter="{Binding ElementName=MapCheck}" Style="{StaticResource AnimatedSwitch}" Margin="65 183 0 0"/> -->
-            <CheckBox Name="MapCheck" Content="Map Hack" IsChecked="{Binding MapCheck}" Command="{Binding MapCheckCommand}" CommandParameter="{Binding ElementName=MapCheck}" Margin="65 183 0 0"/>
-            <CheckBox Name="ZoomCheck" Content="Zoom Hack" IsChecked="{Binding ZoomCheck}" Command="{Binding ZoomCheckCommand}" CommandParameter="{Binding ElementName=ZoomCheck}" Margin="65 208 0 0"/>
+            <CheckBox Content="Map Hack" IsChecked="{Binding MapCheck}" Command="{Binding PatchCommand}" CommandParameter="{x:Static local:PatchName.MapHack}" Margin="65 183 0 0"/>
+                <!-- <RadioButton IsChecked="{Binding Path=BotsSettings.FollowType, -->
+            <!--              Converter={StaticResource ComparisonConverter},ConverterParameter={x:Static local:FollowType.Local}, -->
+            <!--               UpdateSourceTrigger=PropertyChanged}" Content="Local"/> -->
+            <CheckBox Content="Zoom Hack" IsChecked="{Binding ZoomCheck}" Command="{Binding PatchCommand}" CommandParameter="{x:Static local:PatchName.ZoomHack}" Margin="65 208 0 0"/>
             <!-- <CheckBox Name="FovCheck" Content="Fov Hack" IsChecked="{Binding FovCheck}" Command="{Binding FovCheckCommand}" CommandParameter="{Binding ElementName=FovCheck}" Margin="65 233 0 0"/> -->
             <!-- <CheckBox Name="ChamsCheck" Content="Chams Monster" IsChecked="{Binding ChamsCheck}" Command="{Binding ChamsCheckCommand}" CommandParameter="{Binding ElementName=ChamsCheck}" Margin="65 258 0 0"/> -->
-            <CheckBox Name="MiningCheck" Content="Insta-Mining" IsChecked="{Binding MiningCheck}" Command="{Binding MiningCheckCommand}" CommandParameter="{Binding ElementName=MiningCheck}" Margin="65 233 0 0"/>
+            <CheckBox Content="Insta-Mining" IsChecked="{Binding MiningCheck}" Command="{Binding PatchCommand}" CommandParameter="{x:Static local:PatchName.InstaMining}" Margin="65 233 0 0"/>
             <CheckBox Content="No Graphics" IsChecked="{Binding NoGraphics}" Margin="65 258 0 0"/>
             <!-- <CheckBox Content="Anti-AFK" IsChecked="{Binding AntiAfkCheck}" Margin="65 333 0 0"/> -->
-            <CheckBox Name="AutoLoot" Content="Auto-Loot" IsChecked="{Binding AutoLootCheck}" Command="{Binding AutoLootCheckCommand}" CommandParameter="{Binding ElementName=AutoLoot}" Margin="65 283 0 0"/>
+            <CheckBox Content="Auto-Loot" IsChecked="{Binding AutoLootCheck}" Command="{Binding PatchCommand}" CommandParameter="{x:Static local:PatchName.AutoLoot}" Margin="65 283 0 0"/>
             <CheckBox Content="Follow Camera" IsChecked="{Binding FollowCamera}" Margin="65 308 0 0"/>
             <CheckBox Content="Auto Pot" IsChecked="{Binding AutoPotCheck}" Margin="65 333 0 0"/>
-            <CheckBox Name="AutoAttack" Content="Auto Attack" IsChecked="{Binding AutoAttackCheck}" Command="{Binding AutoAttackCheckCommand}" CommandParameter="{Binding ElementName=AutoAttack}" Margin="65 358 0 0"/>
+            <CheckBox Content="Auto Attack" IsChecked="{Binding AutoAttackCheck}" Command="{Binding PatchCommand}" CommandParameter="{x:Static local:PatchName.AutoAttack}" Margin="65 358 0 0"/>
+            <CheckBox IsChecked="{Binding SendECHeck}" Margin="5 180"/>
             
             <Path Stroke="#1E1E1E" StrokeThickness="2" Fill="#1E1E1E">
                 <Path.Data>
@@ -649,8 +654,8 @@
                     <Button Name="BotsNoClipToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=BotsNoClipToggleButton}" Content="{Binding BotsNoClipToggleButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
-                    <Label Content="Insta-Mining" Width="105"/>
-                    <Button Name="MiningToggleButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=MiningToggleButton}" Content="{Binding MiningToggleButton}" Style="{StaticResource KeyBindButton}"/>
+                    <Label Content="Attack (Hold)" Width="105"/>
+                    <Button Name="AttackHoldButton" Command="{Binding BindClickCommand}" CommandParameter="{Binding ElementName=AttackHoldButton}" Content="{Binding AttackHoldButton}" Style="{StaticResource KeyBindButton}"/>
                 </StackPanel>
                 <StackPanel Style="{StaticResource NormalizedPanel}">
                     <Label Content="Follow Bots" Width="105"/>

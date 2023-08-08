@@ -19,24 +19,24 @@ namespace TroveSkip.Memory
         MemMem16,
     }
     
-    public class ASMInstruction
-    {
-        public readonly MainWindowViewModel.InstructionsEnum OpCode;
-        public readonly byte Offset;
-
-        // public Dictionary<InstructionArgument, ASMInstruction>
-        // {
-        //     
-        // }
-
-        public ASMInstruction(MainWindowViewModel.InstructionsEnum opcode)
-        {
-            OpCode = opcode;
-        }
-
-        public ASMInstruction(MainWindowViewModel.InstructionsEnum opcode, byte offset) : this(opcode)
-        {
-            Offset = offset;
-        }
-    }
+    // public class ASMInstruction
+    // {
+    //     public readonly MainWindowViewModel.InstructionsEnum OpCode;
+    //     public readonly byte Offset;
+    //
+    //     // public Dictionary<InstructionArgument, ASMInstruction>
+    //     // {
+    //     //     
+    //     // }
+    //
+    //     public ASMInstruction(MainWindowViewModel.InstructionsEnum opcode)
+    //     {
+    //         OpCode = opcode;
+    //     }
+    //
+    //     public ASMInstruction(MainWindowViewModel.InstructionsEnum opcode, byte offset) : this(opcode)
+    //     {
+    //         Offset = offset;
+    //     }
+    // }
 }
