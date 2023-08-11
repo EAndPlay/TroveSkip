@@ -94,13 +94,15 @@ namespace TroveSkip.Models
             IsPrimary = false;
             Settings = new();
 
-            Patches = new PatchCollection(this);
+            Patches = new PatchCollection();
             Patches.Add(TroveSkip.Patches.AutoLoot);
             Patches.Add(TroveSkip.Patches.AutoAttack);
             Patches.Add(TroveSkip.Patches.InstaMining);
             Patches.Add(TroveSkip.Patches.NoClip);
             Patches.Add(TroveSkip.Patches.MapHack);
             Patches.Add(TroveSkip.Patches.ZoomHack);
+            Patches.Add(TroveSkip.Patches.NoGraphic);
+            Patches.SetOwner(this);
             Patches.Initialize();
 
             Application.Current.Dispatcher.InvokeAsync(async () =>

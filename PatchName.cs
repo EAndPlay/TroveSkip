@@ -7,6 +7,7 @@
         InstaMining,
         AutoLoot,
         AutoAttack,
-        NoClip
+        NoClip,
+        NoGraphic
     }
 }

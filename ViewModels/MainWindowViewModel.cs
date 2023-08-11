@@ -102,13 +102,14 @@ namespace TroveSkip.ViewModels
                     _hookModel.IsPrimary = false;
                     if (FollowBotsToggle && _botsNoClipCheck)
                     {
-                        _hookModel.Patches.Activate(PatchName.NoClip);
+                        _hookModel.Patches.Patch(PatchName.NoClip);
                         DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.Gravity, 0); //GravityOffsets, 0);
                     }
                     if (NoGraphics)
-                        ChangeGraphics(_hookModel, true);
+                        _hookModel.Patches.Patch(PatchName.NoGraphic);
+                    //ChangeGraphics(_hookModel, true);
                     if (AutoAttackCheck && GetCharacterId(_hookModel) != CharacterId.CandyBarbarian)
-                        _hookModel.Patches.Activate(PatchName.AutoAttack);
+                        _hookModel.Patches.Patch(PatchName.AutoAttack);
                 }
 
                 if (value != null)
@@ -134,13 +135,14 @@ namespace TroveSkip.ViewModels
                     _hookModel.IsPrimary = true;
                     if (FollowBotsToggle && !_botsNoClipCheck && BotsSettings.FollowType == FollowType.Local)
                     {
-                        _hookModel.Patches.Deactivate(PatchName.NoClip);
+                        _hookModel.Patches.Unpatch(PatchName.NoClip);
                         DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.Gravity, DefaultGravity); //GravityOffsets, DefaultGravity);
                     }
                     if (NoGraphics)
-                        ChangeGraphics(_hookModel, false);
+                        _hookModel.Patches.Unpatch(PatchName.NoGraphic);
+                    //ChangeGraphics(_hookModel, false);
                     if (AutoAttackCheck)
-                        _hookModel.Patches.Deactivate(PatchName.AutoAttack);
+                        _hookModel.Patches.Unpatch(PatchName.AutoAttack);
                 }
                 else
                 {
@@ -632,7 +634,14 @@ namespace TroveSkip.ViewModels
                 foreach (var hook in Hooks)
                 {
                     if (hook.IsBot && !hook.IsPrimary)
-                        ChangeGraphics(hook, value);
+                    {
+                        //ChangeGraphics(hook, value);
+                        if (value)
+                            hook.Patches.Patch(PatchName.NoGraphic);
+                        else
+                            hook.Patches.Unpatch(PatchName.NoGraphic);
+                        Patches[PatchName.NoGraphic] = value;
+                    }
                 }
                 OnPropertyChanged();
             }
@@ -757,7 +766,7 @@ namespace TroveSkip.ViewModels
                         if (BotsSettings.FollowType == FollowType.Local && hook.IsPrimary || !hook.IsBot) continue;
 
                         if (_botsNoClipCheck)
-                            hook.Patches.Activate(PatchName.NoClip);
+                            hook.Patches.Patch(PatchName.NoClip);
                         DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer,
                             Offsets.LocalPlayer.Character.Controller.Gravity, 0); //GravityOffsets, 0);
                     }
@@ -767,7 +776,7 @@ namespace TroveSkip.ViewModels
                     foreach (var hook in Hooks)
                     {
                         if (_botsNoClipCheck && BotsSettings.FollowType == FollowType.Local)
-                            hook.Patches.Deactivate(PatchName.NoClip);
+                            hook.Patches.Unpatch(PatchName.NoClip);
                         DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.Gravity, DefaultGravity);
                     }
                 }
@@ -789,14 +798,14 @@ namespace TroveSkip.ViewModels
                     {
                         if (hook.IsPrimary && BotsSettings.FollowType == FollowType.Local || !hook.IsBot) continue;
 
-                        hook.Patches.Activate(PatchName.NoClip);
+                        hook.Patches.Patch(PatchName.NoClip);
                     }
                 }
                 else
                 {
                     foreach (var hook in Hooks)
                     {
-                        hook.Patches.Deactivate(PatchName.NoClip);
+                        hook.Patches.Unpatch(PatchName.NoClip);
                     }
                 }
             }
@@ -964,7 +973,7 @@ namespace TroveSkip.ViewModels
 
                     handle = hook.Handle;
                     if (_botsNoClipCheck)
-                        hook.Patches.Deactivate(PatchName.NoClip);
+                        hook.Patches.Unpatch(PatchName.NoClip);
                     DarkSide.WriteFloat(handle, hook.LocalPlayerPointer, GravityOffsets, DefaultGravity);
                 }
             }
@@ -1166,12 +1175,12 @@ namespace TroveSkip.ViewModels
                     if (patchName == PatchName.AutoAttack && (hook.IsPrimary || GetCharacterId(hook) == CharacterId.Revenant))
                         continue;
                     
-                    hook.Patches.Activate(patchName);
+                    hook.Patches.Patch(patchName);
                 }
                 else
                 {
-                    var autoAttackLastState = hook.Patches.IsActivated(PatchName.AutoAttack);
-                    hook.Patches.Deactivate(patchName);
+                    var autoAttackLastState = hook.Patches.IsPatched(PatchName.AutoAttack);
+                    hook.Patches.Unpatch(patchName);
 
                     if (autoAttackLastState)
                         DarkSide.SendMouseClick(hook.WindowHandle, DarkSide.MouseButton.LeftButton);
@@ -1431,9 +1440,9 @@ namespace TroveSkip.ViewModels
                     foreach (var pair in Patches)
                     {
                         if (pair.Value)
-                            hook.Patches.Activate(pair.Key);    
+                            hook.Patches.Patch(pair.Key);    
                         else
-                            hook.Patches.Deactivate(pair.Key);
+                            hook.Patches.Unpatch(pair.Key);
                     }
 
                     var marketMasteryCheckAddr = DarkSide.FindSignatureAddress(hook, Signatures.MarketMasteryCheckSignature);
@@ -1447,8 +1456,8 @@ namespace TroveSkip.ViewModels
                 }
             );
 
-            if (NoGraphics)
-                ChangeGraphics(hook, true);
+            // if (NoGraphics)
+            //     ChangeGraphics(hook, true);
         }
 
         private void UpdateHookInfo(HookModel hook)
@@ -1634,7 +1643,7 @@ namespace TroveSkip.ViewModels
                     {
                         if (hook.IsPrimary) continue;
                         
-                        hook.Patches.Activate(PatchName.AutoAttack);
+                        hook.Patches.Patch(PatchName.AutoAttack);
                     }
                 }
                 
@@ -1695,7 +1704,7 @@ namespace TroveSkip.ViewModels
                     if (hook.IsPrimary) continue;
                     _dispatcher.InvokeAsync(() =>
                     {
-                        hook.Patches.Deactivate(PatchName.AutoAttack);
+                        hook.Patches.Unpatch(PatchName.AutoAttack);
                         DarkSide.SendMouseClick(hook.WindowHandle, DarkSide.MouseButton.LeftButton);
                     });
                 }

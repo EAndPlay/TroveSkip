@@ -1,12 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Windows;
 using TroveSkip.Models;
 
 namespace TroveSkip
 {
     public class Patch : ICloneable
     {
+        //for rendering signatures (Fx must be disabled first and others after delay)
+        private const int PatchActionDelay = 50;
+
         public PatchName Name { get; }
         public bool IsActivated { get; private set; }
 
@@ -40,11 +45,15 @@ namespace TroveSkip
         public void Activate()
         {
             if (IsActivated) return;
-            
-            for (int i = 0; i < _addresses.Length; i++)
+
+            new Thread(() =>
             {
-                DarkSide.OverwriteBytes(_handle, _addresses[i], _patchPairs[i].EnabledSignature);
-            }
+                for (int i = 0; i < _addresses.Length; i++)
+                {
+                    DarkSide.OverwriteBytes(_handle, _addresses[i], _patchPairs[i].EnabledSignature);
+                    Thread.Sleep(PatchActionDelay);
+                }
+            }) {IsBackground = true}.Start();
 
             IsActivated = true;
         }
@@ -53,10 +62,14 @@ namespace TroveSkip
         {
             if (!IsActivated) return;
 
-            for (int i = 0; i < _addresses.Length; i++)
+            new Thread(() =>
             {
-                DarkSide.OverwriteBytes(_handle, _addresses[i], _patchPairs[i].DisabledSignature);
-            }
+                for (int i = 0; i < _addresses.Length; i++)
+                {
+                    DarkSide.OverwriteBytes(_handle, _addresses[i], _patchPairs[i].DisabledSignature);
+                    Thread.Sleep(PatchActionDelay);
+                }
+            }) {IsBackground = true}.Start();
 
             IsActivated = false;
         }

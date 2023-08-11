@@ -17,8 +17,15 @@
 
         public static Patch MapHack = new(PatchName.MapHack,
             new Patch.PatchPair(Signatures.MapHackSignature, Signatures.MapHackEnabledSignature));
-        
-        public static Patch ZoomHack = new(PatchName.MapHack,
+
+        public static Patch ZoomHack = new(PatchName.ZoomHack,
             new Patch.PatchPair(Signatures.ZoomHackSignature, Signatures.ZoomHackEnabledSignature));
+
+        public static Patch NoGraphic = new(PatchName.NoGraphic,
+            new Patch.PatchPair(Signatures.FxNoRenderingSignature, Signatures.FxNoRenderingEnabledSignature),
+            new Patch.PatchPair(Signatures.ChunksNoRenderingSignature, Signatures.ChunksNoRenderingEnabledSignature),
+            new Patch.PatchPair(Signatures.OtherOptimization1Signature, Signatures.OtherOptimization1EnabledSignature),
+            new Patch.PatchPair(Signatures.OtherOptimization2Signature, Signatures.OtherOptimization2EnabledSignature),
+            new Patch.PatchPair(Signatures.NoRenderingSignature, Signatures.NoRenderingEnabledSignature));
     }
 }

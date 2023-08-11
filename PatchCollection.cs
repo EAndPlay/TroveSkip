@@ -8,19 +8,16 @@ namespace TroveSkip
 {
     public class PatchCollection : ICloneable
     {
-        private HookModel _owner;
         private List<Patch> _patches;
 
-        public PatchCollection(HookModel owner)
+        public PatchCollection()
         {
-            _owner = owner;
             _patches = new();
         }
         
         public void Add(Patch patch)
         {
             patch = patch.Clone() as Patch;
-            patch.SetOwner(_owner);
             _patches.Add(patch);
         }
 
@@ -34,15 +31,17 @@ namespace TroveSkip
 
         //no remove!
 
-        public void Activate(PatchName name) => _patches.Find(x => x.Name == name).Activate();
+        public void Patch(PatchName name) => _patches.Find(x => x.Name == name).Activate();
 
-        public void Deactivate(PatchName name) => _patches.Find(x => x.Name == name).Deactivate();
+        public void Unpatch(PatchName name) => _patches.Find(x => x.Name == name).Deactivate();
 
-        public bool IsActivated(PatchName name) => _patches.Find(x => x.Name == name).IsActivated;
+        public bool IsPatched(PatchName name) => _patches.Find(x => x.Name == name).IsActivated;
 
         public void ActivateAll() => _patches.ForEach(x => x.Activate());
-        
+
         public void DeactivateAll() => _patches.ForEach(x => x.Deactivate());
+
+        public void SetOwner(HookModel owner) => _patches.ForEach(x => x.SetOwner(owner));
 
         public List<Patch> GetPatches() => _patches;
 
