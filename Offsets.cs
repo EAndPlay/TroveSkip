@@ -10,7 +10,8 @@ namespace TroveSkip
             public static readonly int[] Self = {0x0, 0x28};
             
             public static readonly int[] CharacterSelf = Self.Join(0xC4);
-            public static readonly int[] Name = Self.Join(0x1B4, 0x0); 
+            public static readonly int[] Name = Self.Join(0x1B4, 0x0);
+            public static readonly int[] UserId = Self.Join(0x3C0);
             public static readonly int[] MinimalLootRarity = Self.Join(0x678);
             
             public static class Character
@@ -19,48 +20,56 @@ namespace TroveSkip
                 public static readonly int[] InfoSelf = CharacterSelf.Join(0x10C);
                 public static readonly int[] StatsSelf = CharacterSelf.Join(0x2D4);
                 
-                public static readonly int[] CharacterId = CharacterSelf.Join(0xFC, 0x334);
-                public static readonly int[] CurrentHealth = CharacterSelf.Join(0xC, 0x38, 0x10, 0x138);
+                public static readonly int[] CharacterId = CharacterSelf.Join(0xFC, 0x35C);
+                public static readonly int[] CharaterCurrentStats = CharacterSelf.Join(0xC, 0x60, 0x10);
                 
                 public static class Controller
                 {
-                    public static readonly int[] PositionX = ControllerSelf.Join(0x60);
-                    public static readonly int[] PositionY = ControllerSelf.Join(0x64);
-                    public static readonly int[] PositionZ = ControllerSelf.Join(0x68);
-                    public static readonly int[] VelocityX = ControllerSelf.Join(0x90);
-                    public static readonly int[] VelocityY = ControllerSelf.Join(0x94);
-                    public static readonly int[] VelocityZ = ControllerSelf.Join(0x98);
-                    public static readonly int[] Gravity = ControllerSelf.Join(0xB8);
-                    public static readonly int[] RotationX = ControllerSelf.Join(0x1C4); //Works if State = 0
-                    public static readonly int[] RotationY = ControllerSelf.Join(0x1C4); //Broken
-                    public static readonly int[] RotationState = ControllerSelf.Join(0x1D0); //Default = -1, Block = 0
+                    public static readonly int[] PositionX = ControllerSelf.Join(0x80);
+                    public static readonly int[] PositionY = ControllerSelf.Join(0x84);
+                    public static readonly int[] PositionZ = ControllerSelf.Join(0x88);
+                    public static readonly int[] VelocityX = ControllerSelf.Join(0xB0);
+                    public static readonly int[] VelocityY = ControllerSelf.Join(0xB4);
+                    public static readonly int[] VelocityZ = ControllerSelf.Join(0xB8);
+                    public static readonly int[] Gravity = ControllerSelf.Join(0xD8);
+                    public static readonly int[] RotationX = ControllerSelf.Join(0x1E4); //Works if State = 0
+                    public static readonly int[] RotationY = ControllerSelf.Join(0x1E4); //Broken
+                    public static readonly int[] RotationState = ControllerSelf.Join(0x1F0); //Default = -1, Block = 0
                 }
 
+                public static class CurrentStats
+                {
+                    public static readonly int[] Health = CharaterCurrentStats.Join(0x138);
+                    public static readonly int[] MaxHealth = CharaterCurrentStats.Join(0x140);
+                    public static readonly int[] Energy = CharaterCurrentStats.Join(0x148);
+                    public static readonly int[] MaxEnergy = CharaterCurrentStats.Join(0x14C);
+                }
+                
                 public static class Stats
                 {
-                    public static readonly int[] PhysiscalDamage = StatsSelf.Join(0x19C);
-                    public static readonly int[] MagicDamage = StatsSelf.Join(0x1A0);
-                    public static readonly int[] MaximumHealth = StatsSelf.Join(0x1A4);
-                    public static readonly int[] MaximumEnergy = StatsSelf.Join(0x1A8);
-                    public static readonly int[] HealthRegeneration = StatsSelf.Join(0x1AC);
-                    public static readonly int[] EnergyRegeneration = StatsSelf.Join(0x1B0);
-                    //1b4
-                    public static readonly int[] CriticalHit = StatsSelf.Join(0x1B8);
-                    public static readonly int[] MovementSpeed = StatsSelf.Join(0x1BC);
-                    public static readonly int[] Jumps = StatsSelf.Join(0x1C0);
-                    //1c4
-                    //1c8
-                    //1cc
-                    public static readonly int[] MagicFind = StatsSelf.Join(0x1D0);
-                    public static readonly int[] Lasermancy = StatsSelf.Join(0x1D4);
-                    public static readonly int[] AttackSpeed = StatsSelf.Join(0x1D8);
-                    public static readonly int[] Flasks = StatsSelf.Join(0x1DC);
-                    public static readonly int[] ExperienceGain = StatsSelf.Join(0x1F0);
-                    public static readonly int[] CriticalDamage = StatsSelf.Join(0x1F4);
-                    public static readonly int[] BattleFactor = StatsSelf.Join(0x1F8);
-                    public static readonly int[] PowerRank = StatsSelf.Join(0x200);
-                    public static readonly int[] EncryptionKey = StatsSelf.Join(0x21C);
-                    public static readonly int[] Light = StatsSelf.Join(0x238);
+                    public static readonly int[] PhysiscalDamage = StatsSelf.Join(0x1C4);
+                    public static readonly int[] MagicDamage = StatsSelf.Join(0x1C8);
+                    public static readonly int[] MaximumHealth = StatsSelf.Join(0x1CC);
+                    public static readonly int[] MaximumEnergy = StatsSelf.Join(0x1D0);
+                    public static readonly int[] HealthRegeneration = StatsSelf.Join(0x1D4);
+                    public static readonly int[] EnergyRegeneration = StatsSelf.Join(0x1D8);
+                    //1dc
+                    public static readonly int[] CriticalHit = StatsSelf.Join(0x1E0);
+                    public static readonly int[] MovementSpeed = StatsSelf.Join(0x1E4);
+                    public static readonly int[] Jumps = StatsSelf.Join(0x1E8);
+                    //1EC
+                    //1F0
+                    //1F4
+                    public static readonly int[] MagicFind = StatsSelf.Join(0x1F8);
+                    public static readonly int[] Lasermancy = StatsSelf.Join(0x1FC);
+                    public static readonly int[] AttackSpeed = StatsSelf.Join(0x200);
+                    public static readonly int[] Flasks = StatsSelf.Join(0x204);
+                    public static readonly int[] ExperienceGain = StatsSelf.Join(0x208);
+                    public static readonly int[] CriticalDamage = StatsSelf.Join(0x20C);
+                    public static readonly int[] BattleFactor = StatsSelf.Join(0x210);
+                    public static readonly int[] PowerRank = StatsSelf.Join(0x214);
+                    public static readonly int[] EncryptionKey = StatsSelf.Join(0x218);
+                    public static readonly int[] Light = StatsSelf.Join(0x21C);
                 }
                 
                 public static class Info

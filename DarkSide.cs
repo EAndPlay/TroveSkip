@@ -269,26 +269,33 @@ namespace TroveSkip
             return (y << 16) | (x & 0xFFFF);
         }
 
-        public static SystemMessage GetSystemMessage(MouseButton mouseButton, bool keyDown) => mouseButton switch
-        {
-            MouseButton.LeftButton => keyDown ? SystemMessage.MouseLeftButtonDown : SystemMessage.MouseLeftButtonUp,
-            MouseButton.RightButton => keyDown ? SystemMessage.MouseRightButtonDown : SystemMessage.MouseRightButtonUp,
-            MouseButton.MiddleButton => keyDown ? SystemMessage.MouseMiddleButtonDown : SystemMessage.MouseMiddleButtonUp,
-            _ => throw new NotImplementedException()
-        };
-
         public static void SendMouseKey(IntPtr windowHandle, MouseButton mouseButton, bool keyDown, int x = -1, int y = -1)
         {
             //SendMessage((int) HookModel.WindowHandle, SystemMessage.MouseLeftButtonDown, KeyDownMessage.LeftButton, MAKELPARAM(345, 165));
             var lParam = 0;
             if (y != -1) lParam = y << 16;
             if (x != -1) lParam |= x & 0xFFFF;
-            var systemMessage = GetSystemMessage(mouseButton, keyDown);
+            
+            // SystemMessage GetSystemMessage(MouseButton mouseButton, bool keyDown) => mouseButton switch
+            // {
+            //     MouseButton.LeftButton => keyDown ? SystemMessage.MouseLeftButtonDown : SystemMessage.MouseLeftButtonUp,
+            //     MouseButton.RightButton => keyDown ? SystemMessage.MouseRightButtonDown : SystemMessage.MouseRightButtonUp,
+            //     MouseButton.MiddleButton => keyDown ? SystemMessage.MouseMiddleButtonDown : SystemMessage.MouseMiddleButtonUp,
+            //     _ => throw new NotImplementedException()
+            // };
+
+            var systemMessage = mouseButton switch
+            {
+                MouseButton.LeftButton => keyDown ? SystemMessage.MouseLeftButtonDown : SystemMessage.MouseLeftButtonUp,
+                MouseButton.RightButton => keyDown ? SystemMessage.MouseRightButtonDown : SystemMessage.MouseRightButtonUp,
+                MouseButton.MiddleButton => keyDown ? SystemMessage.MouseMiddleButtonDown : SystemMessage.MouseMiddleButtonUp,
+                _ => throw new NotImplementedException("Unknown system message for mouse")
+            };//GetSystemMessage(mouseButton, keyDown);
             
             if (!keyDown)
                 mouseButton &= (MouseButton)(0x7FFFFFFF ^ (int)MouseButton.LeftButton);
+            //SendMessage(windowHandle, SystemMessage.MouseMove, 0, lParam);
             SendMessage(windowHandle, systemMessage, (int) mouseButton, lParam);
-            //SendMessage(windowHandle, SystemMessage.MouseMove);
         }
 
         //TODO: find way to click on exact coordinates
@@ -1077,37 +1084,29 @@ namespace TroveSkip
             MemoryProtection protection);
 
         [DllImport("kernel32.dll")]
-        public static extern bool ReadProcessMemory(
-            IntPtr handle,
-            int address,
-            byte[] buffer,
-            int size,
-            out IntPtr numberOfBytesRead);
+        public static extern unsafe bool ReadProcessMemory(IntPtr handle, int address, byte* buffer, int size, out IntPtr numberOfBytesRead);
+        
+        [DllImport("kernel32.dll")]
+        public static extern bool ReadProcessMemory(IntPtr handle, int address, byte[] buffer, int size, out IntPtr numberOfBytesRead);
+        
+        [DllImport("kernel32.dll")]
+        public static extern bool ReadProcessMemory(IntPtr handle, int address, int[] buffer, int size, out IntPtr numberOfBytesRead);
 
         [DllImport("kernel32.dll")]
-        public static extern unsafe bool ReadProcessMemory(
-            IntPtr handle,
-            int address,
-            byte* buffer,
-            int size,
-            out IntPtr numberOfBytesRead);
-
+        public static extern bool ReadProcessMemory(IntPtr handle, int address, float[] buffer, int size, out IntPtr numberOfBytesRead);
+        
         [DllImport("kernel32.dll")]
-        public static extern bool WriteProcessMemory(
-            IntPtr handle,
-            int address,
-            byte[] buffer,
-            int size,
-            out IntPtr numberOfBytesWritten);
-
+        public static extern unsafe bool WriteProcessMemory(IntPtr handle, int address, byte* buffer, int size, out IntPtr numberOfBytesWritten);
+        
         [DllImport("kernel32.dll")]
-        public static extern unsafe bool WriteProcessMemory(
-            IntPtr handle,
-            int address,
-            byte* buffer,
-            int size,
-            out IntPtr numberOfBytesWritten);
-
+        public static extern bool WriteProcessMemory(IntPtr handle, int address, byte[] buffer, int size, out IntPtr numberOfBytesWritten);
+        
+        [DllImport("kernel32.dll")]
+        public static extern bool WriteProcessMemory(IntPtr handle, int address, int[] buffer, int size, out IntPtr numberOfBytesWritten);
+        
+        [DllImport("kernel32.dll")]
+        public static extern bool WriteProcessMemory(IntPtr handle, int address, float[] buffer, int size, out IntPtr numberOfBytesWritten);
+        
         [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
         

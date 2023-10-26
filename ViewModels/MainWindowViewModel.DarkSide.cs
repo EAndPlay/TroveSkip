@@ -40,8 +40,6 @@ namespace TroveSkip.ViewModels
         private const int MinimalModuleOffset = 16_200_000;
         private const int MaximalModuleOffset = 19_000_000;
 
-        private const byte PlayerOffsetInPlayersArray = 2;
-
         private const int MaxStringLength = 64;
 
         private const byte CaveOffset = 5;

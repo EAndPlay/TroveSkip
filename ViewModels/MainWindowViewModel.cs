@@ -21,15 +21,16 @@ using Microsoft.Win32;
 using TroveSkip.Memory;
 using TroveSkip.Models;
 using TroveSkip.Properties;
+using Vector = System.Windows.Vector;
 
 namespace TroveSkip.ViewModels
 {
     public partial class MainWindowViewModel : INotifyPropertyChanged, INotifyCollectionChanged
     {
+        private const int VectorSize = 3;
+        private const int VectorByteSize = VectorSize * sizeof(float);
         private readonly Dispatcher _dispatcher;
         
-        private const int VectorSize = sizeof(float) * 3;
-        private const int FloatVectorSize = 3;
         //TODO: d3d hook
 
         private static readonly int[] SettingsToSave =
@@ -1351,33 +1352,24 @@ namespace TroveSkip.ViewModels
             _settings.Save();
         }
 
-        private static byte[] local_SkipValuesBuffer = new byte[VectorSize];
-        private static byte[] local_SkipPositionBuffer = new byte[VectorSize];
-
         private void Skip()
         {
+            var positionBuffer = new float[VectorSize];
+            var newPositionBuffer = new float[VectorSize];
+
             var xPositionAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.PositionX);//LocalXPosition);
             var xCameraRotationAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.Camera.Rotation.RotationX);//XView);
 
-            DarkSide.ReadProcessMemory(_handle, xCameraRotationAddress, local_SkipValuesBuffer, VectorSize, out _);
-            DarkSide.ReadProcessMemory(_handle, xPositionAddress, local_SkipPositionBuffer, VectorSize, out _);
-            unsafe
+            DarkSide.ReadProcessMemory(_handle, xPositionAddress, positionBuffer, VectorByteSize, out _);
+            DarkSide.ReadProcessMemory(_handle, xCameraRotationAddress, newPositionBuffer, VectorByteSize, out _);
+
+            for (int i = 0; i < VectorSize; i++)
             {
-                fixed (byte* valuesBuffer = local_SkipValuesBuffer,
-                    positionBuffer = local_SkipPositionBuffer)
-                {
-                    var valueFloatPtr = (float*) valuesBuffer;
-                    var positionFloatPtr = (float*) positionBuffer;
-                    float* tempPtr;
-                    for (byte i = 0; i < FloatVectorSize; i++)
-                    {
-                        tempPtr = valueFloatPtr + i;
-                        *tempPtr = *tempPtr * _skipValue + *(positionFloatPtr + i);
-                    }
-                }
+                newPositionBuffer[i] *= _skipValue;
+                newPositionBuffer[i] += positionBuffer[i];
             }
 
-            DarkSide.WriteProcessMemory(_handle, xPositionAddress, local_SkipValuesBuffer, VectorSize, out _);
+            DarkSide.WriteProcessMemory(_handle, xPositionAddress, newPositionBuffer, VectorByteSize, out _);
         }
 
         private void SuperJump()
@@ -1385,30 +1377,23 @@ namespace TroveSkip.ViewModels
             if (!_jumpCheck || NotFocused()) return;
             DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, LocalYPosition, DarkSide.ReadFloat(_handle, _currentLocalPlayerPointer, LocalYPosition) + _jumpForceValue);
         }
-        
+
         private async void ForceSprintAsync()
         {
-            var valuesBuffer = new byte[VectorSize];
-            int xViewAdd, velocityAddress;
+            var valuesBuffer = new float[VectorSize];
+            int xViewAddress, velocityAddress;
             while (IsPressed(_binds[nameof(SprintButton)]) && !NotFocused() && _sprintCheck)
             {
-                xViewAdd = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.Camera.Rotation.RotationX);//XView);
-                velocityAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.VelocityX);//LocalXVelocity);
-                
-                DarkSide.ReadProcessMemory(_handle, xViewAdd, valuesBuffer, VectorSize, out _);
-                unsafe
+                xViewAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.Camera.Rotation.RotationX); //XView);
+                velocityAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.VelocityX); //LocalXVelocity);
+
+                DarkSide.ReadProcessMemory(_handle, xViewAddress, valuesBuffer, VectorByteSize, out _);
+                for (byte i = 0; i < VectorSize; i++)
                 {
-                    fixed (byte* bufferPtr = valuesBuffer)
-                    {
-                        var floatPtr = (float*) bufferPtr;
-                        for (byte i = 0; i < 3; i++)
-                        {
-                            *(floatPtr + i) *= _sprintValue;
-                        }
-                    }
+                    valuesBuffer[i] *= _sprintValue;
                 }
-                
-                DarkSide.WriteProcessMemory(_handle, velocityAddress, valuesBuffer, VectorSize, out _);
+
+                DarkSide.WriteProcessMemory(_handle, velocityAddress, valuesBuffer, VectorByteSize, out _);
                 await Task.Delay(10);
             }
         }
@@ -1587,6 +1572,10 @@ namespace TroveSkip.ViewModels
 
         private void OnKeyDown(Key key)
         {
+            if (key == Key.T)
+            {
+                DarkSide.SendMouseClick(_hookModel.WindowHandle, DarkSide.MouseButton.LeftButton, 1286, 703);
+            }
             if (NotHooked() || NotFocused() || ChatOpened()) return;
 
             if (!_pressedKeys.TryGetValue(key, out _))
@@ -1714,16 +1703,19 @@ namespace TroveSkip.ViewModels
         // TODO: optimize
         private async void FollowBotsAsync()
         {
-            var worldId = 0;
-            byte[] sourceBuffer = new byte[VectorSize], velocityBuffer = new byte[VectorSize];
-            float tempLength;
-            IntPtr handle;
-            int xVelAdd, xPosAdd;
-
+            const int playerOffsetInPlayersArray = 2;
+            
             var playerOffsets = (int[]) PlayersArray.Clone();
             var playerNameOffsets = playerOffsets.Join(NameOffsets);
             var characterPositionXOffsets = playerOffsets.Join(CharacterPositionX);
             
+            IntPtr handle;
+            int xVelocityAddress, xPositionAddress;
+            float[] sourceBuffer = new float[VectorSize], velocityBuffer = new float[VectorSize];
+            
+            var worldId = 0;
+            float tempLength;
+
             while (Authorized)
             {
                 await Task.Delay(1);
@@ -1731,43 +1723,24 @@ namespace TroveSkip.ViewModels
                 {
                     await Task.Delay(50);
                 }
-
-                // var xVelAdd = GetPlayerAddress(XVelocity);
-                // var xVelocity = ReadFloat(xVelAdd);
-                // var yVelocity = ReadFloat(xVelAdd + 4);
-                // var zVelocity = ReadFloat(xVelAdd + 8); 
-                // var length = (float) Math.Sqrt(xVelocity * xVelocity + yVelocity * yVelocity + zVelocity * zVelocity) / 1.5f;
-                // if (length == 0)
-                //     length = 1;
-
-                // var xPosAdd = GetPlayerAddress(XPosition);
-                // var sourceX = ReadFloat(xPosAdd) + xVelocity / length;
-                // var sourceY = ReadFloat(xPosAdd + 4) + yVelocity / length;
-                // var sourceZ = ReadFloat(xPosAdd + 8) + zVelocity / length;
-
-                // int xPosAdd; last
-
+                
                 bool GetSourcePositionsFromTarget(HookModel hook)
                 {
                     handle = hook.Handle;
-                    var playersCount = DarkSide.ReadInt(handle, hook.WorldPointer, Offsets.World.PlayersList.Count);//PlayersCountInWorldOffsets);
+                    var playersCount = DarkSide.ReadInt(handle, hook.WorldPointer, Offsets.World.PlayersList.Count);
                     for (byte i = 1; i < playersCount; i++)
                     {
-                        characterPositionXOffsets[PlayerOffsetInPlayersArray] = 
-                            playerNameOffsets[PlayerOffsetInPlayersArray] = 
-                                playerOffsets[PlayerOffsetInPlayersArray] = i * sizeof(int);
-                        var name = GetName(handle, hook.WorldPointer, playerNameOffsets);//playerOffsets.Join(NameOffsets));
+                        characterPositionXOffsets[playerOffsetInPlayersArray] = 
+                            playerNameOffsets[playerOffsetInPlayersArray] = 
+                                playerOffsets[playerOffsetInPlayersArray] = i * sizeof(int);
+                        var name = GetName(handle, hook.WorldPointer, playerNameOffsets);
                         
                         if (name != _botsFollowTargetName)
                             continue;
 
-                        xPosAdd = DarkSide.GetAddress(handle, hook.WorldPointer, characterPositionXOffsets);
+                        xPositionAddress = DarkSide.GetAddress(handle, hook.WorldPointer, characterPositionXOffsets);
 
-                        //sourceBuffer = GetBuffer(handle, xPosAdd, VectorSize);
-                        DarkSide.ReadProcessMemory(handle, xPosAdd, sourceBuffer, VectorSize, out _);
-                        // sourceX = ReadFloat(handle, xPosAdd);
-                        // sourceY = ReadFloat(handle, xPosAdd + sizeof(int));
-                        // sourceZ = ReadFloat(handle, xPosAdd + 2 * sizeof(int));
+                        DarkSide.ReadProcessMemory(handle, xPositionAddress, sourceBuffer, VectorByteSize, out _);
 
                         worldId = hook.WorldId;
 
@@ -1779,12 +1752,8 @@ namespace TroveSkip.ViewModels
 
                 if (_botsSettings.FollowType == FollowType.Local)
                 {
-                    xPosAdd = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, LocalXPosition);
-                    //sourceBuffer = GetBuffer(xPosAdd, VectorSize);
-                    DarkSide.ReadProcessMemory(_handle, xPosAdd, sourceBuffer, VectorSize, out _);
-                    // sourceX = ReadFloat(xPosAdd);
-                    // sourceY = ReadFloat(xPosAdd + sizeof(int));
-                    // sourceZ = ReadFloat(xPosAdd + 2 * sizeof(int));
+                    xPositionAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, LocalXPosition);
+                    DarkSide.ReadProcessMemory(_handle, xPositionAddress, sourceBuffer, VectorByteSize, out _);
                     worldId = _hookModel.WorldId;
                 }
                 else if (_botsSettings.TargetCheckType == TargetCheckType.AllToLeaderToTarget)
@@ -1810,114 +1779,77 @@ namespace TroveSkip.ViewModels
                             !GetSourcePositionsFromTarget(hook))
                             continue;
                     }
-                    // if (!_botsFollowLocal && _botsTargetCheckType == 1)
-                    // {
-                    //     if (_botsFollowTargetNameLength == 0 || 
-                    //         Hooks.Count == 0 ||
-                    //         !GetSourcePositionsFromTarget(hook)) continue;
-                    // }
-                    // else if (_botsFollowLocal && (hook.IsPrimary || worldId != hook.WorldId)) continue;
                     
                     handle = hook.Handle;
-                    xPosAdd = DarkSide.GetAddress(handle, hook.LocalPlayerPointer, LocalXPosition);
-                    //xPosAdd = GetAddressFromLocalPlayer(handle, LocalXPosition);
-                    // var floats = ReadFloats(handle, xPosAdd, 3);
-                    // var xDiff = sourceX - floats[0];
-                    // var yDiff = sourceY - floats[1];
-                    // var zDiff = sourceZ - floats[2];
-                    // xDiff = sourceX - ReadFloat(handle, xPosAdd);
-                    // yDiff = sourceY - ReadFloat(handle, xPosAdd + sizeof(uint));
-                    // zDiff = sourceZ - ReadFloat(handle, xPosAdd + 2 * sizeof(uint));
+                    xPositionAddress = DarkSide.GetAddress(handle, hook.LocalPlayerPointer, LocalXPosition);
                     
-                    //velocityBuffer = GetBuffer(handle, xPosAdd, VectorSize);
-                    DarkSide.ReadProcessMemory(handle, xPosAdd, velocityBuffer, VectorSize, out _);
+                    DarkSide.ReadProcessMemory(handle, xPositionAddress, velocityBuffer, VectorByteSize, out _);
                     
                     float length = 1;
                     tempLength = 0;
-                    var isClose = true;
-                    unsafe
+                    byte closeBits = 1;
+
+                    for (int i = 0; i < VectorSize; i++)
                     {
-
-                        fixed (byte* sourcePtr = sourceBuffer, velocityPtr = velocityBuffer)
+                        velocityBuffer[i] = sourceBuffer[i] - velocityBuffer[i];
+                        var currentVelocity = velocityBuffer[i];
+                        tempLength += currentVelocity * currentVelocity;
+                        if (currentVelocity < _botsSettings.StopDistance)
                         {
-                            // try
-                            // {
-                            float* sourceFloatPtr = (float*) sourcePtr,
-                                velocityFloatPtr = (float*) velocityPtr;
-                            int i;
-                            for (i = 0; i < FloatVectorSize; i++)
-                            {
-                                var currentPtr = velocityFloatPtr + i;
-                                *currentPtr = *(sourceFloatPtr + i) - *currentPtr;
-                                tempLength += *currentPtr * *currentPtr;
-                                isClose &= *currentPtr < _botsSettings.StopDistance;
-                            }
-                            
-                            if (isClose)
-                                length *= _botsSettings.StopPower;
-
-                            length *= Math.Max((float) Math.Sqrt(tempLength), 1) / _followSpeedValue;
-                            for (i = 0; i < FloatVectorSize; i++)
-                            {
-                                *(velocityFloatPtr + i) /= length;
-                            }
-
-                            //MessageBox.Show(BitConverter.ToSingle(velocityBuffer, 0) + " " + BitConverter.ToSingle(velocityBuffer, 4) + " " + BitConverter.ToSingle(velocityBuffer, 8));
-                            // }
-                            // catch (Exception e)
-                            // {
-                            //     MessageBox.Show(e.Message + "\n" + e.StackTrace);
-                            // }
+                            closeBits <<= 1;
                         }
                     }
+                    
+                    if (closeBits == 0b1000)
+                        length *= _botsSettings.StopPower;
+                    
+                    length *= Math.Max((float) Math.Sqrt(tempLength), 1) / _followSpeedValue;
 
-                    /*var*/ xVelAdd = DarkSide.GetAddress(handle, hook.LocalPlayerPointer, LocalXVelocity);
-                    // var isCloseNew = new []{xDiff, yDiff, zDiff}.Select(Math.Abs).All(x => x < BotsSettings.StopDistance);
+                    for (int i = 0; i < VectorSize; i++)
+                    {
+                        velocityBuffer[i] /= length;
+                    }
+
+                    xVelocityAddress = DarkSide.GetAddress(handle, hook.LocalPlayerPointer, LocalXVelocity);
+                    //var isCloseNew = new []{xDiff, yDiff, zDiff}.Select(Math.Abs).All(x => x < BotsSettings.StopDistance);
+                    
                     //var xVelAdd = GetAddressFromLocalPlayer(handle, LocalXVelocity);
                     // if (Math.Abs(xDiff) < BotsSettings.StopDistance &&
                     //     Math.Abs(yDiff) < BotsSettings.StopDistance &&
                     //     Math.Abs(zDiff) < BotsSettings.StopDistance)
-                    if (isClose)
-                    // if (isCloseNew)
+                    if (closeBits == 0b1000)
                     {
                         if (BotsSettings.StopType == StopType.FullStop)
                         {
-                            var nullBuffer = new byte[12];
-                            DarkSide.WriteMemory(handle, xVelAdd, nullBuffer);
+                            var nullBuffer = new float[VectorSize];
+                            DarkSide.WriteProcessMemory(handle, xVelocityAddress, nullBuffer, VectorByteSize, out _);
                             continue;
                         }
-
-                        // length *= _botsSettings.StopPower;
                     }
-                    if (_botsSettings.WarnEnabled)
+                    else if (_botsSettings.WarnEnabled)
                     {
-                        // if (Math.Abs(xDiff) < BotsSettings.StopDistance &&
-                        //     Math.Abs(yDiff) < BotsSettings.StopDistance &&
-                        //     Math.Abs(zDiff) < BotsSettings.StopDistance)
-                        if (hook.Notified)
+                        var coordsBuffer = new float[VectorSize];
+                        DarkSide.ReadProcessMemory(handle, xPositionAddress, coordsBuffer, VectorByteSize, out _);
+                        var xDiff = sourceBuffer[0] - coordsBuffer[0];
+                        var yDiff = sourceBuffer[1] - coordsBuffer[1];
+                        var zDiff = sourceBuffer[2] - coordsBuffer[2];
+
+                        if (Math.Abs(xDiff) < _botsSettings.WarnDistance &&
+                            Math.Abs(yDiff) < _botsSettings.WarnDistance &&
+                            Math.Abs(zDiff) < _botsSettings.WarnDistance)
                         {
-                            if (isClose)
-                                hook.Notified = false;
-                        }
-                        else// if (!hook.Notified)
-                        {
-                            static float[] ReadFloats(IntPtr handle, int address, int count)
+                            if (hook.Notified)
                             {
-                                var buffer = DarkSide.GetBuffer(handle, address, count * sizeof(float));
-                                var floats = new float[count];
-                                for (short i = 0; i < count; i++)
-                                    floats[i] = BitConverter.ToSingle(buffer, i * sizeof(float));
-                                return floats;
+                                hook.Notified = false;
                             }
-                            var floats = ReadFloats(handle, xPosAdd, 3);
-                            var xDiff = BitConverter.ToSingle(sourceBuffer!, 0) - floats[0];
-                            var yDiff = BitConverter.ToSingle(sourceBuffer!, 4) - floats[1];
-                            var zDiff = BitConverter.ToSingle(sourceBuffer!, 8) - floats[2];
+                        }
+                        else if (!hook.Notified)
+                        {
                             hook.Notified = true;
                             MessageBox.Show(new StringBuilder("Name: ").Append(hook.Name)
-                                    .Append("\nX: ").Append((int) DarkSide.ReadFloat(handle, xPosAdd))
-                                    .Append("\nY: ").Append((int) DarkSide.ReadFloat(handle, xPosAdd + 4))
-                                    .Append("\nZ: ").Append((int) DarkSide.ReadFloat(handle, xPosAdd + 8))
+                                    .Append("\nX: ").Append((int) coordsBuffer[0])
+                                    .Append("\nY: ").Append((int) coordsBuffer[1])
+                                    .Append("\nZ: ").Append((int) coordsBuffer[2])
                                     .Append("\nDistance: ")
                                     .Append((int) Math.Sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff))
                                     .ToString(),
@@ -1925,24 +1857,7 @@ namespace TroveSkip.ViewModels
                         }
                     }
 
-                    // length *= Math.Max((float) Math.Sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff), 1)
-                    //           / _followSpeedValue;
-
-                    // length *= Math.Max((float) Math.Sqrt(tempLength), 1) / _followSpeedValue;
-                    
-                    // unsafe
-                    // {
-                    //     fixed (byte* velocityPtr = velocityBuffer)
-                    //     {
-                    //         var velocityFloatPtr = (float*) velocityPtr;
-                    //         for (byte i = 0; i < FloatVectorSize; i++)
-                    //         {
-                    //             *(velocityFloatPtr + i) /= length;
-                    //         }
-                    //     }
-                    // }
-
-                    DarkSide.WriteProcessMemory(handle, xVelAdd, velocityBuffer, VectorSize, out _);
+                    DarkSide.WriteProcessMemory(handle, xVelocityAddress, velocityBuffer, VectorByteSize, out _);
                 }
             }
         }
@@ -2067,11 +1982,13 @@ namespace TroveSkip.ViewModels
                 await Task.Delay(50);
                 foreach (var hook in Hooks.ToArray())
                 {
-                    if (hook.IsPrimary) continue;
+                    //if (hook.IsPrimary) continue;
 
                     handle = hook.Handle;
-                    currentHealth = DarkSide.ReadInt(handle, hook.LocalPlayerPointer, Offsets.LocalPlayer.Character.CurrentHealth);
-                    maxHealth = GetEncryptedFloat(hook, hook.LocalPlayerPointer, Offsets.LocalPlayer.Character.Stats.MaximumHealth);
+                    
+                    //TODO: release calculating through int64 and shift
+                    currentHealth = DarkSide.ReadInt(handle, hook.LocalPlayerPointer, Offsets.LocalPlayer.Character.CurrentStats.Health);
+                    maxHealth = DarkSide.ReadInt(handle, hook.LocalPlayerPointer, Offsets.LocalPlayer.Character.CurrentStats.MaxHealth);
                     
                     if (currentHealth / maxHealth < 0.5f)
                     {
@@ -2118,276 +2035,276 @@ namespace TroveSkip.ViewModels
             _dispatcher.InvokeAsync(FollowBotsAsync);
         }
         
-        private async void StatusUpdate()
-        {
-            BlockText = "Connecting...";
-            var stringBuilder = new StringBuilder();
-            void OutputText() => BlockText = stringBuilder.ToString();
-            
-            var webClient = new WebClient();
-            //webClient.Headers.Add(HttpRequestHeader.UserAgent, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
-            
-            async Task<bool> IsConnected()
-            {
-                const string connectionUrl = "http://google.com";
-                //const string connectionUrl = "http://licensesp.exitgames.com/";
-                try
-                {
-                    //using var stream = webClient.OpenRead(connectionUrl);
-                    //webClient.DownloadString(connectionUrl);
-                    await webClient.DownloadDataTaskAsync(connectionUrl);
-                    return true;
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-
-            async Task WaitForConnection()
-            {
-                const int connectionCheckTime = 1000;
-                if (!await IsConnected())
-                {
-                    // if (block)
-                    // {
-                    //     Authorized = false;
-                    //     BlockText = "Waiting for\ninternet connection";
-                    //     BlockShitVisibility = Visibility.Visible;
-                    // }
-                    ConnectionGridVisibility = Visibility.Visible;
-
-                    await Task.Delay(connectionCheckTime);
-                    while (!await IsConnected())
-                    {
-                        //MessageBox.Show("no connection");
-                        await Task.Delay(connectionCheckTime);
-                    }
-                }
-
-                ConnectionGridVisibility = Visibility.Hidden;
-            }
-            
-            var tempFileName = (string) null;
-            {
-                const string updateUrl = "https://pastebin.com/raw/ALTsfWjv";
-                try
-                {
-                    await WaitForConnection();
-                    var updateText = await webClient.DownloadStringTaskAsync(updateUrl);
-                    updateText = updateText.Split('\n')[0];
-                    var spaceSplit = updateText.Split(' ');
-                    var serverVersion = new Version(spaceSplit[0]);
-
-                    var currentAssembly = Assembly.GetExecutingAssembly();
-                    if (serverVersion > currentAssembly.GetName().Version)
-                    {
-                        var updateLink = spaceSplit[1];
-                        tempFileName = Path.GetTempFileName();
-                        webClient.DownloadFile(updateLink, tempFileName);
-                        Process.Start(tempFileName, currentAssembly.FullName);
-                        Environment.Exit(0);
-                    }
-                }
-                catch (Exception e)
-                {
-                    stringBuilder.AppendLine("Error on update download:")
-                        .Append(e.Message)
-                        .AppendLine("Try relaunch application and report error");
-                    OutputText();
-                    if (tempFileName != null)
-                    {
-                        File.Delete(tempFileName);
-                    }
-                    return;
-                }
-            }
-
-            async Task<string> GetDatabaseText()
-            {
-                const string dbUrl = "https://pastebin.com/raw/rjyuQQyv";
-                try
-                {
-                    return await webClient.DownloadStringTaskAsync(dbUrl);
-                }
-                catch
-                {
-                    return string.Empty;
-                }
-            }
-            
-            const int authUpdateTime = 6000;
-            const int authWaitTime = 2000;
-
-            int? userId;
-            {
-                const string folderPath = @"SOFTWARE\\NCT";
-                const string idKey = "Id";
-                var notACheatForTroveFolder = Registry.CurrentUser.OpenSubKey(folderPath, true) 
-                                              ?? Registry.CurrentUser.CreateSubKey(folderPath, true);
-
-                userId = (int?) notACheatForTroveFolder.GetValue(idKey);
-                if (userId == null)
-                {
-                    await WaitForConnection();
-                    var dbText = await GetDatabaseText();
-                    int newId;
-                    var random = new Random();
-                    do
-                    {
-                        newId = random.Next(100_000, 1_000_000);
-                    } while (dbText.Contains(newId.ToString()));
-
-                    userId = newId;
-                    notACheatForTroveFolder.SetValue(idKey, userId, RegistryValueKind.DWord);
-                }
-            }
-
-            var idString = userId.ToString();
-            var idText = "Id: " + idString;
-            
-            void ResetText() => stringBuilder.Clear().AppendLine(idText);
-            
-            DateTime GetDayTime(string date) //dd.MM.yyyy
-            {
-                var dayTimeSepIndex = date.IndexOf(':');
-                var dayTime = TimeSpan.Zero;
-                //MessageBox.Show(date.Substring(dayTimeSepIndex));
-                var dateTimeSplit = (dayTimeSepIndex != - 1 ? date.Substring(0, dayTimeSepIndex) : date).Split('.').ToArray().Select(int.Parse).ToArray();
-                if (dayTimeSepIndex != -1)
-                {
-                    var timeString = date.Substring(dayTimeSepIndex + 1);
-                    var dayTimeSplit = timeString.Split('.');
-                    int hours = 0, minutes = 0, seconds = 0;
-                    if (dateTimeSplit.Length > 0)
-                    {
-                        //MessageBox.Show(dayTimeSplit[0]);
-                        hours = int.Parse(dayTimeSplit[0]);
-                        if (dayTimeSplit.Length > 1)
-                        {
-                            minutes = int.Parse(dayTimeSplit[1]);
-                            if (dayTimeSplit.Length > 2)
-                            {
-                                seconds = int.Parse(dayTimeSplit[2]);
-                            }
-                        }
-                    }
-                    dayTime = new(hours, minutes, seconds);
-                }
-                return new DateTime(dateTimeSplit[2], dateTimeSplit[1], dateTimeSplit[0]) + dayTime;
-            }
-
-            TimeSpan GetExpirationTime(string time)
-            {
-                int GetFromRegex(string pattern)
-                {
-                    var regex = new Regex(pattern);
-                    var value = regex.Match(time).Groups[1].Value;
-                    return value != string.Empty ? int.Parse(value) : 0;
-                }
-
-                var months = GetFromRegex(@"(\d+)M");
-                var days = GetFromRegex(@"(\d+)d");
-                var hours = GetFromRegex(@"(\d+)h");
-                var minutes = GetFromRegex(@"(\d+)m");
-                var seconds = GetFromRegex(@"(\d+)s");
-                return new TimeSpan(months * 30 + days, hours, minutes, seconds);
-            }
-
-            // Dictionary<UserAccess, bool> ParseAcceses()
-            // {
-            //     var dict = new Dictionary<UserAccess, bool>();
-            //     //if ()
-            //     return dict;
-            // }
-
-            //var utcOffset = TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now);
-            while (true)
-            {
-                ResetText();
-                await WaitForConnection();
-                var userFound = false;
-                var dbText = await GetDatabaseText();
-                foreach (var line in dbText.Split('\n'))
-                {
-                    if (line.StartsWith("#")) continue;
-                    var spaceSplit = line.Split(' ');
-                    if (spaceSplit.Length > 1 && spaceSplit[1] != string.Empty)
-                    {
-                        if (!int.TryParse(spaceSplit[0], out var id)) continue;
-                        //id = int.Parse(spaceSplit[0]);
-                        if (id != userId) continue;
-                        userFound = true;
-
-                        //MessageBox.Show(spaceSplit[0] + " " + spaceSplit[1]);
-                        var datesSplit = spaceSplit[1].Split('-');
-                        var startDate = GetDayTime(datesSplit[0]);
-                        var expirationTime = GetExpirationTime(datesSplit[1]);
-                        var expirationDate = startDate + expirationTime;// + utcOffset;
-                        
-                        if (expirationDate - DateTime.Now > TimeSpan.Zero)
-                        {
-                            Authorized = true;
-                            //maybe TODO: loading accesses
-                        }
-                        else
-                        {
-                            stringBuilder.AppendLine("Expired");
-                            Authorized = false;
-                        }
-                    }
-                    else
-                    {
-                        if (!int.TryParse(line, out var id)) continue;
-                        if (userId == id)
-                        {
-                            userFound = true;
-                            Authorized = true;
-                        }
-                    }
-
-                    // Authorized = true;
-                }
-                
-                //     
-        //     foreach (var line in db.Split('\n'))
+        // private async void StatusUpdate()
+        // {
+        //     BlockText = "Connecting...";
+        //     var stringBuilder = new StringBuilder();
+        //     void OutputText() => BlockText = stringBuilder.ToString();
+        //     
+        //     var webClient = new WebClient();
+        //     //webClient.Headers.Add(HttpRequestHeader.UserAgent, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
+        //     
+        //     async Task<bool> IsConnected()
         //     {
-        //         var split = line.Split(' ');
-        //         if (split[0] != id) continue;
-        //         stringBuilder.Append("Id :").AppendLine(id);
-        //         var datesSplit = split[1].Split('-');
-        //         var startDate = GetDayTime(datesSplit[0]);
-        //         var expirationTime = GetExpirationTime(datesSplit[1]);
-        //         var expirationDate = startDate + expirationTime + TimeSpan.FromDays(1);
-        //         if (DateTime.Now > expirationDate)
+        //         const string connectionUrl = "http://google.com";
+        //         //const string connectionUrl = "http://licensesp.exitgames.com/";
+        //         try
         //         {
-        //             var daysAgoExpired = (DateTime.Now - expirationDate).Days + 1;
-        //             stringBuilder.Append("Expired ")
-        //                 .AppendLine(daysAgoExpired.ToString())
-        //                 .Append("day");
-        //             if (daysAgoExpired > 1)
-        //                 stringBuilder.Append("s");
-        //             stringBuilder.Append(" ago");
+        //             //using var stream = webClient.OpenRead(connectionUrl);
+        //             //webClient.DownloadString(connectionUrl);
+        //             await webClient.DownloadDataTaskAsync(connectionUrl);
+        //             return true;
+        //         }
+        //         catch
+        //         {
         //             return false;
         //         }
-        //         // var startDate = GetDayTime(datesSplit[0]); //just for nothing
-        //         // var expirationDate = GetDayTime(datesSplit[1]);
-        //         // var expirationPeriod;
-        //         // startDate + expirationDate
-        //         // if (DateTime.Now > expirationDate)
-        //         return true;
         //     }
-
-                if (!userFound)
-                    Authorized = false;
-                
-                if (!Authorized)
-                {
-                    BlockText = stringBuilder.AppendLine("No access").ToString();
-                }
-                await Task.Delay(Authorized ? authUpdateTime : authWaitTime);
-            }
-        }
+        //
+        //     async Task WaitForConnection()
+        //     {
+        //         const int connectionCheckTime = 1000;
+        //         if (!await IsConnected())
+        //         {
+        //             // if (block)
+        //             // {
+        //             //     Authorized = false;
+        //             //     BlockText = "Waiting for\ninternet connection";
+        //             //     BlockShitVisibility = Visibility.Visible;
+        //             // }
+        //             ConnectionGridVisibility = Visibility.Visible;
+        //
+        //             await Task.Delay(connectionCheckTime);
+        //             while (!await IsConnected())
+        //             {
+        //                 //MessageBox.Show("no connection");
+        //                 await Task.Delay(connectionCheckTime);
+        //             }
+        //         }
+        //
+        //         ConnectionGridVisibility = Visibility.Hidden;
+        //     }
+        //     
+        //     var tempFileName = (string) null;
+        //     {
+        //         const string updateUrl = "https://pastebin.com/raw/ALTsfWjv";
+        //         try
+        //         {
+        //             await WaitForConnection();
+        //             var updateText = await webClient.DownloadStringTaskAsync(updateUrl);
+        //             updateText = updateText.Split('\n')[0];
+        //             var spaceSplit = updateText.Split(' ');
+        //             var serverVersion = new Version(spaceSplit[0]);
+        //
+        //             var currentAssembly = Assembly.GetExecutingAssembly();
+        //             if (serverVersion > currentAssembly.GetName().Version)
+        //             {
+        //                 var updateLink = spaceSplit[1];
+        //                 tempFileName = Path.GetTempFileName();
+        //                 webClient.DownloadFile(updateLink, tempFileName);
+        //                 Process.Start(tempFileName, currentAssembly.FullName);
+        //                 Environment.Exit(0);
+        //             }
+        //         }
+        //         catch (Exception e)
+        //         {
+        //             stringBuilder.AppendLine("Error on update download:")
+        //                 .Append(e.Message)
+        //                 .AppendLine("Try relaunch application and report error");
+        //             OutputText();
+        //             if (tempFileName != null)
+        //             {
+        //                 File.Delete(tempFileName);
+        //             }
+        //             return;
+        //         }
+        //     }
+        //
+        //     async Task<string> GetDatabaseText()
+        //     {
+        //         const string dbUrl = "https://pastebin.com/raw/rjyuQQyv";
+        //         try
+        //         {
+        //             return await webClient.DownloadStringTaskAsync(dbUrl);
+        //         }
+        //         catch
+        //         {
+        //             return string.Empty;
+        //         }
+        //     }
+        //     
+        //     const int authUpdateTime = 6000;
+        //     const int authWaitTime = 2000;
+        //
+        //     int? userId;
+        //     {
+        //         const string folderPath = @"SOFTWARE\\NCT";
+        //         const string idKey = "Id";
+        //         var notACheatForTroveFolder = Registry.CurrentUser.OpenSubKey(folderPath, true) 
+        //                                       ?? Registry.CurrentUser.CreateSubKey(folderPath, true);
+        //
+        //         userId = (int?) notACheatForTroveFolder.GetValue(idKey);
+        //         if (userId == null)
+        //         {
+        //             await WaitForConnection();
+        //             var dbText = await GetDatabaseText();
+        //             int newId;
+        //             var random = new Random();
+        //             do
+        //             {
+        //                 newId = random.Next(100_000, 1_000_000);
+        //             } while (dbText.Contains(newId.ToString()));
+        //
+        //             userId = newId;
+        //             notACheatForTroveFolder.SetValue(idKey, userId, RegistryValueKind.DWord);
+        //         }
+        //     }
+        //
+        //     var idString = userId.ToString();
+        //     var idText = "Id: " + idString;
+        //     
+        //     void ResetText() => stringBuilder.Clear().AppendLine(idText);
+        //     
+        //     DateTime GetDayTime(string date) //dd.MM.yyyy
+        //     {
+        //         var dayTimeSepIndex = date.IndexOf(':');
+        //         var dayTime = TimeSpan.Zero;
+        //         //MessageBox.Show(date.Substring(dayTimeSepIndex));
+        //         var dateTimeSplit = (dayTimeSepIndex != - 1 ? date.Substring(0, dayTimeSepIndex) : date).Split('.').ToArray().Select(int.Parse).ToArray();
+        //         if (dayTimeSepIndex != -1)
+        //         {
+        //             var timeString = date.Substring(dayTimeSepIndex + 1);
+        //             var dayTimeSplit = timeString.Split('.');
+        //             int hours = 0, minutes = 0, seconds = 0;
+        //             if (dateTimeSplit.Length > 0)
+        //             {
+        //                 //MessageBox.Show(dayTimeSplit[0]);
+        //                 hours = int.Parse(dayTimeSplit[0]);
+        //                 if (dayTimeSplit.Length > 1)
+        //                 {
+        //                     minutes = int.Parse(dayTimeSplit[1]);
+        //                     if (dayTimeSplit.Length > 2)
+        //                     {
+        //                         seconds = int.Parse(dayTimeSplit[2]);
+        //                     }
+        //                 }
+        //             }
+        //             dayTime = new(hours, minutes, seconds);
+        //         }
+        //         return new DateTime(dateTimeSplit[2], dateTimeSplit[1], dateTimeSplit[0]) + dayTime;
+        //     }
+        //
+        //     TimeSpan GetExpirationTime(string time)
+        //     {
+        //         int GetFromRegex(string pattern)
+        //         {
+        //             var regex = new Regex(pattern);
+        //             var value = regex.Match(time).Groups[1].Value;
+        //             return value != string.Empty ? int.Parse(value) : 0;
+        //         }
+        //
+        //         var months = GetFromRegex(@"(\d+)M");
+        //         var days = GetFromRegex(@"(\d+)d");
+        //         var hours = GetFromRegex(@"(\d+)h");
+        //         var minutes = GetFromRegex(@"(\d+)m");
+        //         var seconds = GetFromRegex(@"(\d+)s");
+        //         return new TimeSpan(months * 30 + days, hours, minutes, seconds);
+        //     }
+        //
+        //     // Dictionary<UserAccess, bool> ParseAcceses()
+        //     // {
+        //     //     var dict = new Dictionary<UserAccess, bool>();
+        //     //     //if ()
+        //     //     return dict;
+        //     // }
+        //
+        //     //var utcOffset = TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now);
+        //     while (true)
+        //     {
+        //         ResetText();
+        //         await WaitForConnection();
+        //         var userFound = false;
+        //         var dbText = await GetDatabaseText();
+        //         foreach (var line in dbText.Split('\n'))
+        //         {
+        //             if (line.StartsWith("#")) continue;
+        //             var spaceSplit = line.Split(' ');
+        //             if (spaceSplit.Length > 1 && spaceSplit[1] != string.Empty)
+        //             {
+        //                 if (!int.TryParse(spaceSplit[0], out var id)) continue;
+        //                 //id = int.Parse(spaceSplit[0]);
+        //                 if (id != userId) continue;
+        //                 userFound = true;
+        //
+        //                 //MessageBox.Show(spaceSplit[0] + " " + spaceSplit[1]);
+        //                 var datesSplit = spaceSplit[1].Split('-');
+        //                 var startDate = GetDayTime(datesSplit[0]);
+        //                 var expirationTime = GetExpirationTime(datesSplit[1]);
+        //                 var expirationDate = startDate + expirationTime;// + utcOffset;
+        //                 
+        //                 if (expirationDate - DateTime.Now > TimeSpan.Zero)
+        //                 {
+        //                     Authorized = true;
+        //                     //maybe TODO: loading accesses
+        //                 }
+        //                 else
+        //                 {
+        //                     stringBuilder.AppendLine("Expired");
+        //                     Authorized = false;
+        //                 }
+        //             }
+        //             else
+        //             {
+        //                 if (!int.TryParse(line, out var id)) continue;
+        //                 if (userId == id)
+        //                 {
+        //                     userFound = true;
+        //                     Authorized = true;
+        //                 }
+        //             }
+        //
+        //             // Authorized = true;
+        //         }
+        //         
+        //         //     
+        // //     foreach (var line in db.Split('\n'))
+        // //     {
+        // //         var split = line.Split(' ');
+        // //         if (split[0] != id) continue;
+        // //         stringBuilder.Append("Id :").AppendLine(id);
+        // //         var datesSplit = split[1].Split('-');
+        // //         var startDate = GetDayTime(datesSplit[0]);
+        // //         var expirationTime = GetExpirationTime(datesSplit[1]);
+        // //         var expirationDate = startDate + expirationTime + TimeSpan.FromDays(1);
+        // //         if (DateTime.Now > expirationDate)
+        // //         {
+        // //             var daysAgoExpired = (DateTime.Now - expirationDate).Days + 1;
+        // //             stringBuilder.Append("Expired ")
+        // //                 .AppendLine(daysAgoExpired.ToString())
+        // //                 .Append("day");
+        // //             if (daysAgoExpired > 1)
+        // //                 stringBuilder.Append("s");
+        // //             stringBuilder.Append(" ago");
+        // //             return false;
+        // //         }
+        // //         // var startDate = GetDayTime(datesSplit[0]); //just for nothing
+        // //         // var expirationDate = GetDayTime(datesSplit[1]);
+        // //         // var expirationPeriod;
+        // //         // startDate + expirationDate
+        // //         // if (DateTime.Now > expirationDate)
+        // //         return true;
+        // //     }
+        //
+        //         if (!userFound)
+        //             Authorized = false;
+        //         
+        //         if (!Authorized)
+        //         {
+        //             BlockText = stringBuilder.AppendLine("No access").ToString();
+        //         }
+        //         await Task.Delay(Authorized ? authUpdateTime : authWaitTime);
+        //     }
+        // }
         
         private string GetName(IntPtr handle, int baseAddress, params int[] offsets)
         {
@@ -2446,184 +2363,7 @@ namespace TroveSkip.ViewModels
                 _pressedKeys.Add(key, false);
             return _pressedKeys[key];
         }
-
-        private unsafe float ReadSettings(int baseAddress)
-        {
-            var buffer = stackalloc byte[sizeof(float)];
-            var intBuffer = (int*) buffer;
-            var floatBuffer = (float*) buffer;
-            DarkSide.ReadMemory(_handle, baseAddress, buffer);
-            baseAddress = *intBuffer;
-            
-            var address = baseAddress + IdkObject[0];
-            DarkSide.ReadMemory(_handle, address, buffer);
-            var idkObject = *floatBuffer;
-            
-            if (idkObject == DefaultObjectsDistance)
-            {
-                address = baseAddress + DrawDistanceOffsets[0];
-                DarkSide.ReadMemory(_handle, address, buffer);
-                var drawDistance = *floatBuffer;
-                
-                if (drawDistance >= MinimalDrawDistance && drawDistance <= MaximalDrawDistance)
-                {
-                    //return drawDistance;
-                    address = baseAddress + HalfDrawDistanceOffsets[0];
-                    DarkSide.ReadMemory(_handle, address, buffer);
-                    var halfDrawDistance = *floatBuffer;
-                    
-                    if (halfDrawDistance == Math.Min(MaxGrama, drawDistance / 2))
-                    {
-                        return drawDistance; //(drawDistance, halfDrawDistance, idkObject);
-                    }
-                }
-
-            }
-
-            return 0;
-        }
-
-        private int GetGraphicsSettings(HookModel hook) => (int) DarkSide.ReadFloat(hook.Handle, hook.SettingsPointer, DrawDistanceOffsets);
-
-        private void ChangeGraphics(HookModel hook, bool noGraphics)
-        {
-            if (noGraphics)
-            {
-                int address;
-
-                float GetFloat(int offset)
-                {
-                    address = DarkSide.GetAddress(hook.Handle, hook.SettingsPointer, (int) offset);
-                    return DarkSide.ReadFloat(hook.Handle, address);
-                }
-
-                foreach (var offset in SettingsToSave)
-                {
-                    hook.Settings.Add(offset, GetFloat(offset));
-                    DarkSide.WriteFloat(hook.Handle, address, 0);
-                }
-            }
-            else
-            {
-                foreach (var pair in hook.Settings)
-                {
-                    DarkSide.WriteFloat(hook.Handle, hook.SettingsPointer, new[] {(int) pair.Key}, pair.Value);
-                }
-                hook.Settings.Clear();
-            }
-        }
-
-        private unsafe bool FindBaseAddresses(int i)
-        {
-            var buffer = stackalloc byte[sizeof(int)];
-            var intBuffer = (int*) buffer;
-            var address = _currentModulePointer + i;
-            DarkSide.ReadMemory(_handle, address, buffer);
-            var source = *intBuffer;
-            
-            if (_settingsOffset == 0)
-            {
-                if (ReadSettings(address) != 0)
-                {
-                    SettingsOffset = i.ToString("X8");
-                    return _localPlayerOffset != 0 && _worldOffset != 0 && _chatOffset != 0;
-                }
-            }
-            
-            if (_chatOffset == 0)
-            {
-                address = source + ChatOpenedOffsets[0];
-                if (DarkSide.ReadMemory(_handle, address, buffer))
-                {
-                    var opened = *buffer == 1;
-                    var valid = opened || *buffer == 0;
-
-                    if (valid && opened)
-                    {
-                        address = source + ChatOpenedOffsets[1];
-                        if (DarkSide.ReadMemory(_handle, address, buffer))
-                        {
-                            if (*intBuffer == 841)
-                            {
-                                ChatOffset = i.ToString("X8");
-                                return _localPlayerOffset != 0 && _worldOffset != 0 && _settingsOffset != 0;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // if (_gameGlobalsOffset == 0)
-            // {
-            //     *intBuffer = source;
-            //     foreach (var offset in WorldIdStableOffsets)
-            //     {
-            //         address = *intBuffer + offset;
-            //         if (!ReadMemory(address, buffer)) return false;
-            //     }
-            //
-            //     if (_worldId == *intBuffer)
-            //     {
-            //         GameGlobalsOffset = i.ToString("X8");
-            //         return _localPlayerOffset != 0 && _worldOffset != 0 && _chatOffset != 0 && _settingsOffset != 0;
-            //     }
-            // }
-            
-            if (_localPlayerOffset == 0)
-            {
-                *intBuffer = source;
-                foreach (var offset in LocalXPosition)
-                {
-                    address = *intBuffer + offset;
-                    if (!DarkSide.ReadMemory(_handle, address, buffer))
-                    {
-                        address = 0;
-                        break;
-                    }
-                }
-
-                if (address != 0)
-                {
-                    var value = *(float*) buffer;
-
-                    if (value > _xCoordinate - 1 && value < _xCoordinate + 1)
-                    {
-                        LocalPlayerOffset = i.ToString("X8");
-                        return _worldOffset != 0 && _chatOffset != 0 && _settingsOffset != 0;
-                    }
-                }
-            }
- 
-            if (_worldOffset == 0)
-            {
-                // *intBuffer = source;
-                // foreach (var offset in FirstPlayerXPosition)
-                // {
-                //     address = *intBuffer + offset;
-                //     if (!ReadMemory(address, buffer))
-                //         return false;
-                // }
-                //
-                // var xPos = *(float*) buffer;
-                //*intBuffer = source;
-                if (!DarkSide.ReadMemory(_handle, source + WorldIdOffsets[0], buffer))
-                    return false;
-
-                if (*intBuffer == _worldId)
-                {
-                    WorldOffset = i.ToString("X8");
-                    return _localPlayerOffset != 0 && _chatOffset != 0 && _settingsOffset != 0;
-                }
-                // if (xPos > _xCoordinate - 1 && xPos < _xCoordinate + 1 && *intBuffer == _worldId)
-                // {
-                //     WorldOffset = i.ToString("X8");
-                //     return _localPlayerOffset != 0 && _chatOffset != 0 && _settingsOffset != 0 && _gameGlobalsOffset != 0;
-                // }
-            }
-
-            return false;
-        }
-
+        
         private void WindowMouseDown(object sender, EventArgs args) => WindowDeactivated(sender, args);
 
         private void BindKeyDown(Key key)
