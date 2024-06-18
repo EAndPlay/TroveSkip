@@ -10,7 +10,7 @@ namespace TroveSkip
             public static readonly int[] Self = {0x0, 0x28};
             
             public static readonly int[] CharacterSelf = Self.Join(0xC4);
-            public static readonly int[] Name = Self.Join(0x1B4, 0x0);
+            public static readonly int[] Name = Self.Join(0x1C4, 0x0);
             public static readonly int[] UserId = Self.Join(0x3C0);
             public static readonly int[] MinimalLootRarity = Self.Join(0x678);
             

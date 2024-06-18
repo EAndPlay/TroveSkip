@@ -67,6 +67,7 @@ namespace TroveSkip.ViewModels
                     {
                         BlockShitVisibility = Visibility.Visible;
                         _activityHook.KeyDown -= OnKeyDown;
+                        //_activityHook.OnMouseActivity -= OnMouseActivity;
                     }
                 }
 
@@ -166,7 +167,7 @@ namespace TroveSkip.ViewModels
         #endregion
 
         private Settings _settings;
-        private readonly UserActivityHook _activityHook = new(false, true);
+        private readonly UserActivityHook _activityHook = new(true, true);
 
         private string _blockText;
 
@@ -1505,11 +1506,8 @@ namespace TroveSkip.ViewModels
                         if (name == null) return null;
 
                         var nameLength = name.Length;
-                        return nameLength <= maxNameLength
-                            ? name
-                            : new StringBuilder(name.Substring(0,
-                                    maxNameLength - 3)) //Math.Min(nameLength, maxNameLength - 3)
-                                .Append("...").ToString();
+                        var sb = nameLength <= maxNameLength ? name : new StringBuilder(name.Substring(0, Math.Min(nameLength, maxNameLength - 3))).Append("...").ToString();
+                        return sb.ToString();
                     }
 
                     if (hook == null)
@@ -1678,6 +1676,10 @@ namespace TroveSkip.ViewModels
             }
 
             _pressedKeys[key] = true;
+        }
+
+        private void OnMouseActivity(MouseButtonEventArgs key)
+        {
         }
 
         private void OnKeyUp(Key key)
