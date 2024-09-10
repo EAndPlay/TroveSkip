@@ -587,8 +587,10 @@
             <CheckBox Content="Insta-Mining" IsChecked="{Binding MiningCheck}" Command="{Binding PatchCommand}" CommandParameter="{x:Static local:PatchName.InstaMining}" Margin="65 233 0 0"/>
             <CheckBox Content="No Graphics" IsChecked="{Binding NoGraphics}" Margin="65 258 0 0"/>
             <!-- <CheckBox Content="Anti-AFK" IsChecked="{Binding AntiAfkCheck}" Margin="65 333 0 0"/> -->
+            <CheckBox Content="LMB" IsChecked="{Binding LMBSupport}" Margin="5 283 0 0"/>
             <CheckBox Content="Auto-Loot" IsChecked="{Binding AutoLootCheck}" Command="{Binding PatchCommand}" CommandParameter="{x:Static local:PatchName.AutoLoot}" Margin="65 283 0 0"/>
             <CheckBox Content="Follow Camera" IsChecked="{Binding FollowCamera}" Margin="65 308 0 0"/>
+            <CheckBox Content="Lock" IsChecked="{Binding LockCamera}" Margin="5 308 0 0"/>
             <CheckBox Content="Auto Pot" IsChecked="{Binding AutoPotCheck}" Margin="65 333 0 0"/>
             <CheckBox Content="Auto Attack" IsChecked="{Binding AutoAttackCheck}" Command="{Binding PatchCommand}" CommandParameter="{x:Static local:PatchName.AutoAttack}" Margin="65 358 0 0"/>
             <CheckBox IsChecked="{Binding SendECHeck}" Margin="5 180"/>

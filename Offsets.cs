@@ -14,40 +14,40 @@ namespace TroveSkip
             public static readonly int[] UserId = Self.Join(0x3C0);
             public static readonly int[] MinimalLootRarity = Self.Join(0x678);
             
-            public static class Character
+            public static class CharacterGameObject
             {
-                public static readonly int[] ControllerSelf = CharacterSelf.Join(0x4); 
+                public static readonly int[] TransformSelf = CharacterSelf.Join(0x4); 
                 public static readonly int[] InfoSelf = CharacterSelf.Join(0x10C);
                 public static readonly int[] StatsSelf = CharacterSelf.Join(0x2D4);
                 
                 public static readonly int[] CharacterId = CharacterSelf.Join(0xFC, 0x35C);
-                public static readonly int[] CharaterCurrentStats = CharacterSelf.Join(0xC, 0x60, 0x10);
+                public static readonly int[] CurrentStatsSelf = CharacterSelf.Join(0xC, 0x60, 0x10);
                 
-                public static class Controller
+                public static class Transform
                 {
-                    public static readonly int[] PositionX = ControllerSelf.Join(0x80);
-                    public static readonly int[] PositionY = ControllerSelf.Join(0x84);
-                    public static readonly int[] PositionZ = ControllerSelf.Join(0x88);
-                    public static readonly int[] VelocityX = ControllerSelf.Join(0xB0);
-                    public static readonly int[] VelocityY = ControllerSelf.Join(0xB4);
-                    public static readonly int[] VelocityZ = ControllerSelf.Join(0xB8);
-                    public static readonly int[] Gravity = ControllerSelf.Join(0xD8);
-                    public static readonly int[] RotationX = ControllerSelf.Join(0x1E4); //Works if State = 0
-                    public static readonly int[] RotationY = ControllerSelf.Join(0x1E4); //Broken
-                    public static readonly int[] RotationState = ControllerSelf.Join(0x1F0); //Default = -1, Block = 0
+                    public static readonly int[] PositionX = TransformSelf.Join(0x80);
+                    public static readonly int[] PositionY = TransformSelf.Join(0x84);
+                    public static readonly int[] PositionZ = TransformSelf.Join(0x88);
+                    public static readonly int[] VelocityX = TransformSelf.Join(0xB0);
+                    public static readonly int[] VelocityY = TransformSelf.Join(0xB4);
+                    public static readonly int[] VelocityZ = TransformSelf.Join(0xB8);
+                    public static readonly int[] Gravity = TransformSelf.Join(0xD8);
+                    public static readonly int[] RotationX = TransformSelf.Join(0x1E4); //Works if State = 0
+                    public static readonly int[] RotationY = TransformSelf.Join(0x1E4); //Broken
+                    public static readonly int[] RotationState = TransformSelf.Join(0x1F0); //Default = -1, Block = 0
                 }
 
                 public static class CurrentStats
                 {
-                    public static readonly int[] Health = CharaterCurrentStats.Join(0x138);
-                    public static readonly int[] MaxHealth = CharaterCurrentStats.Join(0x140);
-                    public static readonly int[] Energy = CharaterCurrentStats.Join(0x148);
-                    public static readonly int[] MaxEnergy = CharaterCurrentStats.Join(0x14C);
+                    public static readonly int[] Health = CurrentStatsSelf.Join(0x138);
+                    public static readonly int[] MaxHealth = CurrentStatsSelf.Join(0x140);
+                    public static readonly int[] Energy = CurrentStatsSelf.Join(0x148);
+                    public static readonly int[] MaxEnergy = CurrentStatsSelf.Join(0x14C);
                 }
                 
                 public static class Stats
                 {
-                    public static readonly int[] PhysiscalDamage = StatsSelf.Join(0x1C4);
+                    public static readonly int[] PhysicalDamage = StatsSelf.Join(0x1C4);
                     public static readonly int[] MagicDamage = StatsSelf.Join(0x1C8);
                     public static readonly int[] MaximumHealth = StatsSelf.Join(0x1CC);
                     public static readonly int[] MaximumEnergy = StatsSelf.Join(0x1D0);
@@ -55,7 +55,7 @@ namespace TroveSkip
                     public static readonly int[] EnergyRegeneration = StatsSelf.Join(0x1D8);
                     //1dc
                     public static readonly int[] CriticalHit = StatsSelf.Join(0x1E0);
-                    public static readonly int[] MovementSpeed = StatsSelf.Join(0x1E4);
+                    public static readonly int[] MovementSpeed = StatsSelf.Join(0x1E4); //Old 0x1E4 // New: 0x744
                     public static readonly int[] Jumps = StatsSelf.Join(0x1E8);
                     //1EC
                     //1F0
@@ -68,7 +68,7 @@ namespace TroveSkip
                     public static readonly int[] CriticalDamage = StatsSelf.Join(0x20C);
                     public static readonly int[] BattleFactor = StatsSelf.Join(0x210);
                     public static readonly int[] PowerRank = StatsSelf.Join(0x214);
-                    public static readonly int[] EncryptionKey = StatsSelf.Join(0x218);
+                    public static readonly int[] EncryptionKey = StatsSelf.Join(0x218); //Old: 0x218 // New: 0x74C
                     public static readonly int[] Light = StatsSelf.Join(0x21C);
                 }
                 
@@ -86,8 +86,8 @@ namespace TroveSkip
             public static readonly int Self = 0x4;
 
             public static readonly int[] LocalCamera = Self.Join(0x24);
-            public static readonly int[] HorizontalMove = Self.Join(0x2C);
             public static readonly int[] VerticalMove = Self.Join(0x28);
+            public static readonly int[] HorizontalMove = Self.Join(0x2C);
             public static readonly int[] MinimumDistance = Self.Join(0x38);
             public static readonly int[] MaximumDistance = Self.Join(0x3C);
             
@@ -104,12 +104,20 @@ namespace TroveSkip
         public static class World
         {
             public static readonly int Id = 0x8;
-            public static readonly int Players = 0xFC;
+            public static readonly int PlayerList = 0xFC;
+            public static readonly int EntityList = 0x104;
             
-            public static class PlayersList
+            public static class Players
             {
-                public static readonly int[] Self = Players.Join(0x0);
-                public static readonly int[] Count = Players.Join(0x2C);
+                public static readonly int[] Self = PlayerList.Join(0x0);
+                public static readonly int[] Count = PlayerList.Join(0x2C);
+            }
+            
+            public static class Entities
+            {
+                public static readonly int[] Self = EntityList.Join(0x38);
+                public static readonly int[] MobsCount = EntityList.Join(0x44);
+                public static readonly int[] EntitiesCount = EntityList.Join(0x24);
             }
         }
 
@@ -129,6 +137,42 @@ namespace TroveSkip
             public static readonly int VFXQuantityEx = 0x2C; //better to use than "VFXQuantity"
             [Description("Not changable direct")] public static readonly int Gamma = 0x30;
             [Description("Not changable direct")] public static readonly int Brightness = 0x34;
+        }
+        
+        public static class Entity
+        {
+            // TODO: dissect <C4> offset
+            public static readonly int[] Self = { 0xFC, 0xC };
+
+            public static readonly int[] Name = Self.Join(0x64, 0);
+            public static readonly int[] GameObjectSelf = Self.Join(0xC4);
+
+            public static class GameObject
+            {
+
+                public static readonly int[] TransformSelf = GameObjectSelf.Join(0x4);
+                public static readonly int[] CurrentStatsSelf = GameObjectSelf.Join(0xDC); // DC E4 EC
+
+                public static class Transform
+                {
+                    public static readonly int[] PositionX = TransformSelf.Join(0x80);
+                    public static readonly int[] PositionY = TransformSelf.Join(0x84);
+                    public static readonly int[] PositionZ = TransformSelf.Join(0x88);
+                    public static readonly int[] VelocityX = TransformSelf.Join(0xB0);
+                    public static readonly int[] VelocityY = TransformSelf.Join(0xB4);
+                    public static readonly int[] VelocityZ = TransformSelf.Join(0xB8);
+                    public static readonly int[] Gravity = TransformSelf.Join(0xD8);
+                    public static readonly int[] RotationX = TransformSelf.Join(0x1E4); //Works if State = 0
+                    public static readonly int[] RotationY = TransformSelf.Join(0x1E4); //Broken
+                    public static readonly int[] RotationState = TransformSelf.Join(0x1F0); //Default = -1, Block = 0
+                }
+
+                public static class CurrentStats
+                {
+                    public static readonly int[] Health = CurrentStatsSelf.Join(0x68);
+                    public static readonly int[] MaxHealth = CurrentStatsSelf.Join(0x70);
+                }
+            }
         }
     }
 }

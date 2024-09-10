@@ -376,11 +376,11 @@ namespace TroveSkip
         public static bool ReadBool(IntPtr handle, int address) =>
             ReadByte(handle, address) == 1; //GetBuffer(handle, address, sizeof(byte))[0] == 1;
 
-        public static byte ReadBytes(IntPtr handle, int baseAddress, params int[] offsets) =>
+        public static byte[] ReadBytes(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadBytes(handle, GetAddress(handle, baseAddress, offsets));
 
-        public static byte ReadBytes(IntPtr handle, int address) =>
-            GetBuffer(handle, address, sizeof(byte))[0];
+        public static byte[] ReadBytes(IntPtr handle, int address) =>
+            GetBuffer(handle, address, sizeof(byte));
 
         public static short ReadShort(IntPtr handle, int baseAddress, params int[] offsets) =>
             ReadShort(handle, GetAddress(handle, baseAddress, offsets));

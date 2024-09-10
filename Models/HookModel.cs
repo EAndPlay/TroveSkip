@@ -36,6 +36,7 @@ namespace TroveSkip.Models
         public int LocalPlayerPointer;
         public int WorldPointer;
         public int SettingsPointer;
+        public int EntityListPointer;
         public Dictionary<int, float> Settings;
         //public Dictionary<PatchName, Patch> Patches;
         public PatchCollection Patches;

@@ -489,7 +489,14 @@ namespace TroveSkip
 
         private KeyboardDevice _keyboardDevice => Keyboard.PrimaryDevice;
         private MouseDevice _mouseDevice => Mouse.PrimaryDevice;
-        public delegate void MouseEventHandler(ref MouseButtonEventArgs args);
+
+        public class CustomMouseButtonEvent
+        {
+            public MouseButton Button;
+            public MouseButtonState ButtonState;
+        }
+        public delegate void MouseEventHandler(ref CustomMouseButtonEvent args);
+        //public delegate void MouseEventHandler(ref MouseButtonEventArgs args);
         public delegate void KeyEventHandler(Key key);
         /// <summary>
         /// Occurs when the user moves the mouse, presses any mouse button or scrolls the wheel
@@ -680,75 +687,113 @@ namespace TroveSkip
         /// </returns>
         private int MouseHookProc(int nCode, int wParam, IntPtr lParam)
         {
+            MouseButton GetButton(Int32 wParam)
+            {
+                switch (wParam)
+                {
+                    case WM_LBUTTONDOWN:
+                    case WM_LBUTTONUP:
+                    case WM_LBUTTONDBLCLK:
+                        return MouseButton.Left;
+                    case WM_RBUTTONDOWN:
+                    case WM_RBUTTONUP:
+                    case WM_RBUTTONDBLCLK:
+                        return MouseButton.Right;
+                    case WM_MBUTTONDOWN:
+                    case WM_MBUTTONUP:
+                    case WM_MBUTTONDBLCLK:
+                        return MouseButton.Middle;
+                }
+
+                return MouseButton.Middle;
+            }
+            
+            MouseButtonState GetEventType(Int32 wParam)
+            {
+                switch (wParam)
+                {
+                    case WM_LBUTTONDOWN:
+                    case WM_RBUTTONDOWN:
+                    case WM_MBUTTONDOWN:
+                        return MouseButtonState.Pressed;
+                    case WM_LBUTTONUP:
+                    case WM_RBUTTONUP:
+                    case WM_MBUTTONUP:
+                        return MouseButtonState.Released;
+                }
+
+                return MouseButtonState.Released;
+            }
+            
             if (nCode < 0 || OnMouseActivity == null) return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
-            //var mouseHookStruct = (MouseLLHookStruct) Marshal.PtrToStructure(lParam, typeof(MouseLLHookStruct));
+            MouseLLHookStruct mouseHookStruct = (MouseLLHookStruct)Marshal.PtrToStructure(lParam, typeof(MouseLLHookStruct));
 
             //detect button clicked
-            var button = wParam switch
+            var button = GetButton(wParam);
+            var state = GetEventType(wParam);
+            short mouseDelta = 0;
+            switch (wParam)
             {
-                WM_LBUTTONDOWN => MouseButton.Left,
-                WM_RBUTTONDOWN => MouseButton.Right,
-                _ => default
-            };
+                case WM_LBUTTONDOWN:
+                case WM_RBUTTONDOWN:
+                    state = MouseButtonState.Pressed;
+                    break;
+            }
+            switch (wParam)
+            {
+                case WM_LBUTTONUP:
+                case WM_RBUTTONUP:
+                    state = MouseButtonState.Released;
+                    break;
+            }
+            
+            // switch (wParam)
+            // {
+            //     case WM_LBUTTONDOWN:
+            //         //case WM_LBUTTONUP: 
+            //         //case WM_LBUTTONDBLCLK: 
+            //         button = MouseButton.Left;
+            //         break;
+            //     case WM_RBUTTONDOWN:
+            //         //case WM_RBUTTONUP: 
+            //         //case WM_RBUTTONDBLCLK: 
+            //         button = MouseButton.Right;
+            //         break;
+            //     //case WM_MOUSEWHEEL:
+            //         //If the message is WM_MOUSEWHEEL, the high-order word of mouseData member is the wheel delta. 
+            //         //One wheel click is defined as WHEEL_DELTA, which is 120. 
+            //         //(value >> 16) & 0xffff; retrieves the high-order word from the given 32-bit value
+            //         mouseDelta = (short)((mouseHookStruct.mouseData >> 16) & 0xffff);
+            //         //TODO: X BUTTONS (I havent them so was unable to test)
+            //         //If the message is WM_XBUTTONDOWN, WM_XBUTTONUP, WM_XBUTTONDBLCLK, WM_NCXBUTTONDOWN, WM_NCXBUTTONUP, 
+            //         //or WM_NCXBUTTONDBLCLK, the high-order word specifies which X button was pressed or released, 
+            //         //and the low-order word is reserved. This value can be one or more of the following values. 
+            //         //Otherwise, mouseData is not used. 
+            //         break;
+            // }
+
+            //MessageBox.Show(Convert.ToString(mouseHookStruct.flags, 2));
 
             //double clicks
             // int clickCount = 0;
-            // if (button > (MouseButton) (-1))
+            // if (button != default)
             //     if (wParam == WM_LBUTTONDBLCLK || wParam == WM_RBUTTONDBLCLK) clickCount = 2;
             //     else clickCount = 1;
 
-            //generate event 
-            //var e = new MouseEventArgs(button, clickCount, mouseHookStruct.pt.x, mouseHookStruct.pt.y, mouseDelta);
-            var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button);
+            //generate event
+            //var e = new MouseEventArgs(Mouse.PrimaryDevice, 0);
+            //var e = new MouseEventArgs(button, clickCount, mouseHookStruct.Point.x, mouseHookStruct.Point.y, mouseDelta);
+            //var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button);
+            var args = new CustomMouseButtonEvent
+            {
+                Button = button,
+                ButtonState = state
+            };
             OnMouseActivity(ref args);
 
             //call next hook
             return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
         }
-        
-        // private int MouseHookProcOLD(int nCode, int wParam, IntPtr lParam)
-        // {
-        //     if (nCode < 0 || OnMouseActivity == null) return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
-        //     var mouseHookStruct = (MouseLLHookStruct) Marshal.PtrToStructure(lParam, typeof(MouseLLHookStruct));
-        //
-        //     //detect button clicked
-        //     MouseButton button = default;
-        //     short mouseDelta = 0;
-        //     switch (wParam)
-        //     {
-        //         case WM_LBUTTONDOWN:
-        //             button = MouseButton.Left;
-        //             break;
-        //         case WM_RBUTTONDOWN:
-        //             button = MouseButton.Right;
-        //             break;
-        //         case WM_MOUSEWHEEL:
-        //             //If the message is WM_MOUSEWHEEL, the high-order word of mouseData member is the wheel delta. 
-        //             //One wheel click is defined as WHEEL_DELTA, which is 120. 
-        //             //(value >> 16) & 0xffff; retrieves the high-order word from the given 32-bit value
-        //             mouseDelta = (short) ((mouseHookStruct.mouseData >> 0x10) & 0xFFFF);
-        //             //TODO: X BUTTONS (I havent them so was unable to test)
-        //             //If the message is WM_XBUTTONDOWN, WM_XBUTTONUP, WM_XBUTTONDBLCLK, WM_NCXBUTTONDOWN, WM_NCXBUTTONUP, 
-        //             //or WM_NCXBUTTONDBLCLK, the high-order word specifies which X button was pressed or released, 
-        //             //and the low-order word is reserved. This value can be one or more of the following values. 
-        //             //Otherwise, mouseData is not used. 
-        //             break;
-        //     }
-        //
-        //     //double clicks
-        //     // int clickCount = 0;
-        //     // if (button > (MouseButton) (-1))
-        //     //     if (wParam == WM_LBUTTONDBLCLK || wParam == WM_RBUTTONDBLCLK) clickCount = 2;
-        //     //     else clickCount = 1;
-        //
-        //     //generate event 
-        //     //var e = new MouseEventArgs(button, clickCount, mouseHookStruct.pt.x, mouseHookStruct.pt.y, mouseDelta);
-        //     var e = new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, button);
-        //     OnMouseActivity(this, e);
-        //
-        //     //call next hook
-        //     return CallNextHookEx(_hMouseHook, nCode, wParam, lParam);
-        // }
         
         /// <summary>
         /// A callback function which will be called every time a keyboard activity detected.

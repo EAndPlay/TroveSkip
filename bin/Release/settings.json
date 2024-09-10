@@ -1,9 +1,9 @@
 {
-  "LocalPlayerPointer": "0107FBBC",
-  "ChatPointer": "0107FB28",
-  "SettingsPointer": "0107FBAC",
+  "LocalPlayerPointer": "01087898",
+  "ChatPointer": "01087958",
+  "SettingsPointer": "010879E0",
   "GameGlobalsPointer": "00000000",
-  "WorldPointer": "0107F9FC",
+  "WorldPointer": "01087990",
   "SkipButton": "D3",
   "SprintButton": "D4",
   "SprintToggleButton": "None",
@@ -20,7 +20,7 @@
   "FollowSpeedValue": 50.0,
   "AntiAfk": false,
   "StopIfNoMove": false,
-  "FollowApp": true,
+  "FollowApp": false,
   "BotsSettings": {
     "StopDistance": 2.0,
     "StopType": 1,

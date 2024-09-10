@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,9 +28,12 @@ namespace TroveSkip.ViewModels
 {
     public partial class MainWindowViewModel : INotifyPropertyChanged, INotifyCollectionChanged
     {
+        private const int CameraRotationSize = 8;
         private const int VectorSize = 3;
         private const int VectorByteSize = VectorSize * sizeof(float);
         private readonly Dispatcher _dispatcher;
+
+        private static byte[] _lockCameraCoordinates = new byte[CameraRotationSize];
         
         //TODO: d3d hook
 
@@ -67,6 +71,7 @@ namespace TroveSkip.ViewModels
                     {
                         BlockShitVisibility = Visibility.Visible;
                         _activityHook.KeyDown -= OnKeyDown;
+                        _activityHook.KeyUp -= OnKeyUp;
                         //_activityHook.OnMouseActivity -= OnMouseActivity;
                     }
                 }
@@ -105,7 +110,7 @@ namespace TroveSkip.ViewModels
                     if (FollowBotsToggle && _botsNoClipCheck)
                     {
                         _hookModel.Patches.Patch(PatchName.NoClip);
-                        DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.Gravity, 0); //GravityOffsets, 0);
+                        //DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.CharacterEntity.Transform.Gravity, 0); //GravityOffsets, 0);
                     }
                     if (NoGraphics)
                         _hookModel.Patches.Patch(PatchName.NoGraphic);
@@ -116,8 +121,9 @@ namespace TroveSkip.ViewModels
 
                 if (value != null)
                 {
+                    value.IsPrimary = true;
                     _hookModel = value;
-                    _handle = _hookModel.Handle;
+                    _handle = value.Handle;
                     _currentModulePointer = value.ModuleAddress;
 
                     _currentLocalPlayerPointer = _currentModulePointer + _localPlayerOffset;
@@ -134,11 +140,10 @@ namespace TroveSkip.ViewModels
                         _encryptedSpeed = BitConverter.ToUInt32(bytes, 0) ^ _encryptionKey;
                     }
                     
-                    _hookModel.IsPrimary = true;
                     if (FollowBotsToggle && !_botsNoClipCheck && BotsSettings.FollowType == FollowType.Local)
                     {
                         _hookModel.Patches.Unpatch(PatchName.NoClip);
-                        DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.Gravity, DefaultGravity); //GravityOffsets, DefaultGravity);
+                        //DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.CharacterEntity.Transform.Gravity, DefaultGravity); //GravityOffsets, DefaultGravity);
                     }
                     if (NoGraphics)
                         _hookModel.Patches.Unpatch(PatchName.NoGraphic);
@@ -214,6 +219,7 @@ namespace TroveSkip.ViewModels
         private bool _jumpCheck;
         private bool _noGraphicsCheck;
         private bool _followCamera;
+        private bool _lockCamera;
         private bool _rotateCamera;
         private bool _autoPotCheck;
         private bool _autoAttackCheck;
@@ -246,6 +252,7 @@ namespace TroveSkip.ViewModels
         private bool _chamsCheck;
         private bool _miningCheck;
         private bool _autoLootCheck;
+        private bool _lMBSupport;
         private bool _sendECHeck;
 
         private bool _followBotsToggle;
@@ -617,6 +624,24 @@ namespace TroveSkip.ViewModels
             }
         }
         
+        public bool LMBSupport
+        {
+            get => _lMBSupport;
+            set
+            {
+                _lMBSupport = value;
+                if (!value)
+                {
+                    foreach (var hook in Hooks)
+                    {
+                        RotateCamera = false;
+                        hook.Patches.Unpatch(PatchName.AutoAttack);
+                    }
+                }
+                OnPropertyChanged();
+            }
+        }
+            
         public bool SendECHeck
         {
             get => _sendECHeck;
@@ -656,7 +681,27 @@ namespace TroveSkip.ViewModels
             {
                 _followCamera = value;
                 if (value)
+                {
                     _dispatcher.InvokeAsync(FollowCameraAsync);
+                }
+                else
+                {
+                    if (!NotHooked())
+                        DarkSide.ReadProcessMemory(_handle, DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.Camera.VerticalMove), _lockCameraCoordinates, CameraRotationSize, out _);
+                }
+
+                OnPropertyChanged();
+            }
+        }
+        
+        public bool LockCamera
+        {
+            get => _lockCamera;
+            set
+            {
+                _lockCamera = value;
+                if (value)
+                    _dispatcher.InvokeAsync(LockCameraAsync);
                 OnPropertyChanged();
             }
         }
@@ -761,27 +806,31 @@ namespace TroveSkip.ViewModels
             set
             {
                 _followBotsToggle = value;
-                if (value)
-                {
-                    foreach (var hook in Hooks)
-                    {
-                        if (BotsSettings.FollowType == FollowType.Local && hook.IsPrimary || !hook.IsBot) continue;
-
-                        if (_botsNoClipCheck)
-                            hook.Patches.Patch(PatchName.NoClip);
-                        DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer,
-                            Offsets.LocalPlayer.Character.Controller.Gravity, 0); //GravityOffsets, 0);
-                    }
-                }
-                else
-                {
-                    foreach (var hook in Hooks)
-                    {
-                        if (_botsNoClipCheck && BotsSettings.FollowType == FollowType.Local)
-                            hook.Patches.Unpatch(PatchName.NoClip);
-                        DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.Gravity, DefaultGravity);
-                    }
-                }
+                
+                // NoClip has weird behaviour
+                
+                // if (value)
+                // {
+                //     foreach (var hook in Hooks)
+                //     {
+                //         if (BotsSettings.FollowType == FollowType.Local && hook.IsPrimary || !hook.IsBot) continue;
+                //     
+                //         if (_botsNoClipCheck)
+                //             hook.Patches.Patch(PatchName.NoClip);
+                //         
+                //         //DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer,
+                //         //    Offsets.LocalPlayer.CharacterEntity.Transform.Gravity, 0); //GravityOffsets, 0);
+                //     }
+                // }
+                // else
+                // {
+                //     foreach (var hook in Hooks)
+                //     {
+                //         if (_botsNoClipCheck && BotsSettings.FollowType == FollowType.Local)
+                //             hook.Patches.Unpatch(PatchName.NoClip);
+                //         //DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.CharacterEntity.Transform.Gravity, DefaultGravity);
+                //     }
+                // }
                 
                 OnPropertyChanged();
             }
@@ -912,41 +961,123 @@ namespace TroveSkip.ViewModels
         private object GetKey(string name) => _binds[name] != Key.None ? 
             (object) (Regex.IsMatch(_binds[name].ToString(), @"D\d") ? 
                 _binds[name].ToString().Replace("D", "") : _binds[name]) : "Not binded";
-        
+
         public MainWindowViewModel()
         {
             for (int i = 0; i < Enum.GetValues(typeof(PatchName)).Length; i++)
             {
-                Patches.Add((PatchName) i, false);
+                Patches.Add((PatchName)i, false);
             }
-            
+
             _dispatcher = Application.Current.MainWindow.Dispatcher;
             SearchWindowVisibility = Visibility.Hidden;
             MainPageVisibility = Visibility.Visible;
             BotsSettingsPageVisibility = Visibility.Hidden;
             //TODO: set "false" on release
             Authorized = true;
-            // var proc = Process.GetProcessById(22496);
-            // var handle = proc.Handle;
-            // var baseAddress = proc.MainModule.BaseAddress;
-            // unsafe
-            // {
-            //     var buffer = stackalloc byte[4];
-            //     for (int i = 0; i < 100_000_000; i++)
-            //     {
-            //         ReadProcessMemory(handle, i, buffer, 4, out _);
-            //         if (*(int*) buffer == 1620)
-            //         {
-            //             MessageBox.Show(i.ToString());
-            //             break;
-            //         }
-            //     }
-            // }
-            // return;
-            
+
             _dispatcher.ShutdownStarted += (_, _) => CloseWindow();
             _dispatcher.InvokeAsync(LoadSettings);
 
+            // new Thread(() =>
+            // {
+            //     AllocConsole();
+            //     Console.WriteLine(@"<Information Console> started");
+            // }) { IsBackground = true, Priority = ThreadPriority.Lowest }.Start();
+            
+            // _dispatcher.InvokeAsync(async () =>
+            // {
+            //     var entityOffsets = ((int[]) Offsets.World.Entities.Self.Clone()).Join(0);
+            //     var entityPositionXOffsets = entityOffsets.Join(Offsets.Entity.GameObject.Transform.PositionX);
+            //     var entityHealthOffsets = entityOffsets.Join(Offsets.Entity.GameObject.CurrentStats.Health);
+            //     var nameOffsets = entityOffsets.Join(Offsets.Entity.Name);
+            //     
+            //     int entityPositionAddress;
+            //     var entityPosition = new float[3];
+            //     var playerPosition = new float[3];
+            //  
+            //     var targets = new List<(float, float, float, float, int, int, int, string)>();
+            //     var targetsCount = 0;
+            //
+            //     while (true)
+            //     {
+            //         if (NotHooked())
+            //         {
+            //             await Task.Delay(100);
+            //             continue;
+            //         }
+            //         DarkSide.ReadProcessMemory(HookModel.Handle,
+            //             DarkSide.GetAddress(HookModel.Handle, HookModel.LocalPlayerPointer,
+            //                 Offsets.LocalPlayer.CharacterGameObject.Transform.PositionX), playerPosition, VectorByteSize,
+            //             out _);
+            //
+            //         var entitiesCount = DarkSide.ReadInt(HookModel.Handle, HookModel.WorldPointer, Offsets.World.Entities.EntitiesCount);
+            //         for (var i = 0; i < entitiesCount; i++)
+            //         {
+            //             nameOffsets[2] = entityHealthOffsets[2] = entityPositionXOffsets[2] = i * sizeof(int);
+            //             entityPositionAddress = DarkSide.GetAddress(HookModel.Handle, HookModel.WorldPointer, entityPositionXOffsets);
+            //             if (entityPositionAddress == 0) continue;
+            //
+            //             var nameAddress = DarkSide.GetAddress(HookModel.Handle, HookModel.WorldPointer, nameOffsets);
+            //             if (nameAddress == 0) continue;
+            //             
+            //             var name = DarkSide.ReadString(HookModel.Handle, nameAddress, 64, Encoding.ASCII);
+            //             if (string.IsNullOrEmpty(name)) continue;
+            //             //if (!name.StartsWith("npc/")) continue;
+            //             //var health = DarkSide.ReadInt(HookModel.Handle, address);
+            //             //Console.WriteLine(DarkSide.ReadInt(HookModel.Handle, HookModel.WorldPointer, entityOffsets.Join(entityPositionXOffsets[2]).Join(Offsets.Entity.CurrentStats.MaxHealth)).ToString());
+            //             
+            //             var healthAddress = DarkSide.GetAddress(HookModel.Handle, HookModel.WorldPointer, entityHealthOffsets);//DarkSide.GetAddress(HookModel.Handle, HookModel.WorldPointer, entityOffsets.Join(entityPositionXOffsets[2]).Join(Offsets.Entity.CurrentStats.Health));
+            //             //if (healthAddress == 0) continue;
+            //             var health = DarkSide.ReadInt(HookModel.Handle, healthAddress);
+            //             var maxHealth = DarkSide.ReadInt(HookModel.Handle, healthAddress + 8);
+            //             //if (health != 20) continue;
+            //             DarkSide.ReadProcessMemory(HookModel.Handle, entityPositionAddress, entityPosition,
+            //                 VectorByteSize, out _);
+            //
+            //             //if (!(-829 < entityPosition[0] && entityPosition[0] < -827 && 100 < entityPosition[1] && entityPosition[1] < 115 && -1348 < entityPosition[2] && entityPosition[2] < -1340)) continue;
+            //
+            //             float length = 1;
+            //
+            //             for (var j = 0; j < VectorSize; j++)
+            //             {
+            //                 var currentVelocity = entityPosition[j] - playerPosition[j];
+            //                 length += currentVelocity * currentVelocity;
+            //             }
+            //
+            //             length = Math.Max((float)Math.Sqrt(length), 1);
+            //
+            //             if (!(length is > 0 and < 210)) continue;
+            //             //var pos = new byte[12];
+            //             //DarkSide.ReadProcessMemory(HookModel.Handle, DarkSide.GetAddress(HookModel.Handle, HookModel.LocalPlayerPointer, Offsets.LocalPlayer.CharacterEntity.Transform.PositionX), pos, VectorByteSize, out _);
+            //             //DarkSide.WriteProcessMemory(HookModel.Handle, entityPositionAddress, pos, 12, out _);
+            //             targets.Add((entityPosition[0], entityPosition[1], entityPosition[2], length, health, maxHealth, entityPositionXOffsets[2], name));
+            //             targetsCount++;
+            //             //Console.WriteLine($@"[{targetsCount}] <{entityPositionXOffsets[2]:X}> -> pos:({entityPosition[0]:F1}, {entityPosition[1]:F1}, {entityPosition[2]:F1} | len:{length:F1}) hp:({health}/{maxHealth})");
+            //         }
+            //
+            //         await Task.Run(() =>
+            //         {
+            //             targets = targets.OrderBy(x => x.Item4).ToList();
+            //             var sb = new StringBuilder();
+            //             foreach (var target in targets)
+            //             {
+            //                 sb.Append($@"<{target.Item7:X}> -> pos:({target.Item1:F1}, {target.Item2:F1}, {target.Item3:F1} | dist:{target.Item4:F1}) hp:({target.Item5}/{target.Item6})");
+            //                 if (target.Item8 != null)
+            //                     sb.Append(" name:").Append(target.Item8);
+            //                 sb.AppendLine();
+            //             }
+            //
+            //             sb.Append("Total: ").Append(targetsCount).AppendLine();
+            //             Console.Clear();
+            //             Console.WriteLine(sb.ToString());
+            //         });
+            //         await Task.Delay(125);
+            //         targets.Clear();
+            //         targetsCount = 0;
+            //     }
+            // });
+            
             //TODO: mouse buttons holding states
             //_activityHook.OnMouseActivity += (ref MouseButtonEventArgs args) =>
             //{
@@ -976,7 +1107,7 @@ namespace TroveSkip.ViewModels
                     handle = hook.Handle;
                     if (_botsNoClipCheck)
                         hook.Patches.Unpatch(PatchName.NoClip);
-                    DarkSide.WriteFloat(handle, hook.LocalPlayerPointer, GravityOffsets, DefaultGravity);
+                    //DarkSide.WriteFloat(handle, hook.LocalPlayerPointer, GravityOffsets, DefaultGravity);
                 }
             }
 
@@ -1238,7 +1369,7 @@ namespace TroveSkip.ViewModels
             address = DarkSide.ReadInt(_handle, address);
             SettingsOffset = (address - _currentModulePointer).ToString("X8");
             
-            address = DarkSide.FindSignatureAddress(_hookModel, Signatures.ChatStateOffsetSignature) + 7;
+            address = DarkSide.FindSignatureAddress(_hookModel, Signatures.ChatStatePointerSignature) + 7;
             address = DarkSide.ReadInt(_handle, address);
             ChatOffset = (address - _currentModulePointer).ToString("X8");
             
@@ -1358,7 +1489,7 @@ namespace TroveSkip.ViewModels
             var positionBuffer = new float[VectorSize];
             var newPositionBuffer = new float[VectorSize];
 
-            var xPositionAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.PositionX);//LocalXPosition);
+            var xPositionAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.CharacterGameObject.Transform.PositionX);//LocalXPosition);
             var xCameraRotationAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.Camera.Rotation.RotationX);//XView);
 
             DarkSide.ReadProcessMemory(_handle, xPositionAddress, positionBuffer, VectorByteSize, out _);
@@ -1376,7 +1507,10 @@ namespace TroveSkip.ViewModels
         private void SuperJump()
         {
             if (!_jumpCheck || NotFocused()) return;
-            DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, LocalYPosition, DarkSide.ReadFloat(_handle, _currentLocalPlayerPointer, LocalYPosition) + _jumpForceValue);
+            var currentYAddress = DarkSide.GetAddress(_handle, _hookModel.LocalPlayerPointer, Offsets.LocalPlayer.CharacterGameObject.Transform.PositionY);
+            var currentY = DarkSide.ReadFloat(_handle, currentYAddress);
+            DarkSide.WriteFloat(_handle, currentYAddress, currentY + _jumpForceValue);
+            //DarkSide.WriteFloat(_handle, _currentLocalPlayerPointer, LocalYPosition, DarkSide.ReadFloat(_handle, _currentLocalPlayerPointer, LocalYPosition) + _jumpForceValue);
         }
 
         private async void ForceSprintAsync()
@@ -1386,7 +1520,7 @@ namespace TroveSkip.ViewModels
             while (IsPressed(_binds[nameof(SprintButton)]) && !NotFocused() && _sprintCheck)
             {
                 xViewAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.Camera.Rotation.RotationX); //XView);
-                velocityAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Controller.VelocityX); //LocalXVelocity);
+                velocityAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.CharacterGameObject.Transform.VelocityX); //LocalXVelocity);
 
                 DarkSide.ReadProcessMemory(_handle, xViewAddress, valuesBuffer, VectorByteSize, out _);
                 for (byte i = 0; i < VectorSize; i++)
@@ -1408,8 +1542,12 @@ namespace TroveSkip.ViewModels
                     await Task.Delay(100);
                     continue;
                 }
-                
-                DarkSide.WriteUInt(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.Character.Stats.MovementSpeed, _encryptedSpeed); //SpeedOffsets
+
+                foreach (var hook in Hooks)
+                { 
+                    DarkSide.WriteUInt(hook.Handle, hook.LocalPlayerPointer, Offsets.LocalPlayer.CharacterGameObject.Stats.MovementSpeed, _encryptedSpeed); //SpeedOffsets
+                    // DarkSide.WriteUInt(_handle, _currentLocalPlayerPointer, Offsets.LocalPlayer.CharacterEntity.Stats.MovementSpeed, _encryptedSpeed); //SpeedOffsets
+                }
                 await Task.Delay(10);
             }
         }
@@ -1537,10 +1675,10 @@ namespace TroveSkip.ViewModels
                 {
                     foreach (var botHook in Hooks)
                     {
-                        var gravity = botHook.IsPrimary && BotsSettings.FollowType == FollowType.Local || !botHook.IsBot
-                            ? DefaultGravity
-                            : 0;
-                        DarkSide.WriteFloat(botHook.Handle, botHook.LocalPlayerPointer, GravityOffsets, gravity);
+                        // var gravity = botHook.IsPrimary && BotsSettings.FollowType == FollowType.Local || !botHook.IsBot
+                        //     ? DefaultGravity
+                        //     : 0;
+                        //DarkSide.WriteFloat(botHook.Handle, botHook.LocalPlayerPointer, GravityOffsets, gravity);
                         botHook.WorldId = DarkSide.ReadInt(botHook.Handle, botHook.WorldPointer, WorldIdOffsets);
                     }
                 }
@@ -1570,20 +1708,28 @@ namespace TroveSkip.ViewModels
 
         private void OnKeyDown(Key key)
         {
-            if (key == Key.T)
-            {
-                DarkSide.SendMouseClick(_hookModel.WindowHandle, DarkSide.MouseButton.LeftButton, 1286, 703);
-            }
+            //if (key == Key.T)
+            //{
+            //    DarkSide.SendMouseClick(_hookModel.WindowHandle, DarkSide.MouseButton.LeftButton, 1286, 703);
+            //}
             if (NotHooked() || NotFocused() || ChatOpened()) return;
 
             if (!_pressedKeys.TryGetValue(key, out _))
                 _pressedKeys.Add(key, false);
 
+            if (key != Key.D1 && _followBotsToggle)
+            {
+                foreach (var hook in Hooks)
+                {
+                    if (hook.IsPrimary) continue;
+                    DarkSide.SendKeyboardKeyDown(hook.WindowHandle, key);
+                }
+            }
             // if (key == _binds[nameof(SkipButton)] && !IsPressed(key))
             //     _dispatcher.InvokeAsync(Skip);
             // else if (key == _binds[nameof(SprintButton)] && !IsPressed(key))
             //     _dispatcher.InvokeAsync(ForceSprintAsync);
-            
+
             //TODO: abstract to Key.Handle
             if (!IsPressed(key))
             {
@@ -1592,7 +1738,7 @@ namespace TroveSkip.ViewModels
 
                 else if (key == _binds[nameof(SprintButton)])
                     _dispatcher.InvokeAsync(ForceSprintAsync);
-                
+
                 else if (key == _binds[nameof(JumpButton)])
                     _dispatcher.InvokeAsync(SuperJump);
 
@@ -1618,28 +1764,28 @@ namespace TroveSkip.ViewModels
 
                 else if (key == _binds[nameof(BotsNoClipToggleButton)] && FollowBotsToggle)
                     BotsNoClipCheck = !BotsNoClipCheck;
-                
+
                 //TODO: find out why it made
                 // else if (key == _binds[nameof(MiningToggleButton)])
                 //     foreach (var h)
                 //     PatchStateChanged(new ToggleButton {Name = "MiningCheck", IsChecked = MiningCheck = !MiningCheck}, MiningSlowSignature, MiningSlowEnabledSignature);
-                
+
                 else if (key == _binds[nameof(AttackHoldButton)])
                 {
                     foreach (var hook in Hooks)
                     {
                         if (hook.IsPrimary) continue;
-                        
+
                         hook.Patches.Patch(PatchName.AutoAttack);
                     }
                 }
-                
+
                 else if (key == _binds[nameof(FollowBotsToggleButton)])
                     FollowBotsToggle = !FollowBotsToggle;
-                
+
                 else if (key == _binds[nameof(RotateCameraToggleButton)])
                     RotateCamera = !RotateCamera;
-                
+
                 else if (key == Key.F1)
                 {
                     foreach (var hook in Hooks)
@@ -1660,7 +1806,7 @@ namespace TroveSkip.ViewModels
                         DarkSide.SendKeyboardKeyUp(hook.WindowHandle, Key.W);
                     }
                 }
-                
+
                 else if (key == Key.E)
                 {
                     if (SendECHeck)
@@ -1668,7 +1814,7 @@ namespace TroveSkip.ViewModels
                         foreach (var hook in Hooks)
                         {
                             if (hook.IsPrimary) continue;
-                            
+
                             DarkSide.SendKeyboardKeyPress(hook.WindowHandle, Key.E);
                         }
                     }
@@ -1678,8 +1824,74 @@ namespace TroveSkip.ViewModels
             _pressedKeys[key] = true;
         }
 
-        private void OnMouseActivity(MouseButtonEventArgs key)
+        private static MouseButtonState _lastLeftButtonState;
+        
+        private void OnMouseActivity(ref UserActivityHook.CustomMouseButtonEvent e)//(object sender, MouseEventArgs e)
         {
+            if (NotHooked() || NotFocused()) return;
+            if (e.Button != MouseButton.Left) return;
+            if (e.ButtonState == _lastLeftButtonState) return;
+
+            _lastLeftButtonState = e.ButtonState;
+
+            if (!_lMBSupport) return;
+            
+            //RotateCamera = _lastLeftButtonState == MouseButtonState.Pressed;
+            if (_lastLeftButtonState == MouseButtonState.Pressed)
+            {
+                foreach (var hook in Hooks)
+                {
+                    if (hook.IsPrimary) continue;
+                    hook.Patches.Patch(PatchName.AutoAttack);
+                }
+                RotateCamera = true;
+            }
+            else
+            {
+                foreach (var hook in Hooks)
+                {
+                    if (hook.IsPrimary) continue;
+                    hook.Patches.Unpatch(PatchName.AutoAttack);
+                    DarkSide.SendMouseClick(hook.WindowHandle, DarkSide.MouseButton.LeftButton);
+                }
+                RotateCamera = false;
+            }
+            
+
+            //MessageBox.Show((_lastLeftButtonState == MouseButtonState.Pressed).ToString());
+
+            // if (key.ButtonState == MouseButtonState.Pressed)
+            // {
+            //     if (key.ButtonState != _lastLeftButtonState)
+            // }
+            //
+            // if (key.ChangedButton == MouseButton.Left)
+            // {
+            //     MessageBox.Show(key.ButtonState.ToString());
+            //     return;
+            //     if (key.ButtonState == MouseButtonState.Pressed)
+            //     {
+            //         MessageBox.Show("pressed");
+            //         RotateCamera = true;
+            //         _lastLeftButtonState = true;
+            //     }
+            //
+            //     if (key.ButtonState == MouseButtonState.Released && _lastLeftButtonState)
+            //     {
+            //         MessageBox.Show("released");
+            //         _lastLeftButtonState = false;
+            //         RotateCamera = false;
+            //     }
+            // }
+
+
+            // if (key.ChangedButton == MouseButton.Left)
+            // {
+            //     LeftMouseButtonPressed = key.ButtonState == MouseButtonState.Pressed;
+            //     if (key.ButtonState != MouseButtonState.Pressed) return;
+            //     MessageBox.Show(key.ChangedButton + " " + key.ButtonState);
+            //     RotateCamera = LeftMouseButtonPressed;
+            // }
         }
 
         private void OnKeyUp(Key key)
@@ -1687,6 +1899,15 @@ namespace TroveSkip.ViewModels
             _pressedKeys[key] = false;
 
             if (NotHooked() || NotFocused() || ChatOpened()) return;
+
+            if (_followBotsToggle)
+            {
+                foreach (var hook in Hooks)
+                {
+                    if (hook.IsPrimary) continue;
+                    DarkSide.SendKeyboardKeyUp(hook.WindowHandle, key);
+                }
+            }
 
             if (key == _binds[nameof(AttackHoldButton)])
             {
@@ -1702,7 +1923,7 @@ namespace TroveSkip.ViewModels
             }
         }
 
-        // TODO: optimize
+        // TODO: optimize (or not)
         private async void FollowBotsAsync()
         {
             const int playerOffsetInPlayersArray = 2;
@@ -1720,7 +1941,7 @@ namespace TroveSkip.ViewModels
 
             while (Authorized)
             {
-                await Task.Delay(1);
+                await Task.Delay(2);
                 while (!_followBotsToggle || _botsSettings.FollowType == FollowType.Local && (Hooks.Count < 2 || HookModel == null) || _botsSettings.FollowType == FollowType.Target && Hooks.Count == 0)
                 {
                     await Task.Delay(50);
@@ -1729,7 +1950,7 @@ namespace TroveSkip.ViewModels
                 bool GetSourcePositionsFromTarget(HookModel hook)
                 {
                     handle = hook.Handle;
-                    var playersCount = DarkSide.ReadInt(handle, hook.WorldPointer, Offsets.World.PlayersList.Count);
+                    var playersCount = DarkSide.ReadInt(handle, hook.WorldPointer, Offsets.World.Players.Count);
                     for (byte i = 1; i < playersCount; i++)
                     {
                         characterPositionXOffsets[playerOffsetInPlayersArray] = 
@@ -1863,11 +2084,29 @@ namespace TroveSkip.ViewModels
                 }
             }
         }
+        
+        private async void LockCameraAsync()
+        {
+            int hookCameraRotationAddress;
+            while (_lockCamera)
+            {
+                await Task.Delay(5);
+                while (_followCamera || _rotateCamera || HookModel == null)
+                    await Task.Delay(50);
 
+                foreach (var hook in Hooks)
+                {
+                    if (hook.IsPrimary) continue;
+                    hookCameraRotationAddress = DarkSide.GetAddress(hook.Handle, hook.LocalPlayerPointer, Offsets.Camera.VerticalMove);
+
+                    DarkSide.WriteProcessMemory(hook.Handle, hookCameraRotationAddress, _lockCameraCoordinates, CameraRotationSize, out _);
+                }
+            }
+        }
+        
         private async void FollowCameraAsync()
         {
-            const int cameraRotationSize = 8;
-            var cameraRotationBuffer = new byte[cameraRotationSize];
+            var cameraRotationBuffer = new byte[CameraRotationSize];
             int cameraRotationAddress;
             int hookCameraRotationAddress;
             while (_followCamera)
@@ -1877,29 +2116,28 @@ namespace TroveSkip.ViewModels
                     await Task.Delay(50);
 
                 cameraRotationAddress = DarkSide.GetAddress(_handle, _currentLocalPlayerPointer, Offsets.Camera.VerticalMove);//CameraVerticalRotationOffsets);
-                DarkSide.ReadProcessMemory(_hookModel.Handle, cameraRotationAddress, cameraRotationBuffer, cameraRotationSize,
+                DarkSide.ReadProcessMemory(_hookModel.Handle, cameraRotationAddress, cameraRotationBuffer, CameraRotationSize,
                     out _);
 
                 foreach (var hook in Hooks)
                 {
                     if (hook.IsPrimary) continue;
-                    hookCameraRotationAddress =
-                        DarkSide.GetAddress(hook.Handle, hook.LocalPlayerPointer, Offsets.Camera.VerticalMove);
+                    hookCameraRotationAddress = DarkSide.GetAddress(hook.Handle, hook.LocalPlayerPointer, Offsets.Camera.VerticalMove);
                     if (_rotateCamera && IsRotatable(hook))
                     {
                         DarkSide.WriteProcessMemory(hook.Handle, hookCameraRotationAddress, cameraRotationBuffer,
-                            cameraRotationSize - sizeof(int), out _);
+                            CameraRotationSize - sizeof(int), out _);
 
                         continue;
                     }
 
-                    DarkSide.WriteProcessMemory(hook.Handle, hookCameraRotationAddress, cameraRotationBuffer, cameraRotationSize,
+                    DarkSide.WriteProcessMemory(hook.Handle, hookCameraRotationAddress, cameraRotationBuffer, CameraRotationSize,
                         out _);
                 }
             }
         }
 
-        private static CharacterId[] NonRotatableCharacters = { CharacterId.ShadowHunter, CharacterId.CandyBarbarian, CharacterId.DinoTamer };
+        private static readonly CharacterId[] NonRotatableCharacters = { CharacterId.ShadowHunter, CharacterId.CandyBarbarian, CharacterId.DinoTamer };
         
         private bool IsRotatable(HookModel hook) => !NonRotatableCharacters.Contains(GetCharacterId(hook));
 
@@ -1989,8 +2227,8 @@ namespace TroveSkip.ViewModels
                     handle = hook.Handle;
                     
                     //TODO: release calculating through int64 and shift
-                    currentHealth = DarkSide.ReadInt(handle, hook.LocalPlayerPointer, Offsets.LocalPlayer.Character.CurrentStats.Health);
-                    maxHealth = DarkSide.ReadInt(handle, hook.LocalPlayerPointer, Offsets.LocalPlayer.Character.CurrentStats.MaxHealth);
+                    currentHealth = DarkSide.ReadInt(handle, hook.LocalPlayerPointer, Offsets.LocalPlayer.CharacterGameObject.CurrentStats.Health);
+                    maxHealth = DarkSide.ReadInt(handle, hook.LocalPlayerPointer, Offsets.LocalPlayer.CharacterGameObject.CurrentStats.MaxHealth);
                     
                     if (currentHealth / maxHealth < 0.5f)
                     {
@@ -2028,10 +2266,89 @@ namespace TroveSkip.ViewModels
             }
         }
 
+        private async void AimBotAsync()
+        {
+            var entityOffsets = (int[])Offsets.World.Entities.Self.Clone();
+            var entityPositionXOffsets = entityOffsets.Join(0).Join(Offsets.Entity.GameObject.Transform.PositionX);
+
+            int entityPositionAddress;
+            var entityPosition = new float[3];
+            var playerPosition = new float[3];
+            var lookVector = new float[3];
+
+            var targets = new List<(float, float, float, float)>();
+            var targetsCount = 0;
+
+            while (true)
+            {
+                var availableHooks = Hooks.ToArray();
+                //var availableHooks = Hooks.ToList().Where(hook => !hook.IsPrimary && hook.IsBot && GetCharacterId(hook) == CharacterId.ShadowHunter).ToArray();
+                var availableHooksCount = availableHooks.Count();
+
+                foreach (var hook in availableHooks)
+                {
+                    //DarkSide.WriteFloat(hook.Handle, hook.LocalPlayerPointer, Offsets.Camera.VerticalMove, -1);
+                }
+
+                DarkSide.ReadProcessMemory(HookModel.Handle,
+                    DarkSide.GetAddress(HookModel.Handle, HookModel.LocalPlayerPointer,
+                        Offsets.LocalPlayer.CharacterGameObject.Transform.PositionX), playerPosition, VectorByteSize,
+                    out _);
+
+                var mobsCount = DarkSide.ReadInt(HookModel.Handle, HookModel.WorldPointer,
+                    Offsets.World.Entities.EntitiesCount);
+                for (var i = 0; i < mobsCount; i++)
+                {
+                    entityPositionXOffsets[2] = i * sizeof(int);
+                    entityPositionAddress =
+                        DarkSide.GetAddress(HookModel.Handle, HookModel.WorldPointer, entityPositionXOffsets);
+                    DarkSide.ReadProcessMemory(HookModel.Handle, entityPositionAddress, entityPosition, VectorByteSize,
+                        out _);
+
+                    float length = 1;
+
+                    for (var j = 0; j < VectorSize; j++)
+                    {
+                        var currentVelocity = lookVector[j] = entityPosition[i] - playerPosition[i];
+                        length += currentVelocity * currentVelocity;
+                    }
+
+                    length = Math.Max((float)Math.Sqrt(length), 1);
+
+                    for (var j = 0; j < VectorSize; j++)
+                    {
+                        lookVector[j] /= length;
+                    }
+
+                    if (length > 100) continue;
+
+                    targets.Add((entityPosition[0], entityPosition[1], entityPosition[2], length));
+                    targetsCount++;
+                    Console.WriteLine(
+                        $@"{i} ({DarkSide.GetAddress(HookModel.Handle, HookModel.WorldPointer, entityOffsets.Join(i * 4)):X8}) -> pos:({entityPosition[0]} {entityPosition[1]} {entityPosition[2]} | len: {length}) hp:({DarkSide.GetAddress(HookModel.Handle, HookModel.WorldPointer, entityOffsets.Join(i * 4)).Join(Offsets.Entity.GameObject.CurrentStats.Health)}/{DarkSide.GetAddress(HookModel.Handle, HookModel.WorldPointer, entityOffsets.Join(i * 4)).Join(Offsets.Entity.GameObject.CurrentStats.MaxHealth)})");
+
+                    if (targetsCount == availableHooksCount)
+                        break;
+                }
+
+                targets = targets.OrderBy(x => x.Item4).ToList();
+
+                foreach (var hook in availableHooks)
+                {
+                    // set "hook" camera to target
+                }
+
+                await Task.Delay(50);
+                targets.Clear();
+                Console.WriteLine(new string('-', 20));
+            }
+        }
+
         private void StartBackground()
         {
             _activityHook.KeyDown += OnKeyDown;
             _activityHook.KeyUp += OnKeyUp;
+            _activityHook.OnMouseActivity += OnMouseActivity;
             _dispatcher.InvokeAsync(ForceSpeedAsync);
             _dispatcher.InvokeAsync(HooksUpdateAsync);
             _dispatcher.InvokeAsync(FollowBotsAsync);
@@ -2338,7 +2655,7 @@ namespace TroveSkip.ViewModels
         private string GetName(HookModel hook) => GetName(hook.Handle, hook.ModuleAddress);
 
         private CharacterId GetCharacterId(HookModel hook) =>
-            (CharacterId) DarkSide.ReadInt(hook.Handle, hook.LocalPlayerPointer, Offsets.LocalPlayer.Character.CharacterId);//CharacterIdOffsets);
+            (CharacterId) DarkSide.ReadInt(hook.Handle, hook.LocalPlayerPointer, Offsets.LocalPlayer.CharacterGameObject.CharacterId);//CharacterIdOffsets);
         
         private unsafe float GetEncryptedFloat(HookModel hook, int baseAddress, int[] offsets)
         {

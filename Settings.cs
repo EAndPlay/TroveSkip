@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
@@ -20,6 +21,7 @@ namespace TroveSkip
         public string SettingsPointer;
         public string GameGlobalsPointer;
         public string WorldPointer;
+        //public string EntityListPointer;
 
         public string SkipButton;
         public string SprintButton;

@@ -149,6 +149,11 @@ namespace TroveSkip.ViewModels
         private static readonly int[] DrawDistanceOffsets = {(int) SettingOffset.DrawDistance};
 
         //private readonly int[] MaxCamDist = { 0x4, 0x3C };
-        //private readonly int[] MinCamDist = { 0x4, 0x38 };
+        //private readonly int[] MinCamDist = { 0x4, 0x38 };[DllImport("kernel32.dll", SetLastError = true)]
+        
+        [DllImport("kernel32.dll", SetLastError = true)]
+        internal static extern int AllocConsole();
+        [DllImport("kernel32.dll", SetLastError = true)]
+        internal static extern int FreeConsole();
     }
 }
