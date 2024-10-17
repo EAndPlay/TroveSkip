@@ -134,12 +134,18 @@ namespace TroveSkip.ViewModels
 
                     if (_encryptionKey == 0)
                     {
-                        var address = DarkSide.FindSignatureAddress(_hookModel, Signatures.StatsEncryptionKeySignature) + 7;
-                        _encryptionKey = DarkSide.ReadUInt(_handle, address);
-                        var bytes = BitConverter.GetBytes((float) SpeedHackValue);
+                        var address =
+                            DarkSide.FindSignatureAddress(_hookModel, Signatures.StatsEncryptionKeySignature) + 4;
+
+                        //var buffer = new byte[4];
+                        //DarkSide.ReadMemory(_handle, address, buffer);
+                        //Array.Reverse(buffer);
+
+                        _encryptionKey = DarkSide.ReadUInt(_handle, address);//Convert.ToUInt32(buffer);
+                        var bytes = BitConverter.GetBytes((float)SpeedHackValue);
                         _encryptedSpeed = BitConverter.ToUInt32(bytes, 0) ^ _encryptionKey;
                     }
-                    
+
                     if (FollowBotsToggle && !_botsNoClipCheck && BotsSettings.FollowType == FollowType.Local)
                     {
                         _hookModel.Patches.Unpatch(PatchName.NoClip);
@@ -426,11 +432,8 @@ namespace TroveSkip.ViewModels
             set
             {
                 _speedHackValue = value;
-                if (_encryptionKey != 0)
-                {
-                    _encryptedSpeed = BitConverter.ToUInt32(BitConverter.GetBytes((float) value), 0) ^ _encryptionKey;
+                _encryptedSpeed = BitConverter.ToUInt32(BitConverter.GetBytes((float) value), 0) ^ _encryptionKey;
                     //_encryptedSpeed = (uint) *(float*) value ^ _encryptionKey;
-                }
 
                 OnPropertyChanged();
             }
