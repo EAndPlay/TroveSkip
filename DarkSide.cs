@@ -297,7 +297,34 @@ namespace TroveSkip
             //SendMessage(windowHandle, SystemMessage.MouseMove, 0, lParam);
             SendMessage(windowHandle, systemMessage, (int) mouseButton, lParam);
         }
+        
+        public static void SendMouseMove(IntPtr windowHandle, int x = -1, int y = -1)
+        {
+            //SendMessage((int) HookModel.WindowHandle, SystemMessage.MouseLeftButtonDown, KeyDownMessage.LeftButton, MAKELPARAM(345, 165));
+            var lParam = 0;
+            if (y != -1) lParam = y << 16;
+            if (x != -1) lParam |= x & 0xFFFF;
+            
+            // SystemMessage GetSystemMessage(MouseButton mouseButton, bool keyDown) => mouseButton switch
+            // {
+            //     MouseButton.LeftButton => keyDown ? SystemMessage.MouseLeftButtonDown : SystemMessage.MouseLeftButtonUp,
+            //     MouseButton.RightButton => keyDown ? SystemMessage.MouseRightButtonDown : SystemMessage.MouseRightButtonUp,
+            //     MouseButton.MiddleButton => keyDown ? SystemMessage.MouseMiddleButtonDown : SystemMessage.MouseMiddleButtonUp,
+            //     _ => throw new NotImplementedException()
+            // };
 
+            // var systemMessage = mouseButton switch
+            // {
+            //     MouseButton.LeftButton => keyDown ? SystemMessage.MouseLeftButtonDown : SystemMessage.MouseLeftButtonUp,
+            //     MouseButton.RightButton => keyDown ? SystemMessage.MouseRightButtonDown : SystemMessage.MouseRightButtonUp,
+            //     MouseButton.MiddleButton => keyDown ? SystemMessage.MouseMiddleButtonDown : SystemMessage.MouseMiddleButtonUp,
+            //     _ => throw new NotImplementedException("Unknown system message for mouse")
+            // };//GetSystemMessage(mouseButton, keyDown);
+            
+            //SendMessage(windowHandle, SystemMessage.MouseMove, 0, lParam);
+            SendMessage(windowHandle, SystemMessage.SetCursor, 0, lParam);
+        }
+        
         //TODO: find way to click on exact coordinates
         public static void SendMouseClick(IntPtr windowHandle, MouseButton mouseButton, int x = -1, int y = -1)
         {

@@ -9,10 +9,10 @@ namespace TroveSkip
         {
             public static readonly int[] Self = {0x0, 0x28};
             
-            public static readonly int[] CharacterSelf = Self.Join(0xC4);
-            public static readonly int[] Name = Self.Join(0x1D0, 0x0);
-            public static readonly int[] UserId = Self.Join(0x3C0);
-            public static readonly int[] MinimalLootRarity = Self.Join(0x678);
+            public static readonly int[] CharacterSelf = Self.Join(0xE8); // old: C4 (delta = 36 bytes)
+            public static readonly int[] Name = Self.Join(0x1F0, 0x0); // old: 1D0 (delta = 32 bytes)
+            public static readonly int[] UserId = Self.Join(0x3C0); // invalid offest
+            public static readonly int[] MinimalLootRarity = Self.Join(0x678); // invalid offset
             
             public static class CharacterGameObject
             {

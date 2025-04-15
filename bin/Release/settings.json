@@ -1,9 +1,9 @@
 {
-  "LocalPlayerPointer": "01087898",
-  "ChatPointer": "01087958",
-  "SettingsPointer": "010879E0",
+  "LocalPlayerPointer": "01098418",
+  "ChatPointer": "01098410",
+  "SettingsPointer": "0109AC98",
   "GameGlobalsPointer": "00000000",
-  "WorldPointer": "01087990",
+  "WorldPointer": "01098454",
   "SkipButton": "D3",
   "SprintButton": "D4",
   "SprintToggleButton": "None",
